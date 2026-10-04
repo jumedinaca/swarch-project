@@ -1,0 +1,51 @@
+services:
+  messages:
+    build: .
+    container_name: messages
+
+    env_file:
+      - .env
+
+    depends_on:
+      - messages-db
+
+    ports:
+      - "8100:8080"
+
+    volumes:
+      - .:/app
+
+      # Evita que tmp/ y otros archivos generados
+      # sean un problema con el bind mount.
+      # go_tmp:/app/tmp
+
+    command: air -c .air.toml
+
+  messages-db:
+    image: postgis/postgis:18-3.6
+
+    container_name: messages_db
+
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: messages
+
+    # ports:
+    #   - "5432:5432"
+
+    volumes:
+      - messages_data:/var/lib/postgresql
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U postgres -d messages"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  messages_data:
