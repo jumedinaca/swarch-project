@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  geopicto-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: geopicto-presentacion
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
