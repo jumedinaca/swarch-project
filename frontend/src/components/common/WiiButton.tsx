@@ -30,43 +30,48 @@ export const WiiButton: React.FC<WiiButtonProps> = ({
   style,
   textStyle,
 }) => {
-  // Configuración de colores según variante
+  // Configuración de colores táctiles según estilo de botones PictoChat DS
   const getVariantStyles = () => {
     switch (variant) {
       case 'primary':
         return {
-          bg: nintendoTheme.colors.wiiBlue,
-          border: '#0083B8',
+          bg: nintendoTheme.colors.roomA,
+          border: '#125C8E',
+          bottomBorder: '#0B3F63',
           text: '#FFFFFF',
-          gloss: 'rgba(255, 255, 255, 0.35)',
+          topHighlight: 'rgba(255, 255, 255, 0.3)',
         };
       case 'mint':
         return {
-          bg: nintendoTheme.colors.miiverseGreen,
-          border: '#249C42',
+          bg: nintendoTheme.colors.roomB,
+          border: '#1F7034',
+          bottomBorder: '#144F23',
           text: '#FFFFFF',
-          gloss: 'rgba(255, 255, 255, 0.35)',
+          topHighlight: 'rgba(255, 255, 255, 0.3)',
         };
       case 'danger':
         return {
-          bg: '#E74C3C',
-          border: '#C0392B',
+          bg: '#D43247',
+          border: '#9C1A2B',
+          bottomBorder: '#6E111D',
           text: '#FFFFFF',
-          gloss: 'rgba(255, 255, 255, 0.3)',
+          topHighlight: 'rgba(255, 255, 255, 0.3)',
         };
       case 'secondary':
         return {
           bg: '#FFFFFF',
-          border: '#D0DADB',
+          border: nintendoTheme.colors.pictoBorder,
+          bottomBorder: '#161B1E',
           text: nintendoTheme.colors.textPrimary,
-          gloss: 'rgba(255, 255, 255, 0.7)',
+          topHighlight: 'rgba(255, 255, 255, 0.9)',
         };
       case 'ghost':
         return {
           bg: 'transparent',
           border: 'transparent',
+          bottomBorder: 'transparent',
           text: nintendoTheme.colors.textSecondary,
-          gloss: 'transparent',
+          topHighlight: 'transparent',
         };
     }
   };
@@ -75,25 +80,31 @@ export const WiiButton: React.FC<WiiButtonProps> = ({
     switch (size) {
       case 'sm':
         return {
-          paddingVertical: 7,
-          paddingHorizontal: 14,
-          fontSize: 13,
-          height: 34,
+          paddingVertical: 6,
+          paddingHorizontal: 12,
+          fontSize: 12,
+          height: 32,
+          borderRadius: nintendoTheme.borderRadius.xs,
+          borderBottomWidth: 2,
         };
       case 'lg':
         return {
-          paddingVertical: 14,
-          paddingHorizontal: 28,
-          fontSize: 17,
-          height: 52,
+          paddingVertical: 12,
+          paddingHorizontal: 22,
+          fontSize: 15,
+          height: 48,
+          borderRadius: nintendoTheme.borderRadius.md,
+          borderBottomWidth: 3,
         };
       case 'md':
       default:
         return {
-          paddingVertical: 10,
-          paddingHorizontal: 20,
-          fontSize: 15,
-          height: 44,
+          paddingVertical: 8,
+          paddingHorizontal: 16,
+          fontSize: 13,
+          height: 40,
+          borderRadius: nintendoTheme.borderRadius.sm,
+          borderBottomWidth: 2.5,
         };
     }
   };
@@ -103,14 +114,17 @@ export const WiiButton: React.FC<WiiButtonProps> = ({
 
   return (
     <TouchableOpacity
-      activeOpacity={0.82}
+      activeOpacity={0.75}
       onPress={onPress}
       disabled={disabled}
       style={[
         styles.buttonBase,
         {
-          backgroundColor: disabled ? '#D2DBDE' : vConfig.bg,
-          borderColor: disabled ? '#BDC6C9' : vConfig.border,
+          backgroundColor: disabled ? '#D2DDD7' : vConfig.bg,
+          borderColor: disabled ? '#B0BEB8' : vConfig.border,
+          borderBottomColor: disabled ? '#97A6A0' : vConfig.bottomBorder,
+          borderBottomWidth: variant === 'ghost' ? 0 : sConfig.borderBottomWidth,
+          borderRadius: sConfig.borderRadius,
           height: sConfig.height,
           paddingHorizontal: sConfig.paddingHorizontal,
         },
@@ -118,9 +132,9 @@ export const WiiButton: React.FC<WiiButtonProps> = ({
         style,
       ]}
     >
-      {/* Brillo superior característico estilo glossy Nintendo Wii */}
+      {/* Bisel superior táctil característico de los botones de la pantalla táctil de Nintendo DS */}
       {variant !== 'ghost' && !disabled && (
-        <View style={[styles.glossHighlight, { backgroundColor: vConfig.gloss }]} />
+        <View style={[styles.topHighlight, { backgroundColor: vConfig.topHighlight }]} />
       )}
 
       <View style={styles.contentRow}>
@@ -129,7 +143,7 @@ export const WiiButton: React.FC<WiiButtonProps> = ({
           style={[
             styles.buttonText,
             {
-              color: disabled ? '#8E9DA3' : vConfig.text,
+              color: disabled ? '#7B8B85' : vConfig.text,
               fontSize: sConfig.fontSize,
             },
             textStyle,
@@ -144,7 +158,6 @@ export const WiiButton: React.FC<WiiButtonProps> = ({
 
 const styles = StyleSheet.create({
   buttonBase: {
-    borderRadius: nintendoTheme.borderRadius.pill,
     borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
@@ -152,21 +165,20 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   shadow: {
-    shadowColor: '#1A332B',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 3,
+    shadowColor: '#1A2422',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.16,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  glossHighlight: {
+  topHighlight: {
     position: 'absolute',
-    top: 0,
-    left: '10%',
-    right: '10%',
-    height: '40%',
-    borderBottomLeftRadius: 18,
-    borderBottomRightRadius: 18,
-    opacity: 0.65,
+    top: 1,
+    left: 2,
+    right: 2,
+    height: 3,
+    borderTopLeftRadius: 3,
+    borderTopRightRadius: 3,
   },
   contentRow: {
     flexDirection: 'row',
@@ -177,7 +189,8 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   buttonText: {
-    fontWeight: '700',
-    letterSpacing: 0.2,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
   },
 });

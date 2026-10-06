@@ -80,30 +80,36 @@ export const CreateMessageModal: React.FC<CreateMessageModalProps> = ({
         </View>
 
         <View style={styles.modalCard}>
-          {/* Cabecera estilo libreta Nintendo DS */}
+          {/* Cabecera estilo pantalla táctil Nintendo DS PictoChat */}
           <View style={styles.modalHeader}>
             <View style={styles.headerTitleRow}>
-              <View style={[styles.stylusIconCircle, { backgroundColor: user?.color || nintendoTheme.colors.wiiBlue }]}>
-                <Ionicons name="pencil" size={15} color="#FFFFFF" />
+              <View style={[styles.stylusIconSquare, { backgroundColor: user?.color || nintendoTheme.colors.roomA }]}>
+                <Ionicons name="pencil" size={14} color="#FFFFFF" />
               </View>
-              <Text style={styles.modalTitle}>Redactar Nota PictoChat</Text>
+              <View>
+                <Text style={styles.modalTitle}>PICTOCHAT • REDACTAR</Text>
+                <Text style={styles.modalSubTitle}>CANVAS TÁCTIL DS</Text>
+              </View>
             </View>
 
             <TouchableOpacity onPress={handleClose} style={styles.closeIconButton}>
-              <Ionicons name="close" size={20} color={nintendoTheme.colors.textSecondary} />
+              <Ionicons name="close" size={18} color={nintendoTheme.colors.textPrimary} />
             </TouchableOpacity>
           </View>
 
-          {/* Libreta cuadriculada con área de texto */}
+          {/* Libreta cuadriculada con área de texto y líneas pautadas clásicas de PictoChat */}
           <View style={styles.notepadContainer}>
-            {/* Trama cuadriculada decorativa */}
-            <View style={styles.notepadGridLine1} />
-            <View style={styles.notepadGridLine2} />
-            <View style={styles.notepadGridLine3} />
+            {/* Trama de líneas pautadas del lienzo táctil PictoChat */}
+            <View style={styles.gridOverlay}>
+              <View style={[styles.notepadGridLine, { top: 28 }]} />
+              <View style={[styles.notepadGridLine, { top: 56 }]} />
+              <View style={[styles.notepadGridLine, { top: 84 }]} />
+              <View style={[styles.notepadGridLine, { top: 112 }]} />
+            </View>
 
             <TextInput
               style={styles.notepadInput}
-              placeholder="Escribe tu mensaje geoespacial contextual (máximo 140 caracteres)..."
+              placeholder="Escribe tu mensaje en la pantalla táctil (máximo 140 caracteres)..."
               placeholderTextColor={nintendoTheme.colors.textMuted}
               value={content}
               onChangeText={setContent}
@@ -113,42 +119,44 @@ export const CreateMessageModal: React.FC<CreateMessageModalProps> = ({
               textAlignVertical="top"
             />
 
-            {/* Contador de caracteres reactivo */}
+            {/* Contador de caracteres digital reactivo */}
             <View style={styles.counterRow}>
-              <Text
-                style={[
-                  styles.counterText,
-                  charsRemaining <= 10 && styles.counterWarning,
-                  charsRemaining === 0 && styles.counterExceeded,
-                ]}
-              >
-                {content.length} / {charLimit} caracteres
-              </Text>
+              <View style={styles.counterBadge}>
+                <Text
+                  style={[
+                    styles.counterText,
+                    charsRemaining <= 10 && styles.counterWarning,
+                    charsRemaining === 0 && styles.counterExceeded,
+                  ]}
+                >
+                  [{content.length} / {charLimit}]
+                </Text>
+              </View>
             </View>
           </View>
 
           {/* Aviso de expiración en 24 horas */}
           <View style={styles.expirationNoticeBox}>
-            <Ionicons name="time-outline" size={17} color={nintendoTheme.colors.wiiBlue} />
+            <Ionicons name="time" size={14} color={nintendoTheme.colors.roomA} />
             <Text style={styles.expirationNoticeText}>
-              El mensaje expira en 24 horas
+              TRANSMISIÓN ACTIVA POR 24 HORAS EN EL MAPA
             </Text>
           </View>
 
           {errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}
 
-          {/* Botones de acción estilo Wii */}
+          {/* Botones de acción táctiles PictoChat */}
           <View style={styles.actionButtonsRow}>
             <WiiButton
-              title="Cancelar"
+              title="CANCELAR"
               variant="secondary"
               onPress={handleClose}
               style={{ flex: 1 }}
             />
             <WiiButton
-              title={isSubmitting ? 'Publicando...' : 'Publicar Nota'}
+              title={isSubmitting ? 'ENVIANDO...' : 'ENVIAR NOTA'}
               variant="mint"
-              icon={<Ionicons name="paper-plane" size={16} color="#FFFFFF" />}
+              icon={<Ionicons name="send" size={14} color="#FFFFFF" />}
               onPress={handlePublish}
               disabled={content.trim().length === 0 || isSubmitting}
               style={{ flex: 1.4 }}
@@ -169,132 +177,146 @@ const styles = StyleSheet.create({
   },
   modalBackdrop: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(28, 40, 36, 0.45)',
+    backgroundColor: 'rgba(24, 32, 35, 0.6)',
   },
   modalCard: {
     width: '100%',
     maxWidth: 420,
     backgroundColor: '#FFFFFF',
-    borderRadius: nintendoTheme.borderRadius.lg,
+    borderRadius: nintendoTheme.borderRadius.sm,
     borderWidth: 2,
-    borderColor: '#384347',
-    padding: 18,
+    borderColor: nintendoTheme.colors.pictoBorder,
+    padding: 16,
     ...nintendoTheme.shadows.pictoCard,
   },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 14,
-    paddingBottom: 10,
+    marginBottom: 12,
+    paddingBottom: 8,
     borderBottomWidth: 1.5,
-    borderBottomColor: '#EEF2F0',
+    borderBottomColor: nintendoTheme.colors.pictoBorder,
   },
   headerTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  stylusIconCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+  stylusIconSquare: {
+    width: 26,
+    height: 26,
+    borderRadius: nintendoTheme.borderRadius.xs,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.25)',
   },
   modalTitle: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '900',
     color: nintendoTheme.colors.textPrimary,
+    letterSpacing: 0.5,
+  },
+  modalSubTitle: {
+    fontSize: 8.5,
+    fontWeight: '800',
+    color: nintendoTheme.colors.textSecondary,
+    letterSpacing: 0.5,
   },
   closeIconButton: {
-    padding: 4,
-    borderRadius: 16,
-    backgroundColor: '#F0F4F3',
+    width: 28,
+    height: 28,
+    borderRadius: nintendoTheme.borderRadius.xs,
+    backgroundColor: '#F0F6F3',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#BAC7C1',
   },
   notepadContainer: {
     backgroundColor: '#FAFDFB',
-    borderRadius: nintendoTheme.borderRadius.md,
+    borderRadius: nintendoTheme.borderRadius.xs,
     borderWidth: 1.5,
-    borderColor: '#C6D4CF',
-    padding: 12,
+    borderColor: nintendoTheme.colors.pictoBorder,
+    padding: 10,
     position: 'relative',
-    height: 125,
+    height: 135,
   },
-  notepadGridLine1: {
-    position: 'absolute',
-    left: 12,
-    right: 12,
-    top: 36,
-    height: 1,
-    backgroundColor: '#E6ECE9',
+  gridOverlay: {
+    ...StyleSheet.absoluteFill,
+    pointerEvents: 'none',
   },
-  notepadGridLine2: {
+  notepadGridLine: {
     position: 'absolute',
-    left: 12,
-    right: 12,
-    top: 68,
+    left: 8,
+    right: 8,
     height: 1,
-    backgroundColor: '#E6ECE9',
-  },
-  notepadGridLine3: {
-    position: 'absolute',
-    left: 12,
-    right: 12,
-    top: 100,
-    height: 1,
-    backgroundColor: '#E6ECE9',
+    backgroundColor: '#E5EDE8',
   },
   notepadInput: {
     flex: 1,
-    fontSize: 14,
-    lineHeight: 22,
+    fontSize: 13.5,
+    lineHeight: 28,
     color: nintendoTheme.colors.textPrimary,
+    fontWeight: '600',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
     zIndex: 2,
   },
   counterRow: {
     alignItems: 'flex-end',
-    marginTop: 4,
+    marginTop: 2,
+    zIndex: 3,
+  },
+  counterBadge: {
+    backgroundColor: '#EEF5F1',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 3,
+    borderWidth: 1,
+    borderColor: '#D4E0DA',
   },
   counterText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: nintendoTheme.colors.textMuted,
+    fontSize: 10,
+    fontWeight: '800',
+    color: nintendoTheme.colors.textSecondary,
+    fontVariant: ['tabular-nums'],
+    letterSpacing: 0.3,
   },
   counterWarning: {
-    color: '#D97706',
+    color: '#D97814',
   },
   counterExceeded: {
-    color: '#DC2626',
+    color: '#D43247',
   },
   expirationNoticeBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#F3F8F6',
-    borderRadius: nintendoTheme.borderRadius.sm,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginTop: 12,
+    gap: 6,
+    backgroundColor: '#F3FAF6',
+    borderRadius: nintendoTheme.borderRadius.xs,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    marginTop: 10,
     borderWidth: 1,
-    borderColor: '#DFECE7',
+    borderColor: '#BAC7C1',
   },
   expirationNoticeText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 9.5,
+    fontWeight: '800',
     color: nintendoTheme.colors.textSecondary,
+    letterSpacing: 0.3,
   },
   errorText: {
-    color: '#DC2626',
-    fontSize: 12,
-    fontWeight: '600',
+    color: '#D43247',
+    fontSize: 11,
+    fontWeight: '700',
     marginTop: 6,
     textAlign: 'center',
   },
   actionButtonsRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginTop: 16,
+    gap: 8,
+    marginTop: 14,
   },
 });

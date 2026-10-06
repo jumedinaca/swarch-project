@@ -83,43 +83,47 @@ export const PictoChatCard: React.FC<PictoChatCardProps> = ({
 
   return (
     <TouchableOpacity
-      activeOpacity={onPress ? 0.9 : 1}
+      activeOpacity={onPress ? 0.85 : 1}
       onPress={onPress}
       style={[
         styles.cardContainer,
         isDeleted && styles.deletedCard,
       ]}
     >
-      {/* Franja superior de identificación de usuario y sala PictoChat */}
-      <View style={[styles.cardHeader, { borderLeftColor: message.authorColor, borderLeftWidth: 5 }]}>
+      {/* Pestaña superior del remitente estilo PictoChat DS */}
+      <View style={styles.cardHeader}>
         <View style={styles.authorSection}>
-          <View style={[styles.avatarCircle, { backgroundColor: message.authorColor }]}>
-            <Text style={styles.avatarInitial}>
-              {message.authorName.charAt(0).toUpperCase()}
-            </Text>
-          </View>
-          <View>
-            <View style={styles.nameRow}>
-              <Text style={styles.authorName}>{message.authorName}</Text>
-              {isAuthor && (
-                <View style={styles.authorBadge}>
-                  <Text style={styles.authorBadgeText}>Tú</Text>
-                </View>
-              )}
+          <View style={[styles.nameplateTab, { backgroundColor: message.authorColor }]}>
+            <View style={styles.avatarInitialBox}>
+              <Text style={styles.avatarInitial}>
+                {message.authorName.charAt(0).toUpperCase()}
+              </Text>
             </View>
-            <Text style={styles.timeText}>{formatTime(message.createdAt)}</Text>
+            <Text style={styles.authorName} numberOfLines={1}>
+              {message.authorName}
+            </Text>
+            {isAuthor && (
+              <View style={styles.authorBadge}>
+                <Text style={styles.authorBadgeText}>TÚ</Text>
+              </View>
+            )}
           </View>
         </View>
 
-        <StatusBadge status={message.status} size="sm" />
+        <View style={styles.headerRight}>
+          <Text style={styles.timeText}>{formatTime(message.createdAt)}</Text>
+          <StatusBadge status={message.status} size="sm" />
+        </View>
       </View>
 
-      {/* Contenido del mensaje con trama cuadriculada PictoChat */}
+      {/* Lienzo del mensaje con líneas pautadas clásicas de la pantalla táctil PictoChat */}
       <View style={styles.contentBody}>
-        {/* Fondo cuadriculado sutil */}
+        {/* Líneas guía pautadas del lienzo PictoChat */}
         <View style={styles.gridOverlay}>
-          <View style={styles.gridLineHorizontal} />
-          <View style={[styles.gridLineHorizontal, { top: '50%' }]} />
+          <View style={[styles.ruledLine, { top: 16 }]} />
+          <View style={[styles.ruledLine, { top: 38 }]} />
+          <View style={[styles.ruledLine, { top: 60 }]} />
+          <View style={[styles.ruledLine, { top: 82 }]} />
         </View>
 
         <Text style={[styles.contentText, isDeleted && styles.deletedText]}>
@@ -127,12 +131,12 @@ export const PictoChatCard: React.FC<PictoChatCardProps> = ({
         </Text>
       </View>
 
-      {/* Pie de tarjeta con expiración y acciones de autor */}
+      {/* Pie de tarjeta con expiración digital y acciones táctiles de autor */}
       <View style={styles.cardFooter}>
         <View style={styles.footerInfo}>
-          <Ionicons name="hourglass-outline" size={13} color={nintendoTheme.colors.textMuted} />
+          <Ionicons name="time-outline" size={12} color={nintendoTheme.colors.textSecondary} />
           <Text style={styles.expirationText}>
-            {formatExpiration(message.expiresAt)}
+            {formatExpiration(message.expiresAt).toUpperCase()}
           </Text>
         </View>
 
@@ -142,8 +146,8 @@ export const PictoChatCard: React.FC<PictoChatCardProps> = ({
             onPress={handleDelete}
             activeOpacity={0.7}
           >
-            <Ionicons name="trash-outline" size={13} color="#D32F2F" />
-            <Text style={styles.deleteButtonText}>Eliminar</Text>
+            <Ionicons name="trash-outline" size={12} color="#FFFFFF" />
+            <Text style={styles.deleteButtonText}>BORRAR</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -154,111 +158,127 @@ export const PictoChatCard: React.FC<PictoChatCardProps> = ({
 const styles = StyleSheet.create({
   cardContainer: {
     backgroundColor: '#FFFFFF',
-    borderRadius: nintendoTheme.borderRadius.md,
+    borderRadius: nintendoTheme.borderRadius.sm,
     borderWidth: 1.5,
-    borderColor: nintendoTheme.colors.pictoBorderSoft,
+    borderColor: nintendoTheme.colors.pictoBorder,
     overflow: 'hidden',
     marginVertical: 6,
     ...nintendoTheme.shadows.pictoCard,
   },
   deletedCard: {
     opacity: 0.6,
-    backgroundColor: '#F9F9F9',
-    borderColor: '#E2E8F0',
+    backgroundColor: '#F5F7F6',
+    borderColor: '#9EABA5',
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: '#F8FAF9',
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEF2F0',
+    paddingHorizontal: 8,
+    paddingTop: 6,
+    paddingBottom: 6,
+    backgroundColor: '#F0F6F3',
+    borderBottomWidth: 1.5,
+    borderBottomColor: nintendoTheme.colors.pictoBorder,
   },
   authorSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    flex: 1,
+    marginRight: 6,
   },
-  avatarCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+  nameplateTab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 3,
+    paddingHorizontal: 7,
+    borderRadius: nintendoTheme.borderRadius.xs,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.25)',
+    gap: 5,
+    maxWidth: '100%',
+  },
+  avatarInitialBox: {
+    width: 16,
+    height: 16,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarInitial: {
     color: '#FFFFFF',
-    fontWeight: '800',
-    fontSize: 13,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+    fontWeight: '900',
+    fontSize: 10,
   },
   authorName: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: nintendoTheme.colors.textPrimary,
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.2,
   },
   authorBadge: {
-    backgroundColor: nintendoTheme.colors.mintSoft,
-    paddingHorizontal: 6,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 4,
     paddingVertical: 1,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: nintendoTheme.colors.mintBorder,
+    borderRadius: 3,
   },
   authorBadgeText: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: '#1B823D',
+    fontSize: 8.5,
+    fontWeight: '900',
+    color: nintendoTheme.colors.textPrimary,
+    letterSpacing: 0.2,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   timeText: {
     fontSize: 10,
-    color: nintendoTheme.colors.textMuted,
+    fontWeight: '700',
+    color: nintendoTheme.colors.textSecondary,
+    fontVariant: ['tabular-nums'],
   },
   contentBody: {
-    padding: 14,
-    minHeight: 55,
+    padding: 12,
+    minHeight: 64,
     backgroundColor: '#FFFFFF',
     position: 'relative',
     justifyContent: 'center',
   },
   gridOverlay: {
     ...StyleSheet.absoluteFill,
-    opacity: 0.25,
+    pointerEvents: 'none',
   },
-  gridLineHorizontal: {
+  ruledLine: {
     position: 'absolute',
-    left: 0,
-    right: 0,
-    top: '25%',
+    left: 8,
+    right: 8,
     height: 1,
-    backgroundColor: '#CBD5E1',
+    backgroundColor: '#E8EFEA',
   },
   contentText: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13.5,
+    lineHeight: 22,
     color: nintendoTheme.colors.textPrimary,
-    fontWeight: '500',
+    fontWeight: '600',
     zIndex: 2,
+    letterSpacing: 0.2,
   },
   deletedText: {
     textDecorationLine: 'line-through',
-    color: '#A0AEC0',
+    color: '#8A9793',
   },
   cardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: '#FAFCFB',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: '#F6FAF8',
     borderTopWidth: 1,
-    borderTopColor: '#F0F4F2',
+    borderTopColor: '#DFE7E3',
   },
   footerInfo: {
     flexDirection: 'row',
@@ -266,24 +286,26 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   expirationText: {
-    fontSize: 11,
+    fontSize: 10,
     color: nintendoTheme.colors.textSecondary,
-    fontWeight: '500',
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   deleteButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#FEE2E2',
-    paddingHorizontal: 8,
+    gap: 3,
+    backgroundColor: '#D43247',
+    paddingHorizontal: 7,
     paddingVertical: 3,
-    borderRadius: nintendoTheme.borderRadius.pill,
+    borderRadius: nintendoTheme.borderRadius.xs,
     borderWidth: 1,
-    borderColor: '#FECACA',
+    borderColor: '#9C1A2B',
   },
   deleteButtonText: {
-    fontSize: 11,
-    color: '#D32F2F',
-    fontWeight: '700',
+    fontSize: 9.5,
+    color: '#FFFFFF',
+    fontWeight: '900',
+    letterSpacing: 0.3,
   },
 });

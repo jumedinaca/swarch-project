@@ -8,6 +8,8 @@ import { DeviceSimulatorFrame } from './src/components/common/DeviceSimulatorFra
 import { AuthScreen } from './src/screens/AuthScreen';
 import { MapScreen } from './src/screens/MapScreen';
 
+import { nintendoTheme } from './src/theme/nintendoTheme';
+
 const MainNavigator = () => {
   const { isAuthenticated, logout } = useAuth();
 
@@ -40,6 +42,6 @@ export default function App() {
 const styles = StyleSheet.create({
   appContainer: {
     flex: 1,
-    backgroundColor: '#F5F8F7',
+    backgroundColor: nintendoTheme.colors.background,
   },
 });

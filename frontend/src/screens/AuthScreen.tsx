@@ -76,22 +76,39 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Banner de Bienvenida estilo Menú Wii */}
+        {/* Banner de Bienvenida estilo PictoChat Nintendo DS */}
         <View style={styles.headerBanner}>
           <View style={styles.logoBadge}>
             <View style={styles.logoIconBg}>
-              <Ionicons name="chatbubbles" size={26} color="#FFFFFF" />
+              <Ionicons name="chatbubbles" size={24} color="#FFFFFF" />
             </View>
             <View>
-              <Text style={styles.logoTitle}>GeoPicto</Text>
-              <Text style={styles.logoSubtitle}>Plataforma Geoespacial Contextual</Text>
+              <Text style={styles.logoTitle}>PICTOCHAT</Text>
+              <Text style={styles.logoSubtitle}>COMUNICACIÓN GEOESPACIAL DS</Text>
             </View>
+          </View>
+
+          {/* Selector decorativo de salas PictoChat (A, B, C, D) */}
+          <View style={styles.roomsPreviewStrip}>
+            <View style={[styles.roomIndicator, { backgroundColor: nintendoTheme.colors.roomA }]}>
+              <Text style={styles.roomLetter}>A</Text>
+            </View>
+            <View style={[styles.roomIndicator, { backgroundColor: nintendoTheme.colors.roomB }]}>
+              <Text style={styles.roomLetter}>B</Text>
+            </View>
+            <View style={[styles.roomIndicator, { backgroundColor: nintendoTheme.colors.roomC }]}>
+              <Text style={styles.roomLetter}>C</Text>
+            </View>
+            <View style={[styles.roomIndicator, { backgroundColor: nintendoTheme.colors.roomD }]}>
+              <Text style={styles.roomLetter}>D</Text>
+            </View>
+            <Text style={styles.roomsStatusLabel}>SALAS INALÁMBRICAS</Text>
           </View>
         </View>
 
-        {/* Tarjeta principal estilo canal de Wii / consola Nintendo */}
+        {/* Tarjeta principal estilo panel táctil Nintendo DS */}
         <View style={styles.authCard}>
-          {/* Selector de modo estilo píldora */}
+          {/* Selector de modo estilo pestañas táctiles DS */}
           <View style={styles.modeToggleContainer}>
             <TouchableOpacity
               style={[styles.modeToggleTab, mode === 'login' && styles.modeToggleActive]}
@@ -99,9 +116,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
               activeOpacity={0.8}
             >
               <Ionicons
-                name="log-in-outline"
-                size={16}
-                color={mode === 'login' ? nintendoTheme.colors.wiiBlue : nintendoTheme.colors.textSecondary}
+                name="log-in"
+                size={15}
+                color={mode === 'login' ? nintendoTheme.colors.roomA : nintendoTheme.colors.textSecondary}
               />
               <Text
                 style={[
@@ -109,7 +126,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
                   mode === 'login' && styles.modeToggleTextActive,
                 ]}
               >
-                Iniciar Sesión
+                ENTRAR
               </Text>
             </TouchableOpacity>
 
@@ -119,9 +136,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
               activeOpacity={0.8}
             >
               <Ionicons
-                name="person-add-outline"
-                size={16}
-                color={mode === 'register' ? nintendoTheme.colors.miiverseGreen : nintendoTheme.colors.textSecondary}
+                name="person-add"
+                size={15}
+                color={mode === 'register' ? nintendoTheme.colors.roomB : nintendoTheme.colors.textSecondary}
               />
               <Text
                 style={[
@@ -129,7 +146,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
                   mode === 'register' && styles.modeToggleTextActive,
                 ]}
               >
-                Registrarse
+                REGISTRO
               </Text>
             </TouchableOpacity>
           </View>
@@ -138,11 +155,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
           {mode === 'login' ? (
             <View style={styles.formSection}>
               <Text style={styles.sectionSubtitle}>
-                Ingresa con tu cuenta para descubrir y publicar notas:
+                Conéctate para descubrir y emitir notas en tu área:
               </Text>
 
               <View style={styles.inputContainer}>
-                <Ionicons name="person-outline" size={18} color={nintendoTheme.colors.textSecondary} />
+                <Ionicons name="person" size={16} color={nintendoTheme.colors.textSecondary} />
                 <TextInput
                   style={styles.textInput}
                   placeholder="Usuario o correo electrónico"
@@ -154,7 +171,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
               </View>
 
               <View style={[styles.inputContainer, { marginTop: 12 }]}>
-                <Ionicons name="lock-closed-outline" size={18} color={nintendoTheme.colors.textSecondary} />
+                <Ionicons name="lock-closed" size={16} color={nintendoTheme.colors.textSecondary} />
                 <TextInput
                   style={styles.textInput}
                   placeholder="Contraseña"
@@ -169,7 +186,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
               {displayedError ? <Text style={styles.errorText}>{displayedError}</Text> : null}
 
               <WiiButton
-                title={isLoading ? 'Conectando...' : 'Iniciar Sesión'}
+                title={isLoading ? 'CONECTANDO...' : 'INICIAR SESIÓN'}
                 variant="primary"
                 size="lg"
                 disabled={isLoading}
@@ -181,11 +198,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
             /* Formulario de Registro */
             <View style={styles.formSection}>
               <Text style={styles.sectionSubtitle}>
-                Crea una cuenta para compartir notas contextuales:
+                Crea tu apodo DS para compartir notas en el mapa:
               </Text>
 
               <View style={styles.inputContainer}>
-                <Ionicons name="person-outline" size={18} color={nintendoTheme.colors.textSecondary} />
+                <Ionicons name="person" size={16} color={nintendoTheme.colors.textSecondary} />
                 <TextInput
                   style={styles.textInput}
                   placeholder="Nombre de usuario"
@@ -197,7 +214,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
               </View>
 
               <View style={[styles.inputContainer, { marginTop: 12 }]}>
-                <Ionicons name="mail-outline" size={18} color={nintendoTheme.colors.textSecondary} />
+                <Ionicons name="mail" size={16} color={nintendoTheme.colors.textSecondary} />
                 <TextInput
                   style={styles.textInput}
                   placeholder="correo@ejemplo.com"
@@ -210,7 +227,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
               </View>
 
               <View style={[styles.inputContainer, { marginTop: 12 }]}>
-                <Ionicons name="lock-closed-outline" size={18} color={nintendoTheme.colors.textSecondary} />
+                <Ionicons name="lock-closed" size={16} color={nintendoTheme.colors.textSecondary} />
                 <TextInput
                   style={styles.textInput}
                   placeholder="Contraseña"
@@ -225,7 +242,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
               {displayedError ? <Text style={styles.errorText}>{displayedError}</Text> : null}
 
               <WiiButton
-                title={isLoading ? 'Registrando...' : 'Crear Cuenta'}
+                title={isLoading ? 'REGISTRANDO...' : 'CREAR CUENTA DS'}
                 variant="mint"
                 size="lg"
                 disabled={isLoading}
@@ -236,11 +253,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
           )}
         </View>
 
-        {/* Nota informativa estética estilo manual de Nintendo */}
+        {/* Nota informativa estética estilo manual de Nintendo DS */}
         <View style={styles.footerNote}>
-          <Ionicons name="sparkles-outline" size={14} color={nintendoTheme.colors.textMuted} />
+          <Ionicons name="hardware-chip-outline" size={13} color={nintendoTheme.colors.textSecondary} />
           <Text style={styles.footerNoteText}>
-            Inspirado en la estética lúdica y minimalista de Nintendo (Wii y DS).
+            Nintendo DS Wireless Communications • PictoChat Protocol
           </Text>
         </View>
       </ScrollView>
@@ -257,118 +274,157 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 24,
-    maxWidth: 440,
+    paddingVertical: 20,
+    maxWidth: 420,
     alignSelf: 'center',
     width: '100%',
   },
   headerBanner: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   logoBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     backgroundColor: '#FFFFFF',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: nintendoTheme.borderRadius.lg,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: nintendoTheme.borderRadius.sm,
     borderWidth: 1.5,
-    borderColor: '#DFE8E4',
-    ...nintendoTheme.shadows.wiiSoft,
+    borderColor: nintendoTheme.colors.pictoBorder,
+    ...nintendoTheme.shadows.pictoCard,
   },
   logoIconBg: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: nintendoTheme.colors.wiiBlue,
+    width: 42,
+    height: 42,
+    borderRadius: nintendoTheme.borderRadius.xs,
+    backgroundColor: nintendoTheme.colors.roomA,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: nintendoTheme.colors.wiiBlue,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
+    borderWidth: 1,
+    borderColor: '#125C8E',
   },
   logoTitle: {
-    fontSize: 22,
-    fontWeight: '800',
+    fontSize: 20,
+    fontWeight: '900',
     color: nintendoTheme.colors.textPrimary,
-    letterSpacing: 0.5,
+    letterSpacing: 1.5,
   },
   logoSubtitle: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 9.5,
+    fontWeight: '800',
     color: nintendoTheme.colors.textSecondary,
+    letterSpacing: 0.5,
+  },
+  roomsPreviewStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 10,
+    backgroundColor: '#FAFDFB',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: nintendoTheme.borderRadius.xs,
+    borderWidth: 1,
+    borderColor: '#BAC7C1',
+  },
+  roomIndicator: {
+    width: 18,
+    height: 18,
+    borderRadius: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.2)',
+  },
+  roomLetter: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#FFFFFF',
+  },
+  roomsStatusLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: nintendoTheme.colors.textSecondary,
+    letterSpacing: 0.5,
+    marginLeft: 4,
   },
   authCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 28,
-    padding: 22,
+    borderRadius: nintendoTheme.borderRadius.sm,
+    padding: 18,
     borderWidth: 1.5,
-    borderColor: '#DDE6E2',
-    ...nintendoTheme.shadows.wiiSoft,
+    borderColor: nintendoTheme.colors.pictoBorder,
+    ...nintendoTheme.shadows.pictoCard,
   },
   modeToggleContainer: {
     flexDirection: 'row',
-    backgroundColor: '#EEF3F1',
-    borderRadius: nintendoTheme.borderRadius.pill,
-    padding: 4,
-    marginBottom: 18,
+    backgroundColor: '#E5EFE9',
+    borderRadius: nintendoTheme.borderRadius.xs,
+    padding: 3,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#BAC7C1',
   },
   modeToggleTab: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
-    borderRadius: nintendoTheme.borderRadius.pill,
+    paddingVertical: 7,
+    borderRadius: nintendoTheme.borderRadius.xs,
     gap: 6,
   },
   modeToggleActive: {
     backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: nintendoTheme.colors.pictoBorder,
     ...nintendoTheme.shadows.wiiSoft,
   },
   modeToggleText: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '800',
     color: nintendoTheme.colors.textSecondary,
+    letterSpacing: 0.5,
   },
   modeToggleTextActive: {
     color: nintendoTheme.colors.textPrimary,
-    fontWeight: '700',
+    fontWeight: '900',
   },
   formSection: {
     width: '100%',
   },
   sectionSubtitle: {
-    fontSize: 13,
+    fontSize: 12,
+    fontWeight: '600',
     color: nintendoTheme.colors.textSecondary,
-    marginBottom: 16,
-    lineHeight: 18,
+    marginBottom: 14,
+    lineHeight: 16,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FAFDFB',
-    borderRadius: nintendoTheme.borderRadius.md,
+    borderRadius: nintendoTheme.borderRadius.xs,
     borderWidth: 1.5,
-    borderColor: '#D4DFDB',
-    paddingHorizontal: 14,
-    height: 48,
-    gap: 10,
+    borderColor: nintendoTheme.colors.pictoBorder,
+    paddingHorizontal: 12,
+    height: 44,
+    gap: 8,
   },
   textInput: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 13,
     color: nintendoTheme.colors.textPrimary,
+    fontWeight: '600',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
   errorText: {
-    color: '#D32F2F',
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: 10,
+    color: '#D43247',
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 8,
     textAlign: 'center',
   },
   footerNote: {
@@ -376,11 +432,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    marginTop: 20,
+    marginTop: 16,
   },
   footerNoteText: {
-    fontSize: 11,
-    color: nintendoTheme.colors.textMuted,
-    fontStyle: 'italic',
+    fontSize: 10,
+    color: nintendoTheme.colors.textSecondary,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
 });

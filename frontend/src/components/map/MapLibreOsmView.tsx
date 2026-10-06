@@ -63,7 +63,7 @@ export const MapLibreOsmView: React.FC<MapLibreOsmViewProps> = ({
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
     
-    /* Marcador del Usuario con halo pulsante */
+    /* Marcador del Usuario estilo radar DS */
     .user-marker {
       width: 26px;
       height: 26px;
@@ -77,7 +77,7 @@ export const MapLibreOsmView: React.FC<MapLibreOsmViewProps> = ({
       left: -9px;
       top: -9px;
       border-radius: 50%;
-      background: rgba(0, 156, 216, 0.32);
+      background: rgba(26, 123, 185, 0.3);
       animation: pulse 2s infinite ease-out;
     }
     .user-marker-dot {
@@ -86,40 +86,41 @@ export const MapLibreOsmView: React.FC<MapLibreOsmViewProps> = ({
       height: 22px;
       left: 2px;
       top: 2px;
-      border-radius: 50%;
-      background: #009CD8;
-      border: 3px solid #ffffff;
-      box-shadow: 0 4px 12px rgba(0, 70, 100, 0.5);
+      border-radius: 4px;
+      background: #1A7BB9;
+      border: 2px solid #ffffff;
+      box-shadow: 0 3px 8px rgba(20, 30, 35, 0.6);
+      transform: rotate(45deg);
     }
     @keyframes pulse {
       0% { transform: scale(0.6); opacity: 0.9; }
       100% { transform: scale(1.6); opacity: 0; }
     }
 
-    /* Marcador 3D estilo Billboard elevado sobre el terreno */
+    /* Marcador 3D estilo Bocadillo PictoChat DS sobre el terreno */
     .billboard-marker {
       display: flex;
       flex-direction: column;
       align-items: center;
       cursor: pointer;
       transform-style: preserve-3d;
-      transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
     .billboard-marker:hover, .billboard-marker:active {
-      transform: translateY(-8px) scale(1.1);
+      transform: translateY(-6px) scale(1.08);
     }
     .billboard-bubble {
       background: #ffffff;
-      border-radius: 16px;
-      border: 2px solid #2e383c;
-      padding: 6px 11px;
+      border-radius: 5px;
+      border: 2px solid #242d30;
+      padding: 5px 9px;
       display: flex;
       align-items: center;
-      gap: 7px;
-      box-shadow: 0 8px 20px rgba(35, 45, 50, 0.28);
+      gap: 6px;
+      box-shadow: 0 6px 14px rgba(25, 35, 40, 0.3);
       position: relative;
       white-space: nowrap;
-      max-width: 150px;
+      max-width: 160px;
     }
     .billboard-bubble::after {
       content: '';
@@ -129,32 +130,34 @@ export const MapLibreOsmView: React.FC<MapLibreOsmViewProps> = ({
       transform: translateX(-50%);
       width: 0;
       height: 0;
-      border-left: 6px solid transparent;
-      border-right: 6px solid transparent;
-      border-top: 7px solid #2e383c;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-top: 7px solid #242d30;
     }
     .billboard-avatar {
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
+      width: 14px;
+      height: 14px;
+      border-radius: 2px;
       flex-shrink: 0;
+      border: 1px solid rgba(0, 0, 0, 0.3);
     }
     .billboard-text {
       font-size: 11px;
-      font-weight: 700;
-      color: #283338;
+      font-weight: 800;
+      color: #1e2528;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      letter-spacing: 0.2px;
     }
     /* Sombra 3D proyectada en el plano del suelo */
     .billboard-shadow {
-      width: 22px;
-      height: 8px;
-      background: rgba(0, 0, 0, 0.25);
+      width: 20px;
+      height: 6px;
+      background: rgba(20, 28, 30, 0.35);
       border-radius: 50%;
-      margin-top: 9px;
-      filter: blur(2px);
+      margin-top: 8px;
+      filter: blur(1.5px);
     }
   </style>
 </head>
@@ -349,8 +352,8 @@ export const MapLibreOsmView: React.FC<MapLibreOsmViewProps> = ({
         type: 'fill',
         source: 'range-circle-source',
         paint: {
-          'fill-color': '#009CD8',
-          'fill-opacity': 0.15
+          'fill-color': '#1A7BB9',
+          'fill-opacity': 0.12
         }
       });
 
@@ -359,9 +362,9 @@ export const MapLibreOsmView: React.FC<MapLibreOsmViewProps> = ({
         type: 'line',
         source: 'range-circle-source',
         paint: {
-          'line-color': '#0084B4',
-          'line-width': 2.5,
-          'line-opacity': 0.85,
+          'line-color': '#125C8E',
+          'line-width': 2,
+          'line-opacity': 0.9,
           'line-dasharray': [3, 2]
         }
       });
@@ -570,22 +573,22 @@ export const MapLibreOsmView: React.FC<MapLibreOsmViewProps> = ({
         </View>
       )}
 
-      {/* Botones de control de cámara ubicados en la parte inferior derecha */}
+      {/* Botones de control de cámara ubicados en la parte inferior derecha estilo DS */}
       <View style={styles.controlsOverlay}>
         <TouchableOpacity
-          style={styles.circleButton}
+          style={styles.dsTactileBtn}
           onPress={rotateCamera}
-          activeOpacity={0.8}
+          activeOpacity={0.75}
         >
-          <Ionicons name="sync-outline" size={19} color={nintendoTheme.colors.textPrimary} />
+          <Ionicons name="sync" size={17} color={nintendoTheme.colors.textPrimary} />
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.circleButton}
+          style={styles.dsTactileBtn}
           onPress={recenterMap}
-          activeOpacity={0.8}
+          activeOpacity={0.75}
         >
-          <Ionicons name="locate" size={20} color={nintendoTheme.colors.wiiBlue} />
+          <Ionicons name="locate" size={18} color={nintendoTheme.colors.roomA} />
         </TouchableOpacity>
       </View>
     </View>
@@ -596,7 +599,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     position: 'relative',
-    backgroundColor: '#EAF1EE',
+    backgroundColor: '#EAF0EC',
   },
   webIframe: {
     width: '100%',
@@ -605,7 +608,7 @@ const styles = StyleSheet.create({
   },
   nativeWebView: {
     flex: 1,
-    backgroundColor: '#EAF1EE',
+    backgroundColor: '#EAF0EC',
   },
   fallbackContainer: {
     flex: 1,
@@ -614,26 +617,27 @@ const styles = StyleSheet.create({
   },
   fallbackText: {
     color: nintendoTheme.colors.textSecondary,
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
   },
   controlsOverlay: {
     position: 'absolute',
-    bottom: 20,
-    right: 16,
+    bottom: 16,
+    right: 14,
     flexDirection: 'column',
-    gap: 10,
+    gap: 8,
     zIndex: 30,
   },
-  circleButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  dsTactileBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: nintendoTheme.borderRadius.xs,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: '#D3DFDC',
+    borderColor: nintendoTheme.colors.pictoBorder,
+    borderBottomWidth: 2.5,
     ...nintendoTheme.shadows.wiiSoft,
   },
 });

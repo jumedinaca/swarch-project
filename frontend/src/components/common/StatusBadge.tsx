@@ -15,13 +15,13 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, size = 'md' })
   const getIcon = () => {
     switch (status) {
       case 'publicado':
-        return 'checkmark-circle';
+        return 'checkmark';
       case 'pendiente':
-        return 'time-outline';
+        return 'time';
       case 'oculto':
-        return 'eye-off-outline';
+        return 'eye-off';
       case 'eliminado':
-        return 'trash-outline';
+        return 'trash';
     }
   };
 
@@ -34,23 +34,24 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, size = 'md' })
         {
           backgroundColor: config.bg,
           borderColor: config.border,
-          paddingVertical: isSmall ? 2 : 4,
-          paddingHorizontal: isSmall ? 8 : 10,
+          paddingVertical: isSmall ? 2 : 3,
+          paddingHorizontal: isSmall ? 6 : 8,
+          borderRadius: nintendoTheme.borderRadius.xs,
         },
       ]}
     >
       <Ionicons
         name={getIcon() as any}
-        size={isSmall ? 11 : 13}
+        size={isSmall ? 10 : 12}
         color={config.text}
-        style={{ marginRight: 4 }}
+        style={{ marginRight: 3 }}
       />
       <Text
         style={[
           styles.badgeLabel,
           {
             color: config.text,
-            fontSize: isSmall ? 10 : 12,
+            fontSize: isSmall ? 9.5 : 11,
           },
         ]}
       >
@@ -64,12 +65,13 @@ const styles = StyleSheet.create({
   badgeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: nintendoTheme.borderRadius.pill,
     borderWidth: 1,
     alignSelf: 'flex-start',
   },
   badgeLabel: {
-    fontWeight: '700',
-    textTransform: 'capitalize',
+    fontWeight: '800',
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
   },
 });
+

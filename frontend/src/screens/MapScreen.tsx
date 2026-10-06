@@ -105,34 +105,38 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        {/* Barra superior estilo Menú Wii / Plaza Mii */}
+        {/* Barra superior estilo Consola Nintendo DS PictoChat */}
         <View style={styles.topBar}>
-          {/* Perfil del usuario activo */}
+          {/* Perfil del usuario activo estilo Placa de Nombre PictoChat */}
           <View style={styles.userProfileSection}>
-            <View style={[styles.userAvatar, { backgroundColor: user?.color || nintendoTheme.colors.wiiBlue }]}>
+            <View style={[styles.userAvatar, { backgroundColor: user?.color || nintendoTheme.colors.roomA }]}>
               <Text style={styles.userAvatarLetter}>
-                {user?.username.charAt(0).toUpperCase() || 'M'}
+                {user?.username.charAt(0).toUpperCase() || 'P'}
               </Text>
             </View>
             <View>
               <Text style={styles.userNameText} numberOfLines={1}>
                 {user?.username ? (user.username.startsWith('@') ? user.username : `@${user.username}`) : '@Invitado'}
               </Text>
+              <View style={styles.userStatusRow}>
+                <View style={styles.userOnlineDot} />
+                <Text style={styles.userStatusSubtext}>DS WIRELESS ON</Text>
+              </View>
             </View>
           </View>
 
-          {/* Grupo de acciones de la barra superior: Recargar, Configuración de Rango y Salir */}
+          {/* Grupo de acciones de la barra superior: Recargar, Radar/Rango y Salir */}
           <View style={styles.topBarActions}>
             <TouchableOpacity
-              style={styles.refreshButton}
+              style={styles.actionSquareBtn}
               onPress={refreshMessages}
               activeOpacity={0.7}
               disabled={isRefreshingMessages}
             >
               <Ionicons
-                name="refresh-outline"
-                size={16}
-                color={isRefreshingMessages ? nintendoTheme.colors.textMuted : nintendoTheme.colors.wiiBlue}
+                name="refresh"
+                size={15}
+                color={isRefreshingMessages ? nintendoTheme.colors.textMuted : nintendoTheme.colors.textPrimary}
               />
             </TouchableOpacity>
 
@@ -141,22 +145,22 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
               onPress={() => setRangeModalVisible(true)}
               activeOpacity={0.7}
             >
-              <Ionicons name="radio-outline" size={15} color={nintendoTheme.colors.wiiBlue} />
+              <Ionicons name="radio" size={13} color={nintendoTheme.colors.roomA} />
               <Text style={styles.rangeButtonText}>{rangeDistance}m</Text>
             </TouchableOpacity>
 
             {/* Botón de salir / cerrar sesión */}
             <TouchableOpacity
-              style={styles.exitButton}
+              style={[styles.actionSquareBtn, styles.exitBtn]}
               onPress={onLogout}
               activeOpacity={0.7}
             >
-              <Ionicons name="log-out-outline" size={16} color={nintendoTheme.colors.textSecondary} />
+              <Ionicons name="log-out" size={15} color="#D43247" />
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Barra horizontal de filtros de estado estilo píldora Nintendo */}
+        {/* Barra horizontal de filtros estilo Selector de Salas PictoChat */}
         <View style={styles.filterBar}>
           <ScrollView
             horizontal
@@ -165,21 +169,44 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
           >
             {filters.map((f) => {
               const isActive = statusFilter === f;
-              const label = f === 'todos' ? 'Todos los mensajes' : f.charAt(0).toUpperCase() + f.slice(1);
+              let roomColor = nintendoTheme.colors.textSecondary;
+              let roomTag = 'TODO';
+              let label = 'Todos';
+
+              if (f === 'publicado') {
+                roomColor = nintendoTheme.colors.roomA;
+                roomTag = 'SALA A';
+                label = 'Publicados';
+              } else if (f === 'pendiente') {
+                roomColor = nintendoTheme.colors.roomC;
+                roomTag = 'SALA B';
+                label = 'Pendientes';
+              } else if (f === 'oculto') {
+                roomColor = nintendoTheme.colors.roomB;
+                roomTag = 'SALA C';
+                label = 'Ocultos';
+              }
+
               return (
                 <TouchableOpacity
                   key={f}
                   style={[
-                    styles.filterPill,
-                    isActive && styles.filterPillActive,
+                    styles.filterTab,
+                    isActive && styles.filterTabActive,
+                    isActive && { borderColor: nintendoTheme.colors.pictoBorder },
                   ]}
                   onPress={() => setStatusFilter(f)}
-                  activeOpacity={0.8}
+                  activeOpacity={0.75}
                 >
+                  <View style={[styles.filterRoomBadge, { backgroundColor: isActive ? roomColor : '#DCE5E0' }]}>
+                    <Text style={[styles.filterRoomTag, isActive && { color: '#FFFFFF' }]}>
+                      {roomTag}
+                    </Text>
+                  </View>
                   <Text
                     style={[
-                      styles.filterPillText,
-                      isActive && styles.filterPillTextActive,
+                      styles.filterTabText,
+                      isActive && styles.filterTabTextActive,
                     ]}
                   >
                     {label}
@@ -200,20 +227,20 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
             onVisibleMessagesChange={setVisibleMessageIds}
           />
 
-          {/* Botón Flotante de Acción (FAB) con forma de Stylus PictoChat ubicado en la esquina inferior izquierda */}
+          {/* Botón Flotante de Acción (FAB) estilo Stylus / Lápiz táctil PictoChat DS */}
           <TouchableOpacity
             style={styles.composeFab}
             onPress={handleOpenCreateModal}
-            activeOpacity={0.85}
+            activeOpacity={0.8}
           >
             <View style={styles.composeFabInner}>
-              <Ionicons name="pencil" size={22} color="#FFFFFF" />
+              <Ionicons name="pencil" size={17} color="#FFFFFF" />
             </View>
-            <Text style={styles.composeFabLabel}>Escribir Nota</Text>
+            <Text style={styles.composeFabLabel}>ESCRIBIR NOTA</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Cajón inferior de notas contextuales estilo feed PictoChat */}
+        {/* Cajón inferior de notas contextuales estilo buzón PictoChat */}
         <View style={[styles.bottomSheet, bottomListExpanded && styles.bottomSheetExpanded]}>
           <TouchableOpacity
             style={styles.sheetHandleArea}
@@ -223,16 +250,18 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
             <View style={styles.sheetHandleBar} />
             <View style={styles.sheetHeaderRow}>
               <View style={styles.sheetTitleGroup}>
-                <Ionicons name="newspaper-outline" size={16} color={nintendoTheme.colors.wiiBlue} />
+                <Ionicons name="chatbubbles" size={15} color={nintendoTheme.colors.roomA} />
                 <Text style={styles.sheetTitle}>
-                  Notas en el Área ({inRangeMessages.length})
+                  NOTAS EN EL ÁREA [{inRangeMessages.length}]
                 </Text>
               </View>
-              <Ionicons
-                name={bottomListExpanded ? 'chevron-down' : 'chevron-up'}
-                size={18}
-                color={nintendoTheme.colors.textSecondary}
-              />
+              <View style={styles.sheetChevronBox}>
+                <Ionicons
+                  name={bottomListExpanded ? 'chevron-down' : 'chevron-up'}
+                  size={15}
+                  color={nintendoTheme.colors.textPrimary}
+                />
+              </View>
             </View>
           </TouchableOpacity>
 
@@ -244,7 +273,8 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
             >
               {inRangeMessages.length === 0 ? (
                 <View style={styles.emptyContainer}>
-                  <Text style={styles.emptyText}>No hay notas dentro del rango ({rangeDistance}m).</Text>
+                  <Ionicons name="radio-outline" size={24} color={nintendoTheme.colors.textSecondary} style={{ marginBottom: 6 }} />
+                  <Text style={styles.emptyText}>No hay notas dentro del alcance de transmisión ({rangeDistance}m).</Text>
                 </View>
               ) : (
                 inRangeMessages.map((msg) => (
@@ -289,7 +319,7 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#DCE5E0',
   },
   container: {
     flex: 1,
@@ -299,109 +329,140 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEF2F0',
+    borderBottomWidth: 1.5,
+    borderBottomColor: nintendoTheme.colors.pictoBorder,
     ...nintendoTheme.shadows.wiiSoft,
     zIndex: 10,
   },
   userProfileSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   userAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: nintendoTheme.borderRadius.xs,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
+    borderWidth: 1.5,
+    borderColor: nintendoTheme.colors.pictoBorder,
   },
   userAvatarLetter: {
     color: '#FFFFFF',
-    fontWeight: '800',
-    fontSize: 15,
+    fontWeight: '900',
+    fontSize: 14,
   },
   userNameText: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '800',
     color: nintendoTheme.colors.textPrimary,
+    letterSpacing: 0.3,
+  },
+  userStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  userOnlineDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: nintendoTheme.colors.dsWirelessGreen,
+  },
+  userStatusSubtext: {
+    fontSize: 8.5,
+    fontWeight: '800',
+    color: nintendoTheme.colors.textSecondary,
+    letterSpacing: 0.5,
   },
   topBarActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
+  },
+  actionSquareBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: nintendoTheme.borderRadius.xs,
+    backgroundColor: '#F3F8F5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: nintendoTheme.colors.pictoBorder,
+    borderBottomWidth: 2.5,
+  },
+  exitBtn: {
+    backgroundColor: '#FDF1F1',
+    borderColor: '#9C1A2B',
   },
   rangeButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 4,
     backgroundColor: '#EBF6FC',
     borderWidth: 1.5,
-    borderColor: '#BAE3F7',
+    borderColor: nintendoTheme.colors.pictoBorder,
+    borderBottomWidth: 2.5,
     paddingVertical: 5,
-    paddingHorizontal: 11,
-    borderRadius: nintendoTheme.borderRadius.pill,
+    paddingHorizontal: 9,
+    borderRadius: nintendoTheme.borderRadius.xs,
   },
   rangeButtonText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: nintendoTheme.colors.wiiBlue,
-  },
-  refreshButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#EBF6FC',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  exitButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#F2F6F5',
-    alignItems: 'center',
-    justifyContent: 'center',
+    fontSize: 11,
+    fontWeight: '900',
+    color: nintendoTheme.colors.roomA,
+    letterSpacing: 0.3,
+    fontVariant: ['tabular-nums'],
   },
   filterBar: {
-    backgroundColor: '#F8FAF9',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E6ECE9',
+    backgroundColor: '#E5EFE9',
+    paddingVertical: 6,
+    borderBottomWidth: 1.5,
+    borderBottomColor: nintendoTheme.colors.pictoBorder,
   },
   filterScroll: {
-    paddingHorizontal: 14,
-    gap: 8,
+    paddingHorizontal: 10,
+    gap: 6,
   },
-  filterPill: {
-    paddingVertical: 5,
-    paddingHorizontal: 12,
-    borderRadius: nintendoTheme.borderRadius.pill,
-    backgroundColor: '#FFFFFF',
+  filterTab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: nintendoTheme.borderRadius.xs,
+    backgroundColor: '#FAFDFB',
     borderWidth: 1.5,
-    borderColor: '#D4E0DC',
+    borderColor: '#BAC7C1',
+    gap: 5,
   },
-  filterPillActive: {
-    backgroundColor: nintendoTheme.colors.mintSoft,
-    borderColor: nintendoTheme.colors.miiverseGreen,
+  filterTabActive: {
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 2.5,
+    ...nintendoTheme.shadows.wiiSoft,
   },
-  filterPillText: {
-    fontSize: 12,
+  filterRoomBadge: {
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 2,
+  },
+  filterRoomTag: {
+    fontSize: 8.5,
+    fontWeight: '900',
     color: nintendoTheme.colors.textSecondary,
-    fontWeight: '600',
+    letterSpacing: 0.5,
   },
-  filterPillTextActive: {
-    color: '#15803D',
+  filterTabText: {
+    fontSize: 11,
+    color: nintendoTheme.colors.textSecondary,
     fontWeight: '700',
+  },
+  filterTabTextActive: {
+    color: nintendoTheme.colors.textPrimary,
+    fontWeight: '900',
   },
   mapContainer: {
     flex: 1,
@@ -409,63 +470,61 @@ const styles = StyleSheet.create({
   },
   composeFab: {
     position: 'absolute',
-    bottom: 20,
-    left: 16,
+    bottom: 16,
+    left: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: nintendoTheme.colors.miiverseGreen,
-    borderRadius: nintendoTheme.borderRadius.pill,
+    backgroundColor: nintendoTheme.colors.roomB,
+    borderRadius: nintendoTheme.borderRadius.xs,
     paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     gap: 8,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-    shadowColor: '#1A332B',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 6,
+    borderWidth: 1.5,
+    borderColor: nintendoTheme.colors.pictoBorder,
+    borderBottomWidth: 3,
+    borderBottomColor: '#144F23',
+    ...nintendoTheme.shadows.dsTactile,
     zIndex: 35,
   },
   composeFabInner: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 24,
+    height: 24,
+    borderRadius: 3,
     backgroundColor: 'rgba(255, 255, 255, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   composeFabLabel: {
     color: '#FFFFFF',
-    fontWeight: '800',
-    fontSize: 14,
-    letterSpacing: 0.2,
+    fontWeight: '900',
+    fontSize: 12,
+    letterSpacing: 0.8,
   },
   bottomSheet: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10,
     borderWidth: 1.5,
     borderBottomWidth: 0,
-    borderColor: '#D4DFDB',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    maxHeight: 70,
+    borderColor: nintendoTheme.colors.pictoBorder,
+    paddingHorizontal: 12,
+    paddingTop: 6,
+    maxHeight: 64,
     ...nintendoTheme.shadows.pictoCard,
   },
   bottomSheetExpanded: {
-    maxHeight: 260,
+    maxHeight: 270,
   },
   sheetHandleArea: {
     alignItems: 'center',
-    paddingBottom: 8,
+    paddingBottom: 6,
   },
   sheetHandleBar: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#CBD5E1',
-    marginBottom: 8,
+    width: 36,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: '#A8B7B0',
+    marginBottom: 6,
   },
   sheetHeaderRow: {
     flexDirection: 'row',
@@ -479,19 +538,32 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   sheetTitle: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 11.5,
+    fontWeight: '900',
     color: nintendoTheme.colors.textPrimary,
+    letterSpacing: 0.5,
+  },
+  sheetChevronBox: {
+    width: 22,
+    height: 22,
+    borderRadius: 3,
+    backgroundColor: '#F0F6F3',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#BAC7C1',
   },
   sheetScroll: {
-    marginTop: 8,
+    marginTop: 6,
   },
   emptyContainer: {
-    padding: 20,
+    padding: 16,
     alignItems: 'center',
   },
   emptyText: {
-    color: nintendoTheme.colors.textMuted,
-    fontSize: 13,
+    color: nintendoTheme.colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });
