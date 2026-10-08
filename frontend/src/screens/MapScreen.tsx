@@ -15,10 +15,15 @@ import { GeoMessage, LocationCoords, MessageStatus, RangeDistance } from '../typ
 import { nintendoTheme } from '../theme/nintendoTheme';
 import { MapLibreOsmView } from '../components/map/MapLibreOsmView';
 import { RangeConfigModal } from '../components/map/RangeConfigModal';
+import { AltitudeConfigModal } from '../components/map/AltitudeConfigModal';
 import { CreateMessageModal } from '../components/messages/CreateMessageModal';
 import { MessageDetailModal } from '../components/messages/MessageDetailModal';
 import { PictoChatCard } from '../components/common/PictoChatCard';
-import { calculateDistanceMeters } from '../utils/geoUtils';
+import {
+  calculateDistanceMeters,
+  DEFAULT_BOGOTA_GROUND_ALTITUDE,
+  getFloorFromRelativeAltitude,
+} from '../utils/geoUtils';
 
 interface MapScreenProps {
   onLogout: () => void;
@@ -28,6 +33,8 @@ interface MapScreenProps {
 const DEFAULT_COORDS: LocationCoords = {
   latitude: 4.6382,
   longitude: -74.0841,
+  altitude: DEFAULT_BOGOTA_GROUND_ALTITUDE,
+  relativeAltitude: 0,
 };
 
 export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
@@ -46,6 +53,7 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
   const [userLocation, setUserLocation] = useState<LocationCoords>(DEFAULT_COORDS);
   const [rangeDistance, setRangeDistance] = useState<RangeDistance>(300);
   const [rangeModalVisible, setRangeModalVisible] = useState(false);
+  const [altitudeModalVisible, setAltitudeModalVisible] = useState(false);
   const [visibleMessageIds, setVisibleMessageIds] = useState<string[] | null>(null);
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [targetComposeCoords, setTargetComposeCoords] = useState<LocationCoords>(DEFAULT_COORDS);
@@ -67,18 +75,25 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
     return activeMessages.filter((m) => visibleMessageIds.includes(m.id));
   }, [activeMessages, visibleMessageIds, userLocation, rangeDistance]);
 
-  // Obtener geolocalización del dispositivo
+  // Obtener geolocalización y altitud del dispositivo
   useEffect(() => {
     (async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status === 'granted') {
           const loc = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
+            accuracy: Location.Accuracy.Highest,
           });
-          const coords = {
+          const hasGpsAlt = typeof loc.coords.altitude === 'number' && loc.coords.altitude > 0;
+          const detectedAlt = hasGpsAlt ? Math.round(loc.coords.altitude!) : DEFAULT_BOGOTA_GROUND_ALTITUDE;
+          const relAlt = hasGpsAlt ? Math.max(0, detectedAlt - DEFAULT_BOGOTA_GROUND_ALTITUDE) : 0;
+
+          const coords: LocationCoords = {
             latitude: loc.coords.latitude,
             longitude: loc.coords.longitude,
+            altitude: detectedAlt,
+            altitudeAccuracy: loc.coords.altitudeAccuracy,
+            relativeAltitude: relAlt,
           };
           setUserLocation(coords);
           setTargetComposeCoords(coords);
@@ -89,6 +104,19 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
       }
     })();
   }, []);
+
+  const handleSelectAltitude = (newAltitude: number, newRelativeAltitude: number) => {
+    setUserLocation((prev) => ({
+      ...prev,
+      altitude: newAltitude,
+      relativeAltitude: newRelativeAltitude,
+    }));
+    setTargetComposeCoords((prev) => ({
+      ...prev,
+      altitude: newAltitude,
+      relativeAltitude: newRelativeAltitude,
+    }));
+  };
 
   // Solo se puede crear una nota presionando el botón FAB, vinculada a la ubicación actual
   const handleOpenCreateModal = () => {
@@ -147,6 +175,32 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
             >
               <Ionicons name="radio" size={13} color={nintendoTheme.colors.roomA} />
               <Text style={styles.rangeButtonText}>{rangeDistance}m</Text>
+            </TouchableOpacity>
+
+            {/* Botón de Altitud / Piso en Edificio */}
+            <TouchableOpacity
+              style={[
+                styles.altitudeButton,
+                (userLocation.relativeAltitude ?? 0) >= 4 && styles.altitudeButtonElevated,
+              ]}
+              onPress={() => setAltitudeModalVisible(true)}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={(userLocation.relativeAltitude ?? 0) >= 4 ? 'business' : 'layers-outline'}
+                size={13}
+                color={(userLocation.relativeAltitude ?? 0) >= 4 ? '#0D6832' : nintendoTheme.colors.roomA}
+              />
+              <Text
+                style={[
+                  styles.altitudeButtonText,
+                  (userLocation.relativeAltitude ?? 0) >= 4 && styles.altitudeButtonTextElevated,
+                ]}
+              >
+                {(userLocation.relativeAltitude ?? 0) >= 4
+                  ? `+${Math.round(userLocation.relativeAltitude!)}m (P${getFloorFromRelativeAltitude(userLocation.relativeAltitude!)})`
+                  : `${Math.round(userLocation.altitude ?? DEFAULT_BOGOTA_GROUND_ALTITUDE)}m`}
+              </Text>
             </TouchableOpacity>
 
             {/* Botón de salir / cerrar sesión */}
@@ -225,6 +279,7 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
             rangeDistance={rangeDistance}
             onSelectMessage={handleSelectMessage}
             onVisibleMessagesChange={setVisibleMessageIds}
+            onOpenAltitudeModal={() => setAltitudeModalVisible(true)}
           />
 
           {/* Botón Flotante de Acción (FAB) estilo Stylus / Lápiz táctil PictoChat DS */}
@@ -310,6 +365,15 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
           onClose={() => setRangeModalVisible(false)}
           currentRange={rangeDistance}
           onSelectRange={setRangeDistance}
+        />
+
+        {/* Modal de Configuración de Altitud y Edificio */}
+        <AltitudeConfigModal
+          visible={altitudeModalVisible}
+          onClose={() => setAltitudeModalVisible(false)}
+          currentAltitude={userLocation.altitude}
+          currentRelativeAltitude={userLocation.relativeAltitude}
+          onSelectAltitude={handleSelectAltitude}
         />
       </View>
     </SafeAreaView>
@@ -417,6 +481,33 @@ const styles = StyleSheet.create({
     color: nintendoTheme.colors.roomA,
     letterSpacing: 0.3,
     fontVariant: ['tabular-nums'],
+  },
+  altitudeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FAFDFB',
+    borderWidth: 1.5,
+    borderColor: nintendoTheme.colors.pictoBorder,
+    borderBottomWidth: 2.5,
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    borderRadius: nintendoTheme.borderRadius.xs,
+  },
+  altitudeButtonElevated: {
+    backgroundColor: '#EEF9F1',
+    borderColor: '#2CD96B',
+    borderBottomColor: '#166534',
+  },
+  altitudeButtonText: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: nintendoTheme.colors.roomA,
+    letterSpacing: 0.3,
+    fontVariant: ['tabular-nums'],
+  },
+  altitudeButtonTextElevated: {
+    color: '#0D6832',
   },
   filterBar: {
     backgroundColor: '#E5EFE9',

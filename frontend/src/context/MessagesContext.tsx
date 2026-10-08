@@ -87,6 +87,8 @@ export const MessagesProvider = ({ children }: { children: ReactNode }) => {
           content: trimmed,
           latitude: coords.latitude,
           longitude: coords.longitude,
+          altitude: coords.altitude ?? 2580,
+          relativeAltitude: coords.relativeAltitude ?? 0,
           status: customStatus,
           expirationHours,
         },

@@ -12,6 +12,10 @@ import { useAuth } from '../../context/AuthContext';
 import { useMessages } from '../../context/MessagesContext';
 import { nintendoTheme } from '../../theme/nintendoTheme';
 import { StatusBadge } from './StatusBadge';
+import {
+  DEFAULT_BOGOTA_GROUND_ALTITUDE,
+  getFloorFromRelativeAltitude,
+} from '../../utils/geoUtils';
 
 interface PictoChatCardProps {
   message: GeoMessage;
@@ -29,6 +33,13 @@ export const PictoChatCard: React.FC<PictoChatCardProps> = ({
 
   const isAuthor = user?.id === message.authorId;
   const isDeleted = message.status === 'eliminado';
+
+  const relAlt = typeof message.relativeAltitude === 'number'
+    ? message.relativeAltitude
+    : (typeof message.altitude === 'number' ? Math.max(0, message.altitude - DEFAULT_BOGOTA_GROUND_ALTITUDE) : 0);
+  const isElevated = relAlt >= 4;
+  const altVal = message.altitude ?? (DEFAULT_BOGOTA_GROUND_ALTITUDE + relAlt);
+  const floor = getFloorFromRelativeAltitude(relAlt);
 
   // Formato amigable de expiración
   const formatExpiration = (isoString: string) => {
@@ -131,13 +142,28 @@ export const PictoChatCard: React.FC<PictoChatCardProps> = ({
         </Text>
       </View>
 
-      {/* Pie de tarjeta con expiración digital y acciones táctiles de autor */}
+      {/* Pie de tarjeta con expiración digital, altitud y acciones táctiles de autor */}
       <View style={styles.cardFooter}>
-        <View style={styles.footerInfo}>
-          <Ionicons name="time-outline" size={12} color={nintendoTheme.colors.textSecondary} />
-          <Text style={styles.expirationText}>
-            {formatExpiration(message.expiresAt).toUpperCase()}
-          </Text>
+        <View style={styles.footerLeft}>
+          <View style={styles.footerInfo}>
+            <Ionicons name="time-outline" size={12} color={nintendoTheme.colors.textSecondary} />
+            <Text style={styles.expirationText}>
+              {formatExpiration(message.expiresAt).toUpperCase()}
+            </Text>
+          </View>
+
+          <View style={[styles.altitudeBadge, isElevated && styles.altitudeBadgeElevated]}>
+            <Ionicons
+              name={isElevated ? 'business' : 'layers-outline'}
+              size={10}
+              color={isElevated ? '#0D6832' : nintendoTheme.colors.textSecondary}
+            />
+            <Text style={[styles.altitudeBadgeText, isElevated && styles.altitudeBadgeTextElevated]}>
+              {isElevated
+                ? `+${Math.round(relAlt)}m (P${floor})`
+                : `${Math.round(altVal)}m`}
+            </Text>
+          </View>
         </View>
 
         {showDeleteAction && isAuthor && !isDeleted && (
@@ -280,6 +306,12 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#DFE7E3',
   },
+  footerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
   footerInfo: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -290,6 +322,30 @@ const styles = StyleSheet.create({
     color: nintendoTheme.colors.textSecondary,
     fontWeight: '700',
     letterSpacing: 0.3,
+  },
+  altitudeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#EEF3F0',
+    paddingHorizontal: 5,
+    paddingVertical: 1.5,
+    borderRadius: 3,
+    borderWidth: 1,
+    borderColor: '#D4DFDA',
+  },
+  altitudeBadgeElevated: {
+    backgroundColor: '#E8F8ED',
+    borderColor: '#7BE1A1',
+  },
+  altitudeBadgeText: {
+    fontSize: 9.5,
+    color: nintendoTheme.colors.textSecondary,
+    fontWeight: '800',
+    fontVariant: ['tabular-nums'],
+  },
+  altitudeBadgeTextElevated: {
+    color: '#0D6832',
   },
   deleteButton: {
     flexDirection: 'row',

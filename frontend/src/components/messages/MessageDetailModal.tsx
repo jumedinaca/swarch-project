@@ -11,6 +11,10 @@ import { GeoMessage } from '../../types';
 import { nintendoTheme } from '../../theme/nintendoTheme';
 import { PictoChatCard } from '../common/PictoChatCard';
 import { WiiButton } from '../common/WiiButton';
+import {
+  DEFAULT_BOGOTA_GROUND_ALTITUDE,
+  getFloorFromRelativeAltitude,
+} from '../../utils/geoUtils';
 
 interface MessageDetailModalProps {
   message: GeoMessage | null;
@@ -24,6 +28,13 @@ export const MessageDetailModal: React.FC<MessageDetailModalProps> = ({
   onClose,
 }) => {
   if (!message) return null;
+
+  const relAlt = typeof message.relativeAltitude === 'number'
+    ? message.relativeAltitude
+    : (typeof message.altitude === 'number' ? Math.max(0, message.altitude - DEFAULT_BOGOTA_GROUND_ALTITUDE) : 0);
+  const isElevated = relAlt >= 4;
+  const altVal = message.altitude ?? (DEFAULT_BOGOTA_GROUND_ALTITUDE + relAlt);
+  const floor = getFloorFromRelativeAltitude(relAlt);
 
   return (
     <Modal
@@ -62,10 +73,18 @@ export const MessageDetailModal: React.FC<MessageDetailModalProps> = ({
 
           {/* Información contextual geoespacial estilo coordenadas DS */}
           <View style={styles.geoInfoBox}>
-            <Ionicons name="navigate-circle" size={15} color={nintendoTheme.colors.roomA} />
-            <Text style={styles.geoCoordsText}>
-              COORD: {message.latitude.toFixed(5)}, {message.longitude.toFixed(5)}
-            </Text>
+            <Ionicons name="navigate-circle" size={16} color={nintendoTheme.colors.roomA} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.geoCoordsText}>
+                COORD: {message.latitude.toFixed(5)}, {message.longitude.toFixed(5)}
+              </Text>
+              <Text style={[styles.geoAltitudeText, isElevated && styles.geoAltitudeTextElevated]}>
+                ALTITUD: {Math.round(altVal)} m s.n.m.
+                {isElevated
+                  ? ` • Edificio (Piso ${floor}, +${Math.round(relAlt)}m)`
+                  : ' • Nivel Calle / Suelo'}
+              </Text>
+            </View>
           </View>
 
           <View style={styles.buttonRow}>
@@ -162,11 +181,22 @@ const styles = StyleSheet.create({
     borderColor: '#BAC7C1',
   },
   geoCoordsText: {
-    fontSize: 10.5,
+    fontSize: 10,
     color: nintendoTheme.colors.textSecondary,
     fontWeight: '800',
     letterSpacing: 0.5,
     fontVariant: ['tabular-nums'],
+  },
+  geoAltitudeText: {
+    fontSize: 10,
+    color: nintendoTheme.colors.textSecondary,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+    marginTop: 2,
+  },
+  geoAltitudeTextElevated: {
+    color: '#0D6832',
+    fontWeight: '900',
   },
   buttonRow: {
     marginTop: 12,

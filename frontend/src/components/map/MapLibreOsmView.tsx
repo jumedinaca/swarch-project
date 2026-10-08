@@ -26,6 +26,7 @@ interface MapLibreOsmViewProps {
   rangeDistance: RangeDistance;
   onSelectMessage: (message: GeoMessage) => void;
   onVisibleMessagesChange?: (visibleIds: string[]) => void;
+  onOpenAltitudeModal?: () => void;
 }
 
 export const MapLibreOsmView: React.FC<MapLibreOsmViewProps> = ({
@@ -34,6 +35,7 @@ export const MapLibreOsmView: React.FC<MapLibreOsmViewProps> = ({
   rangeDistance,
   onSelectMessage,
   onVisibleMessagesChange,
+  onOpenAltitudeModal,
 }) => {
   const webViewRef = useRef<any>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
@@ -43,6 +45,8 @@ export const MapLibreOsmView: React.FC<MapLibreOsmViewProps> = ({
     const messagesJson = JSON.stringify(messages);
     const userLat = userLocation.latitude;
     const userLng = userLocation.longitude;
+    const userAlt = userLocation.altitude ?? 2580;
+    const userRelAlt = userLocation.relativeAltitude ?? 0;
 
     return `
 <!DOCTYPE html>
@@ -63,36 +67,119 @@ export const MapLibreOsmView: React.FC<MapLibreOsmViewProps> = ({
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
     
-    /* Marcador del Usuario estilo radar DS */
-    .user-marker {
-      width: 26px;
-      height: 26px;
+    /* Marcador del Usuario estilo radar DS con Elevación 3D */
+    .user-marker-container {
       position: relative;
+      width: 0;
+      height: 0;
       cursor: pointer;
     }
-    .user-marker-pulse {
+    .user-ground-anchor {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      transform: translate(-50%, 50%);
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+    .user-ground-shadow {
+      position: absolute;
+      width: 24px;
+      height: 9px;
+      background: rgba(14, 25, 30, 0.55);
+      border-radius: 50%;
+      filter: blur(1.5px);
+    }
+    .user-ground-pulse {
       position: absolute;
       width: 44px;
       height: 44px;
-      left: -9px;
-      top: -9px;
       border-radius: 50%;
-      background: rgba(26, 123, 185, 0.3);
-      animation: pulse 2s infinite ease-out;
+      background: rgba(26, 123, 185, 0.25);
+      border: 1.5px solid rgba(26, 123, 185, 0.75);
+      animation: user-pulse 2.2s infinite ease-out;
     }
-    .user-marker-dot {
+    .user-altitude-stem {
       position: absolute;
-      width: 22px;
-      height: 22px;
-      left: 2px;
-      top: 2px;
-      border-radius: 4px;
+      bottom: 0;
+      left: 0;
+      transform: translateX(-50%);
+      width: 3px;
+      background: linear-gradient(to top, rgba(26, 123, 185, 0.4), #00d2ff);
+      box-shadow: 0 0 8px rgba(0, 210, 255, 0.85);
+      border-radius: 2px;
+      transition: height 0.35s ease;
+      display: none;
+    }
+    .user-floating-node {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      transform: translate(-50%, 50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: bottom 0.35s ease;
+      cursor: pointer;
+    }
+    .user-avatar-diamond {
+      width: 26px;
+      height: 26px;
+      border-radius: 5px;
       background: #1A7BB9;
       border: 2px solid #ffffff;
-      box-shadow: 0 3px 8px rgba(20, 30, 35, 0.6);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45);
       transform: rotate(45deg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
     }
-    @keyframes pulse {
+    .user-avatar-diamond.is-elevated {
+      background: #167a39;
+      box-shadow: 0 0 12px rgba(46, 213, 115, 0.85), 0 4px 10px rgba(0,0,0,0.5);
+    }
+    .user-avatar-letter {
+      transform: rotate(-45deg);
+      color: #ffffff;
+      font-weight: 900;
+      font-size: 11px;
+    }
+    .user-altitude-badge {
+      position: absolute;
+      bottom: 34px;
+      white-space: nowrap;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 9.5px;
+      font-weight: 900;
+      letter-spacing: 0.3px;
+      box-shadow: 0 4px 12px rgba(10, 20, 25, 0.35);
+      border: 1.5px solid #242d30;
+      background: #ffffff;
+      color: #1e2528;
+      pointer-events: auto;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .user-altitude-badge.is-high {
+      background: #0d2e1c;
+      border-color: #2ed573;
+      color: #bbf7d0;
+      box-shadow: 0 4px 14px rgba(46, 213, 115, 0.4);
+    }
+    .user-altitude-badge.is-ground {
+      background: #ffffff;
+      border-color: #242d30;
+      color: #1e2528;
+    }
+    @keyframes user-pulse {
       0% { transform: scale(0.6); opacity: 0.9; }
       100% { transform: scale(1.6); opacity: 0; }
     }
@@ -105,6 +192,7 @@ export const MapLibreOsmView: React.FC<MapLibreOsmViewProps> = ({
       cursor: pointer;
       transform-style: preserve-3d;
       transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      position: relative;
     }
     .billboard-marker:hover, .billboard-marker:active {
       transform: translateY(-6px) scale(1.08);
@@ -120,7 +208,8 @@ export const MapLibreOsmView: React.FC<MapLibreOsmViewProps> = ({
       box-shadow: 0 6px 14px rgba(25, 35, 40, 0.3);
       position: relative;
       white-space: nowrap;
-      max-width: 160px;
+      max-width: 175px;
+      transition: transform 0.2s ease;
     }
     .billboard-bubble::after {
       content: '';
@@ -133,6 +222,13 @@ export const MapLibreOsmView: React.FC<MapLibreOsmViewProps> = ({
       border-left: 5px solid transparent;
       border-right: 5px solid transparent;
       border-top: 7px solid #242d30;
+    }
+    .billboard-bubble.elevated-bubble {
+      border-color: #166534;
+      box-shadow: 0 0 10px rgba(34, 197, 94, 0.3), 0 6px 14px rgba(25, 35, 40, 0.3);
+    }
+    .billboard-bubble.elevated-bubble::after {
+      border-top-color: #166534;
     }
     .billboard-avatar {
       width: 14px;
@@ -150,6 +246,18 @@ export const MapLibreOsmView: React.FC<MapLibreOsmViewProps> = ({
       white-space: nowrap;
       letter-spacing: 0.2px;
     }
+    .billboard-alt-tag {
+      font-size: 8.5px;
+      font-weight: 900;
+      color: #065f46;
+      background: #d1fae5;
+      border: 1px solid #6ee7b7;
+      border-radius: 3px;
+      padding: 1px 4px;
+      margin-left: 2px;
+      letter-spacing: 0.2px;
+      white-space: nowrap;
+    }
     /* Sombra 3D proyectada en el plano del suelo */
     .billboard-shadow {
       width: 20px;
@@ -159,16 +267,24 @@ export const MapLibreOsmView: React.FC<MapLibreOsmViewProps> = ({
       margin-top: 8px;
       filter: blur(1.5px);
     }
+    .billboard-stem {
+      width: 2px;
+      background: linear-gradient(to top, rgba(26, 123, 185, 0.3), #10b981);
+      box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+      border-radius: 1px;
+    }
   </style>
 </head>
 <body>
   <div id="map"></div>
 
   <script>
-    const userCoords = [${userLng}, ${userLat}];
+    let userCoords = [${userLng}, ${userLat}];
     let currentCenter = [${userLng}, ${userLat}];
     let currentRange = ${rangeDistance};
     let allMessages = ${messagesJson};
+    let userAlt = ${userAlt};
+    let userRelAlt = ${userRelAlt};
     let isMapLoaded = false;
     const markersMap = new Map();
 
@@ -235,13 +351,60 @@ export const MapLibreOsmView: React.FC<MapLibreOsmViewProps> = ({
       attributionControl: false, // Desactivado en el mapa para evitar elementos invasivos
     });
 
-    // Marcador del usuario actual (permanece en su posición real)
-    const userEl = document.createElement('div');
-    userEl.className = 'user-marker';
-    userEl.innerHTML = '<div class="user-marker-pulse"></div><div class="user-marker-dot"></div>';
-    new maplibregl.Marker({ element: userEl, anchor: 'center' })
+    // Marcador del usuario actual con elevación 3D según altitud/piso
+    const userContainer = document.createElement('div');
+    userContainer.className = 'user-marker-container';
+
+    const userGroundAnchor = document.createElement('div');
+    userGroundAnchor.className = 'user-ground-anchor';
+    userGroundAnchor.innerHTML = '<div class="user-ground-shadow"></div><div class="user-ground-pulse"></div>';
+    userContainer.appendChild(userGroundAnchor);
+
+    const userStem = document.createElement('div');
+    userStem.className = 'user-altitude-stem';
+    userContainer.appendChild(userStem);
+
+    const userFloatingNode = document.createElement('div');
+    userFloatingNode.className = 'user-floating-node';
+    userFloatingNode.innerHTML =
+      '<div class="user-avatar-diamond"><span class="user-avatar-letter">P</span></div>' +
+      '<div class="user-altitude-badge"></div>';
+    userContainer.appendChild(userFloatingNode);
+
+    const userMarker = new maplibregl.Marker({ element: userContainer, anchor: 'center' })
       .setLngLat(userCoords)
       .addTo(map);
+
+    function updateUserMarkerDisplay() {
+      const diamondEl = userFloatingNode.querySelector('.user-avatar-diamond');
+      const badgeEl = userFloatingNode.querySelector('.user-altitude-badge');
+      const isHigh = userRelAlt >= 4;
+      const stemHeight = isHigh ? Math.min(130, Math.round(userRelAlt * 1.8)) : 0;
+      const floor = Math.max(1, Math.round(userRelAlt / 3.2));
+
+      if (isHigh) {
+        userStem.style.height = stemHeight + 'px';
+        userStem.style.display = 'block';
+        userFloatingNode.style.bottom = stemHeight + 'px';
+        diamondEl.classList.add('is-elevated');
+        badgeEl.className = 'user-altitude-badge is-high';
+        badgeEl.innerHTML = '🏢 TÚ • Piso ' + floor + ' (+' + Math.round(userRelAlt) + 'm) • ' + Math.round(userAlt) + 'm';
+      } else {
+        userStem.style.height = '0px';
+        userStem.style.display = 'none';
+        userFloatingNode.style.bottom = '0px';
+        diamondEl.classList.remove('is-elevated');
+        badgeEl.className = 'user-altitude-badge is-ground';
+        badgeEl.innerHTML = '📍 TÚ • Nivel Suelo (' + Math.round(userAlt) + 'm)';
+      }
+    }
+
+    updateUserMarkerDisplay();
+
+    userContainer.addEventListener('click', (e) => {
+      e.stopPropagation();
+      notifyParent({ type: 'OPEN_ALTITUDE_MODAL' });
+    });
 
     function updateRangeCircle() {
       if (!isMapLoaded) return;
@@ -271,16 +434,34 @@ export const MapLibreOsmView: React.FC<MapLibreOsmViewProps> = ({
           return;
         }
 
+        const relAlt = typeof msg.relativeAltitude === 'number'
+          ? msg.relativeAltitude
+          : (typeof msg.altitude === 'number' ? Math.max(0, msg.altitude - 2580) : 0);
+        const isElevated = relAlt >= 4;
+        const stemHeight = isElevated ? Math.min(120, Math.round(relAlt * 1.6)) : 0;
+        const floor = Math.max(1, Math.round(relAlt / 3.2));
+
         if (!markersMap.has(msg.id)) {
           const el = document.createElement('div');
           el.className = 'billboard-marker';
-          el.innerHTML = \`
-            <div class="billboard-bubble">
-              <div class="billboard-avatar" style="background: \${msg.authorColor};"></div>
-              <div class="billboard-text">\${msg.content.substring(0, 20)}\${msg.content.length > 20 ? '...' : ''}</div>
-            </div>
-            <div class="billboard-shadow"></div>
-          \`;
+
+          if (isElevated) {
+            el.innerHTML =
+              '<div class="billboard-bubble elevated-bubble" style="transform: translateY(-' + stemHeight + 'px);">' +
+                '<div class="billboard-avatar" style="background: ' + msg.authorColor + ';"></div>' +
+                '<div class="billboard-text">' + msg.content.substring(0, 18) + (msg.content.length > 18 ? '...' : '') + '</div>' +
+                '<div class="billboard-alt-tag">🏢 +' + Math.round(relAlt) + 'm (P' + floor + ')</div>' +
+              '</div>' +
+              '<div class="billboard-stem" style="height: ' + stemHeight + 'px; margin-top: -' + stemHeight + 'px;"></div>' +
+              '<div class="billboard-shadow"></div>';
+          } else {
+            el.innerHTML =
+              '<div class="billboard-bubble">' +
+                '<div class="billboard-avatar" style="background: ' + msg.authorColor + ';"></div>' +
+                '<div class="billboard-text">' + msg.content.substring(0, 20) + (msg.content.length > 20 ? '...' : '') + '</div>' +
+              '</div>' +
+              '<div class="billboard-shadow"></div>';
+          }
 
           el.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -443,6 +624,12 @@ export const MapLibreOsmView: React.FC<MapLibreOsmViewProps> = ({
             bearing: currentPitch > 25 ? 0 : -20,
             duration: 800
           });
+        } else if (data.type === 'UPDATE_USER_LOCATION') {
+          userCoords = [data.longitude, data.latitude];
+          userAlt = data.altitude;
+          userRelAlt = data.relativeAltitude;
+          userMarker.setLngLat(userCoords);
+          updateUserMarkerDisplay();
         } else if (data.type === 'ROTATE_3D') {
           const currentBearing = map.getBearing();
           map.easeTo({
@@ -456,7 +643,33 @@ export const MapLibreOsmView: React.FC<MapLibreOsmViewProps> = ({
 </body>
 </html>
     `;
-  }, [userLocation.latitude, userLocation.longitude]);
+  }, [
+    userLocation.latitude,
+    userLocation.longitude,
+    userLocation.altitude,
+    userLocation.relativeAltitude,
+  ]);
+
+  // Sincronizar ubicación y altitud del usuario al mapa en tiempo real
+  useEffect(() => {
+    const payload = JSON.stringify({
+      type: 'UPDATE_USER_LOCATION',
+      latitude: userLocation.latitude,
+      longitude: userLocation.longitude,
+      altitude: userLocation.altitude ?? 2580,
+      relativeAltitude: userLocation.relativeAltitude ?? 0,
+    });
+    if (Platform.OS === 'web' && iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(payload, '*');
+    } else if (webViewRef.current) {
+      webViewRef.current.postMessage(payload);
+    }
+  }, [
+    userLocation.latitude,
+    userLocation.longitude,
+    userLocation.altitude,
+    userLocation.relativeAltitude,
+  ]);
 
   // Enviar cambio de rango al mapa
   useEffect(() => {
@@ -494,6 +707,10 @@ export const MapLibreOsmView: React.FC<MapLibreOsmViewProps> = ({
       } else if (parsed.type === 'VISIBLE_MESSAGES_CHANGED') {
         if (onVisibleMessagesChange) {
           onVisibleMessagesChange(parsed.ids);
+        }
+      } else if (parsed.type === 'OPEN_ALTITUDE_MODAL') {
+        if (onOpenAltitudeModal) {
+          onOpenAltitudeModal();
         }
       }
     } catch (e) {

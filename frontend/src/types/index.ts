@@ -8,6 +8,8 @@ export interface GeoMessage {
   content: string;     // Máximo 140 caracteres
   latitude: number;
   longitude: number;
+  altitude?: number;   // Altitud absoluta en metros s.n.m. (ej: 2605)
+  relativeAltitude?: number; // Elevación relativa sobre el nivel del suelo en metros (ej: +25m / Piso 7)
   createdAt: string;   // ISO timestamp
   expiresAt: string;   // ISO timestamp (asignado automáticamente)
   status: MessageStatus;
@@ -24,6 +26,9 @@ export interface User {
 export interface LocationCoords {
   latitude: number;
   longitude: number;
+  altitude?: number | null;        // Altitud absoluta detectada (m s.n.m.)
+  altitudeAccuracy?: number | null;
+  relativeAltitude?: number;       // Altura sobre el suelo (metros, para edificios y pisos)
 }
 
 export type RangeDistance = 100 | 300 | 500;
@@ -61,6 +66,8 @@ export interface CreateMessageDto {
   content: string;
   latitude: number;
   longitude: number;
+  altitude?: number;
+  relativeAltitude?: number;
   status?: MessageStatus;
   expirationHours?: number;
 }

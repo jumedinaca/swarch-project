@@ -15,6 +15,10 @@ import { useAuth } from '../../context/AuthContext';
 import { useMessages } from '../../context/MessagesContext';
 import { nintendoTheme } from '../../theme/nintendoTheme';
 import { WiiButton } from '../common/WiiButton';
+import {
+  DEFAULT_BOGOTA_GROUND_ALTITUDE,
+  getFloorFromRelativeAltitude,
+} from '../../utils/geoUtils';
 
 interface CreateMessageModalProps {
   visible: boolean;
@@ -36,6 +40,11 @@ export const CreateMessageModal: React.FC<CreateMessageModalProps> = ({
 
   const charLimit = 140;
   const charsRemaining = charLimit - content.length;
+
+  const relAlt = targetCoords.relativeAltitude ?? 0;
+  const isElevated = relAlt >= 4;
+  const altValue = targetCoords.altitude ?? (DEFAULT_BOGOTA_GROUND_ALTITUDE + relAlt);
+  const floor = getFloorFromRelativeAltitude(relAlt);
 
   const handlePublish = async () => {
     setErrorMsg('');
@@ -133,6 +142,21 @@ export const CreateMessageModal: React.FC<CreateMessageModalProps> = ({
                 </Text>
               </View>
             </View>
+          </View>
+
+          {/* Indicador de Altitud y Piso en que se ancla la nota */}
+          <View style={[styles.altitudeNoticeBox, isElevated && styles.altitudeNoticeBoxElevated]}>
+            <Ionicons
+              name={isElevated ? 'business' : 'layers-outline'}
+              size={14}
+              color={isElevated ? '#0D6832' : nintendoTheme.colors.roomA}
+            />
+            <Text style={[styles.altitudeNoticeText, isElevated && styles.altitudeNoticeTextElevated]}>
+              ANCLAJE 3D: {altValue}m s.n.m.
+              {isElevated
+                ? ` • Edificio (Piso ${floor}, +${relAlt}m)`
+                : ' • Nivel Suelo / Calle'}
+            </Text>
           </View>
 
           {/* Aviso de expiración en 24 horas */}
@@ -288,6 +312,31 @@ const styles = StyleSheet.create({
   },
   counterExceeded: {
     color: '#D43247',
+  },
+  altitudeNoticeBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FAFDFB',
+    borderRadius: nintendoTheme.borderRadius.xs,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#BAC7C1',
+  },
+  altitudeNoticeBoxElevated: {
+    backgroundColor: '#EEF9F1',
+    borderColor: '#2CD96B',
+  },
+  altitudeNoticeText: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: nintendoTheme.colors.textSecondary,
+    letterSpacing: 0.3,
+  },
+  altitudeNoticeTextElevated: {
+    color: '#0D6832',
   },
   expirationNoticeBox: {
     flexDirection: 'row',

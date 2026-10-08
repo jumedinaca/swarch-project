@@ -180,6 +180,8 @@ class MessagesService {
       content: dto.content,
       latitude: dto.latitude,
       longitude: dto.longitude,
+      altitude: dto.altitude ?? 2580,
+      relativeAltitude: dto.relativeAltitude ?? 0,
       createdAt: now.toISOString(),
       expiresAt,
       status: dto.status || 'publicado',
