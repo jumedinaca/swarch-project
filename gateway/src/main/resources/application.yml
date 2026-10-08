@@ -1,0 +1,51 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: gateway
+  cloud:
+    gateway:
+      # Las rutas se evaluan en orden; la primera cuyos predicates calcen gana.
+      # Por eso "messages-nearby" (publica) va antes que "messages-protected"
+      # (exige JWT), que matchea el resto de /api/messages/**.
+      routes:
+        - id: auth-service
+          uri: ${AUTH_SERVICE_URL:http://localhost:8101}
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            - StripPrefix=1
+
+        - id: messages-nearby
+          uri: ${MESSAGES_SERVICE_URL:http://localhost:8100}
+          predicates:
+            - Path=/api/messages/nearby
+            - Method=GET
+          filters:
+            - StripPrefix=1
+
+        - id: messages-protected
+          uri: ${MESSAGES_SERVICE_URL:http://localhost:8100}
+          predicates:
+            - Path=/api/messages/**
+          filters:
+            - StripPrefix=1
+            - JwtAuth
+
+      globalcors:
+        cors-configurations:
+          "[/**]":
+            allowedOriginPatterns: "*"
+            allowedMethods: "*"
+            allowedHeaders: "*"
+            allowCredentials: true
+
+# Debe coincidir con el secreto HS256 que use el microservicio de
+# autenticacion para firmar los JWT (minimo 32 bytes / 256 bits).
+jwt:
+  secret: ${JWT_SECRET:please-change-this-dev-only-secret-32bytes!}
+
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
