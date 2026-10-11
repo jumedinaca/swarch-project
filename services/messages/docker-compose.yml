@@ -7,7 +7,8 @@ services:
       - .env
 
     depends_on:
-      - messages-db
+      messages-db:
+        condition: service_healthy
 
     ports:
       - "8100:8080"
