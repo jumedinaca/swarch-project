@@ -1,21 +1,17 @@
 package com.geopicto.gateway.filter;
 
-import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
-import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
-import org.springframework.web.server.ServerWebExchange;
 
 import com.geopicto.gateway.security.JwtService;
 
 import io.jsonwebtoken.JwtException;
-import reactor.core.publisher.Mono;
 
 /**
  * Filtro de ruta "JwtAuth": exige un header "Authorization: Bearer <token>"
@@ -25,6 +21,8 @@ import reactor.core.publisher.Mono;
  */
 @Component
 public class JwtAuthGatewayFilterFactory extends AbstractGatewayFilterFactory<Object> {
+
+    private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtService jwtService;
 
@@ -38,36 +36,28 @@ public class JwtAuthGatewayFilterFactory extends AbstractGatewayFilterFactory<Ob
         return (exchange, chain) -> {
             String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
 
-            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                return reject(exchange, "Missing or invalid Authorization header");
+            if (authHeader == null || !authHeader.startsWith(BEARER_PREFIX)) {
+                return ErrorResponses.write(exchange, HttpStatus.UNAUTHORIZED,
+                        "Missing or invalid Authorization header");
             }
 
-            String token = authHeader.substring("Bearer ".length());
+            String token = authHeader.substring(BEARER_PREFIX.length());
 
-            String userId;
+            UUID userId;
             try {
                 userId = jwtService.extractUserId(token);
             } catch (JwtException | IllegalArgumentException e) {
-                return reject(exchange, "Invalid or expired token");
+                return ErrorResponses.write(exchange, HttpStatus.UNAUTHORIZED, "Invalid or expired token");
             }
 
             ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
                     .headers(headers -> {
                         headers.remove(HttpHeaders.AUTHORIZATION);
-                        headers.set("X-User-ID", userId);
+                        headers.set(StripUserIdGlobalFilter.USER_ID_HEADER, userId.toString());
                     })
                     .build();
 
             return chain.filter(exchange.mutate().request(mutatedRequest).build());
         };
-    }
-
-    private Mono<Void> reject(ServerWebExchange exchange, String message) {
-        ServerHttpResponse response = exchange.getResponse();
-        response.setStatusCode(HttpStatus.UNAUTHORIZED);
-        response.getHeaders().setContentType(org.springframework.http.MediaType.TEXT_PLAIN);
-
-        DataBuffer buffer = response.bufferFactory().wrap(message.getBytes(StandardCharsets.UTF_8));
-        return response.writeWith(Mono.just(buffer));
     }
 }
