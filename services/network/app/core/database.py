@@ -5,22 +5,34 @@ from fastapi import FastAPI
 from pymongo import AsyncMongoClient
 from pymongo.asynchronous.database import AsyncDatabase
 
-from .config import settings
+from .config import Settings
 
-@asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    client = AsyncMongoClient(settings.MONGO_HOST)
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
-    try:
-        await client.admin.command("ping")
+from fastapi import FastAPI
+from pymongo import AsyncMongoClient
+from pymongo.asynchronous.database import AsyncDatabase
 
-        app.state.mongodb_client = client
-        app.state.mongodb = client[settings.MONGO_DB]
+from app.core.config import Settings
 
-        yield
-    finally:
-        await client.close()
 
+def new_lifespan(settings: Settings):
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        client = AsyncMongoClient(settings.MONGO_HOST)
+
+        try:
+            await client.admin.command("ping")
+
+            app.state.mongodb_client = client
+            app.state.mongodb = client[settings.MONGO_DB]
+
+            yield
+        finally:
+            await client.close()
+
+    return lifespan
 
 def get_database(app: FastAPI) -> AsyncDatabase:
     return app.state.mongodb

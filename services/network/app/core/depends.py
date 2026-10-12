@@ -6,19 +6,19 @@ import jwt
 from jwt.exceptions import InvalidTokenError
 from pymongo.asynchronous.database import AsyncDatabase
 
-from app.core.config import settings
+from app.core.config import get_settings
 from app.repositories.friendship_repository import FriendshipRepository
-from app.services.friendship_service import FriendshipService
+from app.services import RequestService
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
 ) -> UUID:
-
+    settings = get_settings()
 
     if settings.DEV:
-        return UUID(int=1)
+        return UUID(int=2)
     
     if not credentials:
         raise HTTPException(
@@ -48,8 +48,14 @@ def get_database(request: Request) -> AsyncDatabase:
     return request.app.state.mongodb
 
 
-def get_friendship_service(
+def get_request_service_service(
     database: AsyncDatabase = Depends(get_database),
-) -> FriendshipService:
+) -> RequestService:
     repository = FriendshipRepository(database["friendships"])
-    return FriendshipService(repository)
+    return RequestService(repository)
+
+def get_friends_service(
+    database: AsyncDatabase = Depends(get_database),
+) -> RequestService:
+    repository = FriendshipRepository(database["friendships"])
+    return RequestService(repository)

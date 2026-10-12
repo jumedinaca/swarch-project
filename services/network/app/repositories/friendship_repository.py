@@ -24,13 +24,22 @@ class FriendshipRepository:
             updated_at=document["updated_at"],
         )
 
+    @staticmethod
+    def _normalize_users(user_1: str, user_2: str) -> tuple[str, str]:
+        """Ordena los UUIDs alfanuméricamente para garantizar consistencia."""
+        if user_1 == user_2:
+            raise ValueError("Un usuario no puede ser amigo de sí mismo.")
+        return tuple(sorted([user_1, user_2]))
+        
     async def create(
         self,
         user_a: str,
         user_b: str,
         requested_by: str,
     ) -> Friendship:
+        
         now = datetime.now(timezone.utc)
+        user_a, user_b = self._normalize_users(user_a, user_b)
 
         document = {
             "user_a": user_a,
@@ -46,12 +55,18 @@ class FriendshipRepository:
 
         return self._to_model(document)
 
-    async def get_by_id(self, friendship_id: str) -> Friendship | None:
+    async def get_by_id(
+        self,
+        friendship_id: str
+    ) -> Friendship | None:
+
         if not ObjectId.is_valid(friendship_id):
             return None
 
         document = await self.collection.find_one(
-            {"_id": ObjectId(friendship_id)}
+            {
+                "_id": ObjectId(friendship_id),
+            }
         )
 
         if document is None:
@@ -80,7 +95,7 @@ class FriendshipRepository:
     async def list_for_user(
         self,
         user_id: str,
-        is_requested_by_user: bool = True,
+        is_requested_by_user: bool | None = True,
         status: FriendshipStatus | None = None,
         limit: int = 20,
         cursor: str | None = None,
@@ -91,9 +106,10 @@ class FriendshipRepository:
                 {"user_b": user_id},
             ]
         }
-        if is_requested_by_user:
+        
+        if is_requested_by_user is True:
             query["requested_by"] = user_id
-        else:
+        elif is_requested_by_user is False:
             query["requested_by"] = {"$ne": user_id}
 
         if status is not None:
@@ -161,7 +177,6 @@ class FriendshipRepository:
 
     async def delete_by_id(
         self,
-        user_id: str,
         friendship_id: str,
     ) -> bool:
         if not ObjectId.is_valid(friendship_id):
@@ -169,8 +184,6 @@ class FriendshipRepository:
 
         result = await self.collection.delete_one({
             "_id": ObjectId(friendship_id),
-            "$or": [{"user_a": user_id},
-                    {"user_b": user_id}]
         })   
 
         return result.deleted_count == 1
