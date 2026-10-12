@@ -71,7 +71,8 @@ jobs:
         working-directory: services/network
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10
+      # setup-uv no publica tags de versión mayor (v10), por eso va la versión exacta.
+      - uses: astral-sh/setup-uv@v10.2.0
         with:
           enable-cache: true
           cache-dependency-glob: services/network/uv.lock
