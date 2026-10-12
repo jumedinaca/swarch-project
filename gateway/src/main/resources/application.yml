@@ -48,6 +48,8 @@ spring:
 # los JWT. Es obligatorio (minimo 32 bytes): el gateway no arranca sin el.
 jwt:
   secret: ${JWT_SECRET:}
+  # Valor exigido en el claim "iss": solo se aceptan tokens del servicio de autenticacion.
+  issuer: ${JWT_ISSUER:geopicto-auth}
 
 management:
   endpoints:

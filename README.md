@@ -9,7 +9,8 @@ Aplicación para publicar mensajes asociados a una ubicación y consultar los qu
 | [`frontend/`](frontend/) | App móvil y web | Expo / React Native |
 | [`gateway/`](gateway/README.md) | Punto único de entrada: enruta, valida JWT y agrega `X-User-ID` | Java, Spring Cloud Gateway |
 | [`services/messages/`](services/messages/README.md) | Mensajes geolocalizados y búsqueda por proximidad | Go, PostgreSQL + PostGIS |
-| `services/auth/` | Autenticación y emisión de JWT (pendiente) | — |
+| [`services/auth/`](services/auth/README.md) | Registro, login, sesiones y emisión de JWT | Python (FastAPI), PostgreSQL |
+| [`services/network/`](services/network/) | Solicitudes de amistad y amigos (aún no está conectado al gateway) | Python (FastAPI), MongoDB |
 
 El formato de los tokens y el enrutamiento están en [`docs/jwt-contract.md`](docs/jwt-contract.md).
 
@@ -33,17 +34,25 @@ docker compose up --build
 | API Gateway | http://localhost:8080 |
 | Salud del gateway | http://localhost:8080/actuator/health |
 
-El servicio de mensajes y su base de datos no se publican al host: solo se accede a ellos a través del gateway.
+Los servicios de autenticación y de mensajes, y sus bases de datos, no se publican al host: solo se accede a ellos a través del gateway.
 
 El frontend sigue usando datos simulados (`EXPO_PUBLIC_USE_MOCK_DATA=true`) hasta que adopte el contrato real del servicio de mensajes.
 
 ## Probar la API
 
-Mientras no exista el servicio de autenticación, genera un token de desarrollo (requiere Node):
+Registra un usuario y guarda su token (el token dura 15 minutos):
 
 ```bash
-TOKEN=$(node scripts/dev-token.mjs 550e8400-e29b-41d4-a716-446655440000)
+TOKEN=$(curl -s -X POST localhost:8080/api/auth/register -H "Content-Type: application/json" -d '{"username":"ExploradorGeo","email":"explorador@geochat.org","password":"secreto123"}' | sed -E 's/.*"token":"([^"]+)".*/\1/')
 ```
+
+Si el usuario ya existe, inicia sesión en su lugar:
+
+```bash
+TOKEN=$(curl -s -X POST localhost:8080/api/auth/login -H "Content-Type: application/json" -d '{"usernameOrEmail":"ExploradorGeo","password":"secreto123"}' | sed -E 's/.*"token":"([^"]+)".*/\1/')
+```
+
+Para pruebas sin registrar usuarios, `node scripts/dev-token.mjs <uuid>` genera un token de desarrollo válido (requiere Node).
 
 Crear un mensaje:
 

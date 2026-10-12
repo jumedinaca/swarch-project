@@ -1,6 +1,6 @@
 # Contrato JWT
 
-Este documento define el token que emite el servicio de autenticación y que valida el API Gateway. Mientras el servicio de autenticación no exista, `scripts/dev-token.mjs` genera tokens con este mismo formato para pruebas locales.
+Este documento define el access token que emite el servicio de autenticación (`services/auth`) y que valida el API Gateway. `scripts/dev-token.mjs` genera tokens con este mismo formato para pruebas locales.
 
 ## Formato
 
@@ -9,42 +9,50 @@ Este documento define el token que emite el servicio de autenticación y que val
 | Algoritmo | `HS256` (HMAC-SHA256) |
 | Secreto | Variable `JWT_SECRET`, compartida entre el gateway y el servicio de autenticación. Mínimo 32 bytes. |
 | `sub` | **Obligatorio.** UUID del usuario. Es el valor que el gateway reenvía como `X-User-ID`. |
-| `exp` | **Obligatorio.** Fecha de expiración (segundos desde epoch). |
-| `iat` | Recomendado. Fecha de emisión. |
+| `iss` | **Obligatorio.** `geopicto-auth` (configurable con `JWT_ISSUER` en ambos servicios). |
+| `exp` | **Obligatorio.** Fecha de expiración (segundos desde epoch). El servicio de autenticación emite tokens de 15 minutos. |
+| `iat` | Fecha de emisión. |
+| `sid`, `username`, `type`, `jti` | Los agrega el servicio de autenticación para su propio uso (sesión, nombre, tipo de token, id único). El gateway no los usa. |
 
-El gateway rechaza con `401` cualquier token con firma inválida, expirado, sin `exp`, sin `sub` o cuyo `sub` no sea un UUID.
+El gateway rechaza con `401` cualquier token con firma inválida, expirado, sin `exp`, con un `iss` distinto, sin `sub` o cuyo `sub` no sea un UUID.
 
 Ejemplo de payload:
 
 ```json
 {
   "sub": "550e8400-e29b-41d4-a716-446655440000",
+  "sid": "701e9fda-aaee-46e1-a43b-f3b3b2914010",
+  "username": "ExploradorGeo",
+  "type": "access",
+  "iss": "geopicto-auth",
   "iat": 1791763200,
-  "exp": 1791849600
+  "exp": 1791764100,
+  "jti": "e303938ca9b44fa59fc90b5d92e17907"
 }
 ```
 
 ## Cómo viaja el token
 
-1. El cliente envía `Authorization: Bearer <token>` al gateway.
-2. En las rutas protegidas, el gateway valida el token, elimina el header `Authorization` y agrega `X-User-ID: <sub>`.
-3. Los servicios internos confían en `X-User-ID` y no validan el token. Por eso el gateway elimina cualquier `X-User-ID` que envíe el cliente, en todas las rutas.
+1. El cliente obtiene el token con `POST /api/auth/login` o `POST /api/auth/register`.
+2. En cada petición envía `Authorization: Bearer <token>` al gateway.
+3. En las rutas protegidas, el gateway valida el token por su cuenta (sin llamar al servicio de autenticación), elimina el header `Authorization` y agrega `X-User-ID: <sub>`.
+4. Los servicios internos confían en `X-User-ID` y no validan el token. Por eso el gateway elimina cualquier `X-User-ID` que envíe el cliente, en todas las rutas.
+
+## Logout y expiración
+
+Como el gateway no consulta las sesiones, un access token sigue sirviendo en las rutas protegidas hasta que expira, aunque el usuario haya cerrado sesión. Por eso dura solo 15 minutos. El cliente lo renueva con `POST /api/auth/refresh` y su refresh token; esa llamada sí falla de inmediato si la sesión fue revocada.
 
 ## Rutas
 
 | Ruta pública | Autenticación | Destino interno |
 | --- | --- | --- |
-| `/api/auth/**` | Pública | `auth:/…` (sin el prefijo `/api`) |
+| `/api/auth/**` | Pública | `auth:/auth/…` (sin el prefijo `/api`) |
 | `GET /api/messages/nearby?lat=&lng=&radius=` | Pública | `messages:/messages/nearby` |
 | `/api/messages/**` (resto) | JWT | `messages:/messages/…` |
 
-## Para el servicio de autenticación
-
-- Exponer sus rutas sin el prefijo `/api`: el gateway lo retira, así que `/api/auth/login` llega como `/auth/login`.
-- Firmar con el mismo `JWT_SECRET` y usar el UUID del usuario como `sub`.
-- Agregarse al `docker-compose.yml` de la raíz como servicio `auth` escuchando en el puerto `8080`; el gateway ya apunta a `http://auth:8080`.
-
 ## Token de desarrollo
+
+Para probar sin pasar por el registro:
 
 ```bash
 node scripts/dev-token.mjs 550e8400-e29b-41d4-a716-446655440000

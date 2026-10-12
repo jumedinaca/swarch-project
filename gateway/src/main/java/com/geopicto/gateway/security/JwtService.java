@@ -26,8 +26,9 @@ public class JwtService {
     static final int MIN_SECRET_BYTES = 32;
 
     private final SecretKey key;
+    private final String issuer;
 
-    public JwtService(@Value("${jwt.secret}") String secret) {
+    public JwtService(@Value("${jwt.secret}") String secret, @Value("${jwt.issuer}") String issuer) {
         if (secret == null || secret.isBlank()) {
             throw new IllegalStateException(
                     "JWT_SECRET no esta definido. El gateway no arranca sin un secreto para verificar los JWT.");
@@ -39,16 +40,23 @@ public class JwtService {
                     "JWT_SECRET debe tener al menos " + MIN_SECRET_BYTES + " bytes (HS256).");
         }
 
+        if (issuer == null || issuer.isBlank()) {
+            throw new IllegalStateException("JWT_ISSUER no puede estar vacio.");
+        }
+
         this.key = Keys.hmacShaKeyFor(secretBytes);
+        this.issuer = issuer;
     }
 
     /**
      * @throws JwtException si el token esta mal formado, expirado, la firma no es
-     *                      valida, no tiene "exp" o su "sub" no es un UUID.
+     *                      valida, su "iss" no es el esperado, no tiene "exp" o
+     *                      su "sub" no es un UUID.
      */
     public UUID extractUserId(String token) {
         Claims claims = Jwts.parser()
                 .verifyWith(key)
+                .requireIssuer(issuer)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();

@@ -38,6 +38,7 @@ import okhttp3.mockwebserver.RecordedRequest;
 class GatewayRoutingTests {
 
     private static final String SECRET = "test-secret-for-gateway-routing-tests-0123456789";
+    private static final String ISSUER = "geopicto-auth";
     private static final String ALLOWED_ORIGIN = "http://localhost:8081";
     private static final MockWebServer backend = startBackend();
 
@@ -61,7 +62,12 @@ class GatewayRoutingTests {
     }
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws InterruptedException {
+        // Descarta peticiones que una prueba fallida haya dejado sin consumir,
+        // para que el fallo no se propague a las pruebas siguientes.
+        while (backend.takeRequest(10, TimeUnit.MILLISECONDS) != null) {
+        }
+
         client = WebTestClient.bindToServer().baseUrl("http://localhost:" + port).build();
         backend.enqueue(new MockResponse()
                 .setResponseCode(200)
@@ -168,6 +174,7 @@ class GatewayRoutingTests {
                 "another-secret-that-is-also-at-least-32-bytes".getBytes(StandardCharsets.UTF_8));
         String forged = Jwts.builder()
                 .subject(UUID.randomUUID().toString())
+                .issuer(ISSUER)
                 .expiration(inOneHour())
                 .signWith(otherKey)
                 .compact();
@@ -187,6 +194,18 @@ class GatewayRoutingTests {
     @Test
     void tokenWithoutExpirationIsRejected() {
         expectUnauthorized(withToken(token(UUID.randomUUID().toString(), null)), "Invalid or expired token");
+    }
+
+    @Test
+    void tokenFromAnotherIssuerIsRejected() {
+        expectUnauthorized(withToken(token(UUID.randomUUID().toString(), inOneHour(), "someone-else")),
+                "Invalid or expired token");
+    }
+
+    @Test
+    void tokenWithoutIssuerIsRejected() {
+        expectUnauthorized(withToken(token(UUID.randomUUID().toString(), inOneHour(), null)),
+                "Invalid or expired token");
     }
 
     @Test
@@ -248,7 +267,14 @@ class GatewayRoutingTests {
     }
 
     private static String token(String subject, Date expiration) {
+        return token(subject, expiration, ISSUER);
+    }
+
+    private static String token(String subject, Date expiration, String issuer) {
         var builder = Jwts.builder().signWith(Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8)));
+        if (issuer != null) {
+            builder.issuer(issuer);
+        }
         if (subject != null) {
             builder.subject(subject);
         }
