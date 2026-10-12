@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { MessagesProvider } from './src/context/MessagesContext';
+import { NetworkProvider } from './src/context/NetworkContext';
 import { DeviceSimulatorFrame } from './src/components/common/DeviceSimulatorFrame';
 import { AuthScreen } from './src/screens/AuthScreen';
 import { MapScreen } from './src/screens/MapScreen';
@@ -28,9 +29,11 @@ export default function App() {
     <SafeAreaProvider>
       <AuthProvider>
         <MessagesProvider>
-          <DeviceSimulatorFrame>
-            <MainNavigator />
-          </DeviceSimulatorFrame>
+          <NetworkProvider>
+            <DeviceSimulatorFrame>
+              <MainNavigator />
+            </DeviceSimulatorFrame>
+          </NetworkProvider>
         </MessagesProvider>
       </AuthProvider>
     </SafeAreaProvider>

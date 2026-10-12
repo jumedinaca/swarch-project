@@ -83,3 +83,57 @@ export interface QueryMessagesParams {
   /** Para mostrar el nombre y color reales en los mensajes propios */
   currentUser?: { id: string; username: string; color: string } | null;
 }
+
+// ==========================================
+// Contratos y DTOs para el Servicio de Red Social (Network)
+// ==========================================
+
+export type FriendshipStatus = 'pending' | 'accepted';
+
+export interface Friendship {
+  id: string;
+  user_a: string;
+  user_b: string;
+  status: FriendshipStatus;
+  requested_by: string;
+  created_at: string;
+  updated_at: string;
+  /** Campo derivado: ID del otro usuario con respecto al usuario actual */
+  other_user_id?: string;
+  /** Campo derivado: true si la solicitud fue emitida por el usuario actual */
+  sent_by_me?: boolean;
+}
+
+export interface SendFriendRequestDto {
+  recipient_id: string;
+}
+
+export interface FriendshipListResponse {
+  friendships: Friendship[];
+}
+
+export interface QueryFriendshipsParams {
+  limit?: number;
+  cursor?: string;
+}
+
+/** Representación devuelta por la API GraphQL de Network */
+export interface GraphQLFriendship {
+  id: string;
+  userA: string;
+  userB: string;
+  status: 'PENDING' | 'ACCEPTED';
+  requestedBy: string;
+  createdAt: string;
+  updatedAt: string;
+  otherUserId: string;
+  sentByMe: boolean;
+}
+
+export interface GraphQLDashboardData {
+  me?: string;
+  friends?: GraphQLFriendship[];
+  incomingRequests?: GraphQLFriendship[];
+  outgoingRequests?: GraphQLFriendship[];
+}
+

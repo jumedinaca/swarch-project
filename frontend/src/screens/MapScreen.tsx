@@ -11,12 +11,14 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { useAuth } from '../context/AuthContext';
 import { useMessages } from '../context/MessagesContext';
+import { useNetwork } from '../context/NetworkContext';
 import { GeoMessage, LocationCoords, MessageStatus, RangeDistance } from '../types';
 import { nintendoTheme } from '../theme/nintendoTheme';
 import { MapLibreOsmView } from '../components/map/MapLibreOsmView';
 import { RangeConfigModal } from '../components/map/RangeConfigModal';
 import { CreateMessageModal } from '../components/messages/CreateMessageModal';
 import { MessageDetailModal } from '../components/messages/MessageDetailModal';
+import { NetworkModal } from '../components/network/NetworkModal';
 import { PictoChatCard } from '../components/common/PictoChatCard';
 import { calculateDistanceMeters } from '../utils/geoUtils';
 
@@ -43,10 +45,12 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
     isLoading: isRefreshingMessages,
     setSearchCenter,
   } = useMessages();
+  const { pendingCount } = useNetwork();
 
   const [userLocation, setUserLocation] = useState<LocationCoords>(DEFAULT_COORDS);
   const [rangeDistance, setRangeDistance] = useState<RangeDistance>(300);
   const [rangeModalVisible, setRangeModalVisible] = useState(false);
+  const [networkModalVisible, setNetworkModalVisible] = useState(false);
   const [visibleMessageIds, setVisibleMessageIds] = useState<string[] | null>(null);
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [targetComposeCoords, setTargetComposeCoords] = useState<LocationCoords>(DEFAULT_COORDS);
@@ -127,8 +131,22 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
             </View>
           </View>
 
-          {/* Grupo de acciones de la barra superior: Recargar, Configuración de Rango y Salir */}
+          {/* Grupo de acciones de la barra superior: Red Social, Recargar, Rango y Salir */}
           <View style={styles.topBarActions}>
+            <TouchableOpacity
+              style={styles.networkButton}
+              onPress={() => setNetworkModalVisible(true)}
+              activeOpacity={0.7}
+              accessibilityLabel="Red Social y Amigos"
+            >
+              <Ionicons name="people-outline" size={17} color={nintendoTheme.colors.wiiBlue} />
+              {pendingCount > 0 && (
+                <View style={styles.networkBadge}>
+                  <Text style={styles.networkBadgeText}>{pendingCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={styles.refreshButton}
               onPress={refreshMessages}
@@ -287,6 +305,12 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
           currentRange={rangeDistance}
           onSelectRange={setRangeDistance}
         />
+
+        {/* Modal de Red Social y Amigos */}
+        <NetworkModal
+          visible={networkModalVisible}
+          onClose={() => setNetworkModalVisible(false)}
+        />
       </View>
     </SafeAreaView>
   );
@@ -345,6 +369,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  networkButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#EBF6FC',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  networkBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: '#EF4444',
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
+  networkBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '800',
   },
   rangeButton: {
     flexDirection: 'row',
