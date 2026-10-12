@@ -9,7 +9,7 @@ Aplicación para publicar mensajes asociados a una ubicación y consultar los qu
 | [`frontend/`](frontend/) | App móvil y web | Expo / React Native |
 | [`gateway/`](gateway/README.md) | Punto único de entrada: enruta, valida JWT y agrega `X-User-ID` | Java, Spring Cloud Gateway |
 | [`services/messages/`](services/messages/README.md) | Mensajes geolocalizados y búsqueda por proximidad | Go, PostgreSQL + PostGIS |
-| `services/auth/` | Autenticación y emisión de JWT (pendiente) | — |
+| `services/auth/` | Autenticación y emisión de JWT | Python con Fast API |
 
 El formato de los tokens y el enrutamiento están en [`docs/jwt-contract.md`](docs/jwt-contract.md).
 
