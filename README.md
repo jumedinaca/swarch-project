@@ -10,7 +10,7 @@ Aplicación para publicar mensajes asociados a una ubicación y consultar los qu
 | [`gateway/`](gateway/README.md) | Punto único de entrada: enruta, valida JWT y agrega `X-User-ID` | Java, Spring Cloud Gateway |
 | [`services/messages/`](services/messages/README.md) | Mensajes geolocalizados y búsqueda por proximidad | Go, PostgreSQL + PostGIS |
 | [`services/auth/`](services/auth/README.md) | Registro, login, sesiones y emisión de JWT | Python (FastAPI), PostgreSQL |
-| [`services/network/`](services/network/README.md) | Solicitudes de amistad y lista de amigos | Python (FastAPI), MongoDB |
+| [`services/network/`](services/network/README.md) | Solicitudes de amistad y lista de amigos (API REST y GraphQL) | Python (FastAPI, Strawberry), MongoDB |
 
 El formato de los tokens y el enrutamiento están en [`docs/jwt-contract.md`](docs/jwt-contract.md).
 
@@ -79,6 +79,12 @@ Enviar una solicitud de amistad a otro usuario (su UUID) y ver los amigos:
 ```bash
 curl -X POST localhost:8080/api/network/request -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"recipient_id":"<uuid-del-otro-usuario>"}'
 curl localhost:8080/api/network/friends -H "Authorization: Bearer $TOKEN"
+```
+
+Lo mismo por GraphQL, pidiendo amigos y solicitudes en una sola petición:
+
+```bash
+curl -X POST localhost:8080/api/network/graphql -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"query":"{ friends { otherUserId } incomingRequests { id otherUserId } }"}'
 ```
 
 ## Trabajar en un solo componente

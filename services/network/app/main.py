@@ -7,6 +7,7 @@ from app.api import requests_router
 from app.core.config import Settings,get_settings, isDev
 from app.core.database import new_lifespan
 from app.core.errors import register_error_handlers
+from app.gql.schema import create_graphql_router
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -40,6 +41,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.include_router(requests_router)
     app.include_router(friends_router)
+    # Mismas operaciones expuestas como GraphQL (segundo tipo de conector HTTP)
+    app.include_router(create_graphql_router(), prefix="/graphql", tags=["GraphQL"])
 
     return app
 

@@ -4,10 +4,13 @@
 
 Este componente gestiona las relaciones entre usuarios de GeoPicto: solicitudes de amistad (enviar, aceptar, rechazar, cancelar) y la lista de amigos. Está escrito en **Python (FastAPI)** y guarda los datos en **MongoDB**, la base de datos NoSQL del sistema.
 
+Expone las mismas operaciones de dos formas: una **API REST** y una **API GraphQL** (`/graphql`, con [Strawberry](https://strawberry.rocks/)). Ambas usan los mismos servicios de negocio, así que las reglas son idénticas.
+
 El código se organiza en capas:
 
 - `app/main.py`: crea la aplicación, CORS opcional, manejadores de errores y rutas.
-- `app/api`: rutas HTTP (`/request` y `/friends`).
+- `app/api`: rutas REST (`/request` y `/friends`).
+- `app/gql`: esquema GraphQL (tipos, consultas y mutaciones) montado en `/graphql`.
 - `app/services`: reglas de negocio de solicitudes y amistades.
 - `app/repositories`: acceso a la colección `friendships` de MongoDB.
 - `app/models` y `app/schemas`: entidad de dominio y contratos de entrada/salida.
@@ -40,6 +43,48 @@ Las listas aceptan `?limit=` (1–100, por defecto 20) y `?cursor=` (id del últ
 
 Los errores se responden como `{ "message": "..." }`: `400` operación inválida, `401` sin `X-User-ID`, `403` sin permiso sobre la solicitud, `404` no encontrada, `409` relación ya existente, `422` datos inválidos.
 
+## API GraphQL
+
+Endpoint: `POST /graphql` (en el gateway, `POST /api/network/graphql` con `Authorization: Bearer <token>`). En `GET /graphql` está GraphiQL, un editor en el navegador con autocompletado y la documentación del esquema; úsalo directamente contra el servicio (`http://localhost:8001/graphql` al correrlo solo).
+
+```graphql
+type Query {
+  me: UUID!                                                   # usuario actual
+  friends(limit: Int = 20, cursor: String): [Friendship!]!
+  incomingRequests(limit: Int = 20, cursor: String): [Friendship!]!
+  outgoingRequests(limit: Int = 20, cursor: String): [Friendship!]!
+  friendship(id: ID!): Friendship!
+}
+
+type Mutation {
+  sendFriendRequest(recipientId: UUID!): Friendship!
+  acceptFriendRequest(id: ID!): Friendship!
+  rejectFriendRequest(id: ID!): Boolean!
+  cancelFriendRequest(id: ID!): Boolean!
+  removeFriend(friendId: UUID!): Boolean!
+}
+
+type Friendship {
+  id: ID!
+  userA: UUID!
+  userB: UUID!
+  status: FriendshipStatus!        # PENDING | ACCEPTED
+  requestedBy: UUID!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  otherUserId: UUID!               # el otro usuario, visto desde el actual
+  sentByMe: Boolean!
+}
+```
+
+La ventaja frente a REST es que el cliente pide exactamente lo que necesita y en una sola petición. Por ejemplo, toda la pantalla de amigos de una vez:
+
+```bash
+curl -X POST localhost:8080/api/network/graphql   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json"   -d '{"query":"{ friends { otherUserId } incomingRequests { id otherUserId } outgoingRequests { id otherUserId } }"}'
+```
+
+Los errores de negocio llegan en `errors[].extensions.code`: `BAD_REQUEST`, `FORBIDDEN`, `NOT_FOUND` o `CONFLICT`, con el mismo mensaje que la API REST. Como es habitual en GraphQL, esas respuestas tienen HTTP `200`; solo la falta de `X-User-ID` (o de token en el gateway) responde `401`.
+
 ## Ejecución
 
 En el sistema completo se levanta desde el `docker-compose.yml` de la raíz (ver el [README principal](../../README.md)).
@@ -50,4 +95,4 @@ Para trabajar solo en este servicio, crea `.env` a partir de `.env.example` y ej
 docker compose up --build
 ```
 
-La API queda en `http://localhost:8001` (documentación en `/docs`).
+La API queda en `http://localhost:8001`: documentación REST en `/docs` y GraphiQL en `/graphql`.

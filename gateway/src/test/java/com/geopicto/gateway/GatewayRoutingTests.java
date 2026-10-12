@@ -162,6 +162,23 @@ class GatewayRoutingTests {
     }
 
     @Test
+    void networkGraphqlIsForwardedWithUserId() throws InterruptedException {
+        UUID userId = UUID.randomUUID();
+
+        client.post().uri("/api/network/graphql")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token(userId.toString(), inOneHour()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("{\"query\":\"{ friends { id } }\"}")
+                .exchange()
+                .expectStatus().isOk();
+
+        RecordedRequest forwarded = takeForwarded();
+        assertThat(forwarded.getPath()).isEqualTo("/graphql");
+        assertThat(forwarded.getHeader("X-User-ID")).isEqualTo(userId.toString());
+        assertThat(forwarded.getBody().readString(StandardCharsets.UTF_8)).contains("friends");
+    }
+
+    @Test
     void networkRoutesWithoutTokenAreRejected() {
         expectUnauthorized(client.get().uri("/api/network/friends").exchange(),
                 "Missing or invalid Authorization header");

@@ -19,7 +19,7 @@ El código se organiza así:
 | `/api/auth/**` | `AUTH_SERVICE_URL` | `StripPrefix=1` (sin JWT: aquí es donde se obtiene el token) |
 | `GET /api/messages/nearby` | `MESSAGES_SERVICE_URL` | `StripPrefix=1` (pública, sin JWT) |
 | `/api/messages/**` (resto) | `MESSAGES_SERVICE_URL` | `StripPrefix=1`, `JwtAuth` |
-| `/api/network/**` | `NETWORK_SERVICE_URL` | `StripPrefix=2`, `JwtAuth` (`/api/network/friends` → `/friends`, `/api/network/request` → `/request`) |
+| `/api/network/**` | `NETWORK_SERVICE_URL` | `StripPrefix=2`, `JwtAuth` (`/api/network/friends` → `/friends`, `/api/network/request` → `/request`, `/api/network/graphql` → `/graphql`) |
 
 Las rutas se evalúan en orden: por eso la regla específica de `nearby` está antes que la regla general de mensajes, que exige JWT.
 

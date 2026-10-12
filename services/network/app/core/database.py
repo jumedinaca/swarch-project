@@ -14,7 +14,8 @@ def new_lifespan(settings: Settings):
 
         MONGO_URI = f"mongodb://{settings.MONGO_ROOT_USERNAME}:{settings.MONGO_ROOT_PASSWORD}@{settings.MONGO_HOST}"
 
-        client = AsyncMongoClient(MONGO_URI)
+        # tz_aware: las fechas vuelven en UTC con zona horaria (MongoDB las guarda en UTC)
+        client = AsyncMongoClient(MONGO_URI, tz_aware=True)
 
         try:
             await client.admin.command("ping")

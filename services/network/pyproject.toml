@@ -10,6 +10,7 @@ dependencies = [
     "pydantic-settings>=2.15.0",
     "pyjwt>=2.15.1",
     "pymongo>=4.18.3",
+    "strawberry-graphql[fastapi]>=0.334.2",
     "uvicorn>=0.54.0",
 ]
 

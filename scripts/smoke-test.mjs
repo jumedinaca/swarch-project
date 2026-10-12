@@ -153,12 +153,51 @@ async function main() {
   const networkUnauth = await call('GET', '/api/network/friends');
   check('red social sin token -> 401', networkUnauth.status === 401);
 
+  // --- Red social por GraphQL (segundo tipo de conector HTTP) ---
+  const graphql = (query, variables, token) =>
+    call('POST', '/api/network/graphql', { token, body: { query, variables } });
+
+  const dashboard = await graphql(
+    '{ me friends { otherUserId status } incomingRequests { id } outgoingRequests { id } }',
+    {},
+    bob.token
+  );
+  check(
+    'GraphQL: varias consultas en una sola peticion',
+    dashboard.status === 200 &&
+      dashboard.data?.data?.me === bob.user.id &&
+      dashboard.data?.data?.friends?.[0]?.otherUserId === alice.user.id,
+    JSON.stringify(dashboard.data)
+  );
+
+  const removed = await graphql(
+    'mutation($id: UUID!) { removeFriend(friendId: $id) }',
+    { id: alice.user.id },
+    bob.token
+  );
+  check('GraphQL: mutacion removeFriend', removed.data?.data?.removeFriend === true);
+
+  const gqlError = await graphql(
+    'mutation($id: UUID!) { removeFriend(friendId: $id) }',
+    { id: alice.user.id },
+    bob.token
+  );
+  check(
+    'GraphQL: error con codigo NOT_FOUND',
+    gqlError.data?.errors?.[0]?.extensions?.code === 'NOT_FOUND',
+    JSON.stringify(gqlError.data)
+  );
+
+  const gqlUnauth = await graphql('{ friends { id } }', {});
+  check('GraphQL sin token -> 401', gqlUnauth.status === 401);
+
   // --- CORS (lo que hace el navegador antes de cada peticion) ---
   for (const [path, method] of [
     ['/api/auth/login', 'POST'],
     ['/api/auth/profile', 'PATCH'],
     ['/api/messages', 'POST'],
     ['/api/network/friends', 'GET'],
+    ['/api/network/graphql', 'POST'],
   ]) {
     const preflight = await call('OPTIONS', path, {
       headers: {
