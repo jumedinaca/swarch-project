@@ -1,5 +1,5 @@
 import { API_CONFIG } from '../../config/api.config';
-import { apiClient } from '../api/apiClient';
+import { apiClient, isNetworkError } from '../api/apiClient';
 import {
   User,
   LoginCredentials,
@@ -48,8 +48,9 @@ class AuthService {
       );
 
       if (response.success && response.data) {
-        const { user, token } = response.data;
+        const { user, token, refreshToken } = response.data;
         apiClient.setAuthToken(token);
+        apiClient.setRefreshToken(refreshToken ?? null);
         return { success: true, user, token };
       }
 
@@ -63,8 +64,9 @@ class AuthService {
         error.message
       );
 
-      // Si está habilitado el fallback automático, no dejamos caer la app
-      if (API_CONFIG.AUTO_FALLBACK_TO_MOCK) {
+      // Solo si el Gateway no respondió usamos la simulación; un error real del
+      // backend (p. ej. contraseña incorrecta) se muestra al usuario.
+      if (API_CONFIG.AUTO_FALLBACK_TO_MOCK && isNetworkError(error)) {
         console.info('[AuthService] Activando fallback con usuario simulado.');
         return this.mockLogin(credentials);
       }
@@ -93,8 +95,9 @@ class AuthService {
       );
 
       if (response.success && response.data) {
-        const { user, token } = response.data;
+        const { user, token, refreshToken } = response.data;
         apiClient.setAuthToken(token);
+        apiClient.setRefreshToken(refreshToken ?? null);
         return { success: true, user, token };
       }
 
@@ -108,7 +111,7 @@ class AuthService {
         error.message
       );
 
-      if (API_CONFIG.AUTO_FALLBACK_TO_MOCK) {
+      if (API_CONFIG.AUTO_FALLBACK_TO_MOCK && isNetworkError(error)) {
         console.info('[AuthService] Activando fallback con usuario simulado.');
         return this.mockRegister(credentials);
       }

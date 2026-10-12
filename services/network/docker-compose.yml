@@ -15,11 +15,8 @@ services:
       MONGO_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
       MONGO_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
 
-      # --- Security / JWT ---
-      PUBLIC_KEY: "mysecret"
-      ALGORITHM: "HS256"
       # --- CORS ---
-      CORS_ORIGINS : "*"
+      CORS_ORIGINS: "*"
     
     depends_on:
       - network-db

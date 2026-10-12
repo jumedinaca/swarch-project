@@ -10,6 +10,11 @@ import { GeoMessage, MessageStatus, LocationCoords } from '../types';
 import { useAuth } from './AuthContext';
 import { messagesService } from '../services/messages/messagesService';
 import { BOGOTA_SEED_MESSAGES } from '../data/bogotaMessages';
+import { API_CONFIG } from '../config/api.config';
+
+// Radio de búsqueda en el servidor: el mayor rango seleccionable en el mapa.
+// El mapa filtra después por el rango que elija el usuario.
+const SEARCH_RADIUS_METERS = 500;
 
 interface MessagesContextType {
   messages: GeoMessage[];
@@ -28,13 +33,19 @@ interface MessagesContextType {
   setSelectedMessage: (message: GeoMessage | null) => void;
   statusFilter: MessageStatus | 'todos';
   setStatusFilter: (filter: MessageStatus | 'todos') => void;
+  /** Punto alrededor del cual se consultan los mensajes (ubicación del usuario) */
+  setSearchCenter: (coords: LocationCoords) => void;
 }
 
 const MessagesContext = createContext<MessagesContextType | undefined>(undefined);
 
 export const MessagesProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
-  const [messages, setMessages] = useState<GeoMessage[]>(BOGOTA_SEED_MESSAGES);
+  // Con el backend real se parte vacío; los datos de ejemplo son solo del modo simulado
+  const [messages, setMessages] = useState<GeoMessage[]>(
+    API_CONFIG.USE_MOCKS ? BOGOTA_SEED_MESSAGES : []
+  );
+  const [searchCenter, setSearchCenter] = useState<LocationCoords | null>(null);
   const [selectedMessage, setSelectedMessage] = useState<GeoMessage | null>(null);
   const [statusFilter, setStatusFilter] = useState<MessageStatus | 'todos'>('todos');
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -46,8 +57,15 @@ export const MessagesProvider = ({ children }: { children: ReactNode }) => {
     try {
       const response = await messagesService.getMessages({
         status: statusFilter === 'todos' ? undefined : statusFilter,
+        latitude: searchCenter?.latitude,
+        longitude: searchCenter?.longitude,
+        radiusMeters: SEARCH_RADIUS_METERS,
+        currentUser: user,
       });
-      if (response.success && response.data && response.data.length > 0) {
+      if (!response.success) {
+        setError(response.error || 'No se pudieron recuperar los mensajes.');
+      } else if (!API_CONFIG.USE_MOCKS || response.data.length > 0) {
+        // Con el backend real una lista vacía es una respuesta válida
         setMessages(response.data);
       }
     } catch (err: any) {
@@ -56,7 +74,7 @@ export const MessagesProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [statusFilter]);
+  }, [statusFilter, searchCenter, user]);
 
   useEffect(() => {
     fetchMessages();
@@ -185,6 +203,7 @@ export const MessagesProvider = ({ children }: { children: ReactNode }) => {
         setSelectedMessage,
         statusFilter,
         setStatusFilter,
+        setSearchCenter,
       }}
     >
       {children}

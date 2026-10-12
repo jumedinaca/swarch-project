@@ -10,7 +10,7 @@ Aplicación para publicar mensajes asociados a una ubicación y consultar los qu
 | [`gateway/`](gateway/README.md) | Punto único de entrada: enruta, valida JWT y agrega `X-User-ID` | Java, Spring Cloud Gateway |
 | [`services/messages/`](services/messages/README.md) | Mensajes geolocalizados y búsqueda por proximidad | Go, PostgreSQL + PostGIS |
 | [`services/auth/`](services/auth/README.md) | Registro, login, sesiones y emisión de JWT | Python (FastAPI), PostgreSQL |
-| [`services/network/`](services/network/) | Solicitudes de amistad y amigos (aún no está conectado al gateway) | Python (FastAPI), MongoDB |
+| [`services/network/`](services/network/README.md) | Solicitudes de amistad y lista de amigos (API REST y GraphQL) | Python (FastAPI, Strawberry), MongoDB |
 
 El formato de los tokens y el enrutamiento están en [`docs/jwt-contract.md`](docs/jwt-contract.md).
 
@@ -34,13 +34,21 @@ docker compose up --build
 | API Gateway | http://localhost:8080 |
 | Salud del gateway | http://localhost:8080/actuator/health |
 
-Los servicios de autenticación y de mensajes, y sus bases de datos, no se publican al host: solo se accede a ellos a través del gateway.
+Los servicios de autenticación, mensajes y red social, y sus bases de datos, no se publican al host: solo se accede a ellos a través del gateway.
 
-El frontend sigue usando datos simulados (`EXPO_PUBLIC_USE_MOCK_DATA=true`) hasta que adopte el contrato real del servicio de mensajes.
+El frontend usa el backend real (`EXPO_PUBLIC_USE_MOCK_DATA=false`). Con `true` usa datos simulados en el navegador, útil para trabajar solo en la interfaz. Como la variable se incrusta al compilar, después de cambiarla hay que reconstruir el frontend con `docker compose up --build frontend`.
+
+## Verificar la integración
+
+Con el sistema levantado, este script recorre frontend → gateway → auth / mensajes / red social con dos usuarios nuevos y valida cada paso (requiere Node):
+
+```bash
+node scripts/smoke-test.mjs
+```
 
 ## Probar la API
 
-Registra un usuario y guarda su token (el token dura 15 minutos):
+Registra un usuario y guarda su token (el token dura 15 minutos; el frontend lo renueva solo con el refresh token):
 
 ```bash
 TOKEN=$(curl -s -X POST localhost:8080/api/auth/register -H "Content-Type: application/json" -d '{"username":"ExploradorGeo","email":"explorador@geochat.org","password":"secreto123"}' | sed -E 's/.*"token":"([^"]+)".*/\1/')
@@ -64,6 +72,19 @@ Buscar mensajes cercanos (no requiere token):
 
 ```bash
 curl "localhost:8080/api/messages/nearby?lat=4.6371&lng=-74.0834&radius=500"
+```
+
+Enviar una solicitud de amistad a otro usuario (su UUID) y ver los amigos:
+
+```bash
+curl -X POST localhost:8080/api/network/request -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"recipient_id":"<uuid-del-otro-usuario>"}'
+curl localhost:8080/api/network/friends -H "Authorization: Bearer $TOKEN"
+```
+
+Lo mismo por GraphQL, pidiendo amigos y solicitudes en una sola petición:
+
+```bash
+curl -X POST localhost:8080/api/network/graphql -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"query":"{ friends { otherUserId } incomingRequests { id otherUserId } }"}'
 ```
 
 ## Trabajar en un solo componente

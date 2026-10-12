@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
+  Image,
   TextInput,
   StyleSheet,
   TouchableOpacity,
@@ -79,9 +80,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
         {/* Banner de Bienvenida estilo Menú Wii */}
         <View style={styles.headerBanner}>
           <View style={styles.logoBadge}>
-            <View style={styles.logoIconBg}>
-              <Ionicons name="chatbubbles" size={26} color="#FFFFFF" />
-            </View>
+            <Image
+              source={require('../../assets/logo.png')}
+              style={styles.logoImage}
+              accessibilityLabel="Logo de GeoPicto"
+            />
             <View>
               <Text style={styles.logoTitle}>GeoPicto</Text>
               <Text style={styles.logoSubtitle}>Plataforma Geoespacial Contextual</Text>
@@ -235,14 +238,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
             </View>
           )}
         </View>
-
-        {/* Nota informativa estética estilo manual de Nintendo */}
-        <View style={styles.footerNote}>
-          <Ionicons name="sparkles-outline" size={14} color={nintendoTheme.colors.textMuted} />
-          <Text style={styles.footerNoteText}>
-            Inspirado en la estética lúdica y minimalista de Nintendo (Wii y DS).
-          </Text>
-        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -278,17 +273,9 @@ const styles = StyleSheet.create({
     borderColor: '#DFE8E4',
     ...nintendoTheme.shadows.wiiSoft,
   },
-  logoIconBg: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: nintendoTheme.colors.wiiBlue,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: nintendoTheme.colors.wiiBlue,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
+  logoImage: {
+    width: 56,
+    height: 56,
   },
   logoTitle: {
     fontSize: 22,
@@ -370,17 +357,5 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 10,
     textAlign: 'center',
-  },
-  footerNote: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    marginTop: 20,
-  },
-  footerNoteText: {
-    fontSize: 11,
-    color: nintendoTheme.colors.textMuted,
-    fontStyle: 'italic',
   },
 });
