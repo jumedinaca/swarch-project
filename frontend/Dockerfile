@@ -37,8 +37,9 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 
 EXPOSE 80
 
-# Salud del contenedor
+# Salud del contenedor (127.0.0.1 y no localhost: en Alpine localhost resuelve
+# primero a ::1 y nginx solo escucha en IPv4)
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost/ || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://127.0.0.1/ || exit 1
 
 CMD ["nginx", "-g", "daemon off;"]
