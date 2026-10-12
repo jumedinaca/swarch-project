@@ -20,7 +20,10 @@ from app.core.config import Settings
 def new_lifespan(settings: Settings):
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        client = AsyncMongoClient(settings.MONGO_HOST)
+
+        MONGO_URI = f"mongodb://{settings.MONGO_ROOT_USERNAME}:{settings.MONGO_ROOT_PASSWORD}@{settings.MONGO_HOST}"
+
+        client = AsyncMongoClient(MONGO_URI)
 
         try:
             await client.admin.command("ping")

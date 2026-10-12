@@ -6,7 +6,7 @@ import jwt
 from jwt.exceptions import InvalidTokenError
 from pymongo.asynchronous.database import AsyncDatabase
 
-from app.core.config import get_settings
+from app.core.config import get_settings, isDev
 from app.repositories.friendship_repository import FriendshipRepository
 from app.services import RequestService
 
@@ -17,8 +17,9 @@ def get_current_user(
 ) -> UUID:
     settings = get_settings()
 
-    if settings.DEV:
-        return UUID(int=2)
+    if isDev():
+        return UUID(settings.DEV_USER_ID)
+        
     
     if not credentials:
         raise HTTPException(

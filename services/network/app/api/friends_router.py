@@ -3,13 +3,13 @@ from uuid import UUID
 from fastapi import APIRouter, Depends
 
 from app.core.depends import get_current_user, get_friends_service
-from app.schemas.friendship import FriendshipCreate, FriendshipResponse, FriendshipListQuery, FriendshipListResponse
+from app.schemas.friendship import FriendshipListQuery, FriendshipListResponse
 from app.services import FriendsService
-from app.models.friendship import Friendship, FriendshipStatus
+from app.models.friendship import Friendship
 
 r = APIRouter(prefix="/friends", tags=["Friends"])
 
-@r.get("",response_model=list[Friendship])
+@r.get("",response_model=FriendshipListResponse)
 async def get_friends(
     current_user_id: UUID   = Depends(get_current_user),
     query: FriendshipListQuery = Depends(),
@@ -32,6 +32,7 @@ async def delete_friend(
         friend_id
     )
 
+### To do for future
 # @r.get("")
 # async def is_my_friend():
 #     pass

@@ -4,7 +4,7 @@ import uvicorn
 
 from app.api import friends_router
 from app.api import requests_router
-from app.core.config import Settings,get_settings
+from app.core.config import Settings,get_settings, isDev
 from app.core.database import new_lifespan
 
 
@@ -39,4 +39,4 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
 if __name__ == "__main__":
     settings = get_settings()
-    uvicorn.run("app.main:create_app", host="0.0.0.0", port=settings.PORT, reload=settings.DEV)
+    uvicorn.run("app.main:create_app", host="0.0.0.0", port=settings.PORT, reload=isDev())

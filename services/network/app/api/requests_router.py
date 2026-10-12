@@ -31,7 +31,7 @@ async def cancel_friendship(
         current_user_id
     )
 
-@router.get("/outcoming",status_code=201)
+@router.get("/outcoming",response_model=FriendshipListResponse,status_code=201)
 async def get_outcoming(
     query: FriendshipListQuery = Depends(),
     current_user_id: UUID = Depends(get_current_user),
