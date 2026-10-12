@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/google/uuid"
 
@@ -146,16 +147,25 @@ func (h *MessageHandler) GetNearbyMessages (
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
-	var req schema.NearbyRequest
+	query := r.URL.Query()
 
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
+	latitude, errLat := strconv.ParseFloat(query.Get("lat"), 64)
+	longitude, errLng := strconv.ParseFloat(query.Get("lng"), 64)
+	radius, errRadius := strconv.ParseFloat(query.Get("radius"), 64)
+
+	if errLat != nil || errLng != nil || errRadius != nil {
 		http.Error(
 			w,
-			"invalid request body",
+			"lat, lng and radius query parameters are required and must be numbers",
 			http.StatusBadRequest,
 		)
 		return
+	}
+
+	req := schema.NearbyRequest{
+		Latitude:  latitude,
+		Longitude: longitude,
+		Radius:    radius,
 	}
 
 	messages, err := h.service.GetNearby(

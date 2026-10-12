@@ -194,7 +194,8 @@ func (r *postgresMessageRepository) GetNearby(
 
 	defer rows.Close()
 
-	var messages []*domain.Message
+	// Se inicializa vacio para que la respuesta sea [] y no null.
+	messages := []*domain.Message{}
 
 	for rows.Next() {
 
