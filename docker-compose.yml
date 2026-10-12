@@ -1,5 +1,6 @@
 # Entorno completo de GeoPicto: frontend web, API Gateway y los servicios de
-# autenticacion y de mensajes con sus bases de datos, todos en la misma red.
+# autenticacion, mensajes y red social con sus bases de datos, todos en la
+# misma red.
 #
 #   cp .env.example .env   # y define JWT_SECRET
 #   docker compose up --build
@@ -80,12 +81,50 @@ services:
       start_period: 60s
       retries: 5
 
+  network-db:
+    image: mongo:8
+    environment:
+      MONGO_INITDB_DATABASE: network_db
+      MONGO_INITDB_ROOT_USERNAME: network_admin
+      MONGO_INITDB_ROOT_PASSWORD: network_admin
+    volumes:
+      - network_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  network:
+    build: ./services/network
+    environment:
+      APP_NAME: network
+      PORT: "8080"
+      # Cualquier valor distinto de development exige X-User-ID (lo pone el gateway)
+      APP_ENV: production
+      MONGO_HOST: network-db:27017
+      MONGO_DB: network_db
+      MONGO_ROOT_USERNAME: network_admin
+      MONGO_ROOT_PASSWORD: network_admin
+      # Vacio a proposito: el gateway agrega las cabeceras CORS.
+      CORS_ORIGINS: ""
+    depends_on:
+      network-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/')"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+
   gateway:
     build: ./gateway
     environment:
       JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET en .env (minimo 32 bytes). Ver .env.example}
       MESSAGES_SERVICE_URL: http://messages:8080
       AUTH_SERVICE_URL: http://auth:8080
+      NETWORK_SERVICE_URL: http://network:8080
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8081}
     ports:
       - "8080:8080"
@@ -93,6 +132,8 @@ services:
       auth:
         condition: service_healthy
       messages:
+        condition: service_healthy
+      network:
         condition: service_healthy
 
   frontend:
@@ -102,7 +143,7 @@ services:
         # Expo incrusta las variables EXPO_PUBLIC_* al compilar, por eso van
         # como argumentos de build y no como variables de entorno del contenedor.
         EXPO_PUBLIC_API_GATEWAY_URL: ${EXPO_PUBLIC_API_GATEWAY_URL:-http://localhost:8080}
-        EXPO_PUBLIC_USE_MOCK_DATA: ${EXPO_PUBLIC_USE_MOCK_DATA:-true}
+        EXPO_PUBLIC_USE_MOCK_DATA: ${EXPO_PUBLIC_USE_MOCK_DATA:-false}
     ports:
       - "8081:80"
     depends_on:
@@ -111,3 +152,4 @@ services:
 volumes:
   auth_data:
   messages_data:
+  network_data:

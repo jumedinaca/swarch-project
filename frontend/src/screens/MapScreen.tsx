@@ -41,6 +41,7 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
     setStatusFilter,
     refreshMessages,
     isLoading: isRefreshingMessages,
+    setSearchCenter,
   } = useMessages();
 
   const [userLocation, setUserLocation] = useState<LocationCoords>(DEFAULT_COORDS);
@@ -66,6 +67,11 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
     }
     return activeMessages.filter((m) => visibleMessageIds.includes(m.id));
   }, [activeMessages, visibleMessageIds, userLocation, rangeDistance]);
+
+  // Los mensajes se consultan alrededor de la ubicación actual del usuario
+  useEffect(() => {
+    setSearchCenter(userLocation);
+  }, [userLocation, setSearchCenter]);
 
   // Obtener geolocalización del dispositivo
   useEffect(() => {

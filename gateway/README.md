@@ -2,7 +2,7 @@
 
 ## Propósito y estado
 
-Este componente es el punto único de entrada para el frontend: enruta las peticiones hacia los microservicios internos de autenticación (`/api/auth/*`) y mensajes (`/api/messages/*`), valida los JWT emitidos por el servicio de autenticación y los traduce al header `X-User-ID` que espera el servicio de mensajes. Está escrito en Java 21 con Spring Boot 4 y Spring Cloud Gateway (reactivo, sobre WebFlux). El formato de los tokens está en [`docs/jwt-contract.md`](../docs/jwt-contract.md).
+Este componente es el punto único de entrada para el frontend: enruta las peticiones hacia los microservicios internos de autenticación (`/api/auth/*`), mensajes (`/api/messages/*`) y red social (`/api/network/*`), valida los JWT emitidos por el servicio de autenticación y los traduce al header `X-User-ID` que esperan los servicios de mensajes y de red social. Está escrito en Java 21 con Spring Boot 4 y Spring Cloud Gateway (reactivo, sobre WebFlux). El formato de los tokens está en [`docs/jwt-contract.md`](../docs/jwt-contract.md).
 
 El código se organiza así:
 
@@ -19,6 +19,7 @@ El código se organiza así:
 | `/api/auth/**` | `AUTH_SERVICE_URL` | `StripPrefix=1` (sin JWT: aquí es donde se obtiene el token) |
 | `GET /api/messages/nearby` | `MESSAGES_SERVICE_URL` | `StripPrefix=1` (pública, sin JWT) |
 | `/api/messages/**` (resto) | `MESSAGES_SERVICE_URL` | `StripPrefix=1`, `JwtAuth` |
+| `/api/network/**` | `NETWORK_SERVICE_URL` | `StripPrefix=2`, `JwtAuth` (`/api/network/friends` → `/friends`, `/api/network/request` → `/request`) |
 
 Las rutas se evalúan en orden: por eso la regla específica de `nearby` está antes que la regla general de mensajes, que exige JWT.
 
@@ -34,6 +35,7 @@ Copia `.example.env` a `.env` y ajusta:
 | `JWT_ISSUER` | No | `geopicto-auth` | Valor exigido en el claim `iss`. Debe coincidir con el del servicio de autenticación. |
 | `AUTH_SERVICE_URL` | No | `http://localhost:8101` | URL interna del microservicio de autenticación. |
 | `MESSAGES_SERVICE_URL` | No | `http://localhost:8100` | URL interna del microservicio de mensajes. |
+| `NETWORK_SERVICE_URL` | No | `http://localhost:8001` | URL interna del microservicio de red social. |
 | `CORS_ALLOWED_ORIGINS` | No | `http://localhost:8081` | Orígenes del frontend autorizados, separados por comas. |
 
 ## Ejecución local

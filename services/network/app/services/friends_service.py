@@ -3,8 +3,9 @@ Service for handling user friends queries
 """
 from uuid import UUID
 
-from app.models import Friendship, FriendshipStatus, friendship
+from app.models import Friendship, FriendshipStatus
 from app.repositories.friendship_repository import FriendshipRepository
+from app.services.requests_service import FriendshipNotFoundError
 
 
 class FriendsService():
@@ -38,11 +39,8 @@ class FriendsService():
             user_b=str(user_del_id)
         )
 
-        if not friendship:
-            raise Exception #########
-
-        if friendship.status != FriendshipStatus.ACCEPTED:
-            raise Exception
+        if not friendship or friendship.status != FriendshipStatus.ACCEPTED:
+            raise FriendshipNotFoundError("Ese usuario no está en tu lista de amigos.")
 
         await self.repository.delete_by_id(
             friendship_id=friendship.id

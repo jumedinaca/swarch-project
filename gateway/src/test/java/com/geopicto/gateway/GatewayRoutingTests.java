@@ -52,6 +52,7 @@ class GatewayRoutingTests {
         String backendUrl = "http://localhost:" + backend.getPort();
         registry.add("MESSAGES_SERVICE_URL", () -> backendUrl);
         registry.add("AUTH_SERVICE_URL", () -> backendUrl);
+        registry.add("NETWORK_SERVICE_URL", () -> backendUrl);
         registry.add("JWT_SECRET", () -> SECRET);
         registry.add("CORS_ALLOWED_ORIGINS", () -> ALLOWED_ORIGIN);
     }
@@ -146,6 +147,27 @@ class GatewayRoutingTests {
     }
 
     @Test
+    void networkRoutesRequireTokenAndStripNetworkPrefix() throws InterruptedException {
+        UUID userId = UUID.randomUUID();
+
+        client.get().uri("/api/network/friends?limit=10")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token(userId.toString(), inOneHour()))
+                .exchange()
+                .expectStatus().isOk();
+
+        RecordedRequest forwarded = takeForwarded();
+        assertThat(forwarded.getPath()).isEqualTo("/friends?limit=10");
+        assertThat(forwarded.getHeader("X-User-ID")).isEqualTo(userId.toString());
+        assertThat(forwarded.getHeader(HttpHeaders.AUTHORIZATION)).isNull();
+    }
+
+    @Test
+    void networkRoutesWithoutTokenAreRejected() {
+        expectUnauthorized(client.get().uri("/api/network/friends").exchange(),
+                "Missing or invalid Authorization header");
+    }
+
+    @Test
     void missingTokenIsRejected() {
         expectUnauthorized(client.post().uri("/api/messages")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -228,6 +250,16 @@ class GatewayRoutingTests {
         client.options().uri("/api/messages")
                 .header(HttpHeaders.ORIGIN, ALLOWED_ORIGIN)
                 .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "POST")
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().valueEquals(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, ALLOWED_ORIGIN);
+    }
+
+    @Test
+    void corsPreflightAllowsPatch() {
+        client.options().uri("/api/auth/profile")
+                .header(HttpHeaders.ORIGIN, ALLOWED_ORIGIN)
+                .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "PATCH")
                 .exchange()
                 .expectStatus().isOk()
                 .expectHeader().valueEquals(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, ALLOWED_ORIGIN);

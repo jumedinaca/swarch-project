@@ -1,49 +1,30 @@
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, Request
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-import jwt
-from jwt.exceptions import InvalidTokenError
+from fastapi import Depends, Header, HTTPException, Request
 from pymongo.asynchronous.database import AsyncDatabase
 
 from app.core.config import get_settings, isDev
 from app.repositories.friendship_repository import FriendshipRepository
-from app.services import RequestService
+from app.services import FriendsService, RequestService
 
-bearer_scheme = HTTPBearer(auto_error=False)
 
 def get_current_user(
-    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    x_user_id: str | None = Header(default=None, alias="X-User-ID"),
 ) -> UUID:
-    settings = get_settings()
-
-    if isDev():
-        return UUID(settings.DEV_USER_ID)
-        
-    
-    if not credentials:
-        raise HTTPException(
-            status_code=401,
-            detail="No token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    """
+    El API Gateway valida el JWT y reenvía el id del usuario en X-User-ID
+    (igual que con el servicio de mensajes). Este servicio confía en ese header.
+    En desarrollo, sin gateway, se puede usar DEV_USER_ID como respaldo.
+    """
+    value = x_user_id
+    if not value and isDev():
+        value = get_settings().DEV_USER_ID
 
     try:
-        payload = jwt.decode(
-            credentials.credentials,
-            settings.PUBLIC_KEY,
-            algorithms=[settings.ALGORITHM],
-            options={"require": ["exp", "sub"]},
-        )
+        return UUID(value)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=401, detail="Falta un X-User-ID válido.")
 
-        return UUID(payload["sub"])
-
-    except (InvalidTokenError, ValueError, KeyError):
-        raise HTTPException(
-            status_code=401,
-            detail="Token inválido o expirado",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
 
 def get_database(request: Request) -> AsyncDatabase:
     return request.app.state.mongodb
@@ -55,8 +36,9 @@ def get_request_service_service(
     repository = FriendshipRepository(database["friendships"])
     return RequestService(repository)
 
+
 def get_friends_service(
     database: AsyncDatabase = Depends(get_database),
-) -> RequestService:
+) -> FriendsService:
     repository = FriendshipRepository(database["friendships"])
-    return RequestService(repository)
+    return FriendsService(repository)

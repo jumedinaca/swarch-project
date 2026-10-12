@@ -139,17 +139,27 @@ class RequestService:
                 "No se encontró la solicitud."
             )
 
-        if str(actor_id) == friendship.requested_by:
-            raise FriendshipPermissionError(
-                "No puedes rechazar tu propia solicitud (Usa /cancel para cancelar)."
+        if friendship.status != FriendshipStatus.PENDING:
+            raise InvalidFriendshipOperationError(
+                "Solo puedes rechazar solicitudes pendientes."
             )
-        
-        if actor_id not in (friendship.user_a, friendship.user_b):
+
+        if str(actor_id) not in (friendship.user_a, friendship.user_b):
             raise FriendshipPermissionError(
                 "No perteneces a esta solicitud."
             )
 
-        await self.repository.delete_pending(friendship_id=friendship.id)
+        if str(actor_id) == friendship.requested_by:
+            raise FriendshipPermissionError(
+                "No puedes rechazar tu propia solicitud (Usa /cancel para cancelar)."
+            )
+
+        deleted = await self.repository.delete_pending(friendship_id=friendship.id)
+
+        if not deleted:
+            raise InvalidFriendshipOperationError(
+                "La solicitud cambió antes de poder rechazarla."
+            )
         
 
     async def list_for_user(
@@ -181,7 +191,7 @@ class RequestService:
         )
 
         if not friendship:
-            raise FriendshipPermissionError(
+            raise FriendshipNotFoundError(
                 "No se encontró la solicitud."
             )
 

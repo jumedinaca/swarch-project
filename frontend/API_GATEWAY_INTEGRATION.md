@@ -147,7 +147,7 @@ Para cuando tus compañeros o tú configuren el API Gateway y los microservicios
 
 ### B. Mensajes Geoespaciales (`/api/messages/*`)
 
-> **Estado actual (gateway implementado):** el servicio de mensajes expone hoy un contrato distinto al descrito abajo, y el frontend aún no lo usa (sigue en modo mock). Las rutas reales son:
+> **Estado actual (gateway implementado):** el servicio de mensajes expone un contrato distinto al descrito abajo. El frontend ya usa este contrato real: `messagesService.ts` consulta `nearby` alrededor de la ubicación del usuario y convierte cada mensaje al modelo `GeoMessage` (`toGeoMessage`). Las rutas reales son:
 >
 > | Ruta | Auth | Cuerpo / parámetros | Respuesta |
 > | --- | --- | --- | --- |
@@ -156,7 +156,7 @@ Para cuando tus compañeros o tú configuren el API Gateway y los microservicios
 > | `GET /api/messages/:id` | JWT | — | Mensaje (solo si es del autor) |
 > | `DELETE /api/messages/:id` | JWT | — | `200` sin cuerpo |
 >
-> Cada mensaje tiene la forma `{ id, sender_id, content, location: { latitude, longitude }, created_at }`. No existen todavía `status`, `expiresAt`, ni datos del autor. Los errores del gateway llegan como `{ "message": "..." }`; los del servicio de mensajes, como texto plano. Ver [`docs/jwt-contract.md`](../docs/jwt-contract.md).
+> Cada mensaje tiene la forma `{ id, sender_id, content, location: { latitude, longitude }, created_at }`. No existen todavía `status`, `expiresAt`, ni datos del autor: el frontend los completa (estado `publicado`, vigencia de 24 h, y nombre/color reales solo para los mensajes propios). Los errores del gateway llegan como `{ "message": "..." }`; los del servicio de mensajes, como texto plano. Ver [`docs/jwt-contract.md`](../docs/jwt-contract.md).
 
 #### 1. Listar Mensajes: `GET /api/messages`
 - **Query Params opcionales:** `?lat=4.6382&lng=-74.0841&radius=300&status=publicado`
@@ -243,4 +243,4 @@ EXPO_PUBLIC_USE_MOCK_DATA=false
 ```
 
 ### Opción 2: Fallback Automático
-Si configuras `EXPO_PUBLIC_USE_MOCK_DATA=false` pero el Gateway aún no está encendido o se cae la red, la aplicación **no se cerrará ni mostrará pantalla en blanco**: activará el fallback automático usando los datos locales de prueba y registrará un aviso en la consola para facilitar la depuración.
+Si configuras `EXPO_PUBLIC_USE_MOCK_DATA=false` pero el Gateway aún no está encendido o se cae la red, la aplicación **no se cerrará ni mostrará pantalla en blanco**: activará el fallback automático usando los datos locales de prueba y registrará un aviso en la consola para facilitar la depuración. El fallback solo se activa cuando el Gateway no responde (error de red o timeout): si el backend responde con un error (contraseña incorrecta, usuario repetido, datos inválidos), la app muestra ese mensaje.

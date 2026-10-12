@@ -5,15 +5,6 @@ from fastapi import FastAPI
 from pymongo import AsyncMongoClient
 from pymongo.asynchronous.database import AsyncDatabase
 
-from .config import Settings
-
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
-
-from fastapi import FastAPI
-from pymongo import AsyncMongoClient
-from pymongo.asynchronous.database import AsyncDatabase
-
 from app.core.config import Settings
 
 
@@ -30,6 +21,12 @@ def new_lifespan(settings: Settings):
 
             app.state.mongodb_client = client
             app.state.mongodb = client[settings.MONGO_DB]
+
+            # Una sola relación por pareja (user_a < user_b ya vienen ordenados),
+            # aunque lleguen dos solicitudes al mismo tiempo.
+            await app.state.mongodb["friendships"].create_index(
+                [("user_a", 1), ("user_b", 1)], unique=True
+            )
 
             yield
         finally:

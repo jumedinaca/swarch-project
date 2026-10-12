@@ -54,7 +54,17 @@ export interface RegisterCredentials {
 export interface AuthResponseData {
   user: User;
   token: string;
+  refreshToken?: string;
   expiresIn?: number;
+}
+
+/** Mensaje tal como lo devuelve el servicio de mensajes (Go) a través del gateway */
+export interface ApiMessage {
+  id: string;
+  sender_id: string;
+  content: string;
+  location: { latitude: number; longitude: number };
+  created_at: string;
 }
 
 export interface CreateMessageDto {
@@ -70,4 +80,6 @@ export interface QueryMessagesParams {
   longitude?: number;
   radiusMeters?: number;
   status?: MessageStatus | 'todos';
+  /** Para mostrar el nombre y color reales en los mensajes propios */
+  currentUser?: { id: string; username: string; color: string } | null;
 }

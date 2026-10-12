@@ -35,13 +35,24 @@ spring:
                 - StripPrefix=1
                 - JwtAuth
 
+            # Servicio de red social (amigos y solicitudes). Todo exige JWT.
+            # /api/network/friends -> /friends, /api/network/request -> /request
+            - id: network-protected
+              uri: ${NETWORK_SERVICE_URL:http://localhost:8001}
+              predicates:
+                - Path=/api/network/**
+              filters:
+                - StripPrefix=2
+                - JwtAuth
+
           # El frontend envia el JWT en el header Authorization (no usa cookies),
           # por eso no se habilita allowCredentials.
           globalcors:
             cors-configurations:
               "[/**]":
                 allowedOriginPatterns: ${CORS_ALLOWED_ORIGINS:http://localhost:8081}
-                allowedMethods: GET,POST,PUT,DELETE,OPTIONS
+                # PATCH lo usa PATCH /api/auth/profile
+                allowedMethods: GET,POST,PUT,PATCH,DELETE,OPTIONS
                 allowedHeaders: "*"
 
 # Secreto HS256 compartido con el microservicio de autenticacion para firmar

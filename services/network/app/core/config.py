@@ -11,7 +11,8 @@ class Settings(BaseSettings):
     APP_NAME: str = "network"
     PORT: int = 8000
     APP_ENV: str = 'development'
-    DEV_USER_ID: str = "1"
+    # UUID usado como usuario cuando no llega X-User-ID (solo en desarrollo)
+    DEV_USER_ID: str = "00000000-0000-0000-0000-000000000001"
     
     # --- Database ---
     MONGO_HOST: str = ""
@@ -19,11 +20,9 @@ class Settings(BaseSettings):
     MONGO_ROOT_USERNAME: str=""
     MONGO_ROOT_PASSWORD: str=""
 
-    # --- Security / JWT ---
-    PUBLIC_KEY: str = ""
-    ALGORITHM: str = ""
     # --- CORS ---
-    CORS_ORIGINS: str = "*"
+    # Vacío detrás del API Gateway: el gateway agrega las cabeceras CORS.
+    CORS_ORIGINS: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

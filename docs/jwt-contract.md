@@ -40,7 +40,7 @@ Ejemplo de payload:
 
 ## Logout y expiración
 
-Como el gateway no consulta las sesiones, un access token sigue sirviendo en las rutas protegidas hasta que expira, aunque el usuario haya cerrado sesión. Por eso dura solo 15 minutos. El cliente lo renueva con `POST /api/auth/refresh` y su refresh token; esa llamada sí falla de inmediato si la sesión fue revocada.
+Como el gateway no consulta las sesiones, un access token sigue sirviendo en las rutas protegidas hasta que expira, aunque el usuario haya cerrado sesión. Por eso dura solo 15 minutos. El frontend lo renueva automáticamente con `POST /api/auth/refresh` y su refresh token cuando una petición responde `401`; esa llamada sí falla de inmediato si la sesión fue revocada, y entonces la app vuelve a la pantalla de login.
 
 ## Rutas
 
@@ -49,6 +49,7 @@ Como el gateway no consulta las sesiones, un access token sigue sirviendo en las
 | `/api/auth/**` | Pública | `auth:/auth/…` (sin el prefijo `/api`) |
 | `GET /api/messages/nearby?lat=&lng=&radius=` | Pública | `messages:/messages/nearby` |
 | `/api/messages/**` (resto) | JWT | `messages:/messages/…` |
+| `/api/network/**` | JWT | `network:/…` (sin `/api/network`: `/api/network/friends` → `/friends`) |
 
 ## Token de desarrollo
 

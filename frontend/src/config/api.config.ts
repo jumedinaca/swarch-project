@@ -26,6 +26,7 @@ export const API_CONFIG = {
    * Rutas estándar enrutadas por el API Gateway:
    * - /api/auth/*     -> Microservicio de Autenticación
    * - /api/messages/* -> Microservicio de Mensajes Geoespaciales
+   * - /api/network/*  -> Microservicio de red social (amigos)
    */
   ROUTES: {
     AUTH: {
@@ -33,10 +34,12 @@ export const API_CONFIG = {
       REGISTER: '/api/auth/register',
       PROFILE: '/api/auth/profile',
       LOGOUT: '/api/auth/logout',
+      REFRESH: '/api/auth/refresh',
     },
     MESSAGES: {
       BASE: '/api/messages',
       GET_ALL: '/api/messages',
+      NEARBY: '/api/messages/nearby',
       CREATE: '/api/messages',
       GET_BY_ID: (id: string) => `/api/messages/${id}`,
       DELETE: (id: string) => `/api/messages/${id}`,
@@ -60,6 +63,8 @@ export const API_CONFIG = {
    * Activar fallback automático: Si está en 'true', si una llamada a la red
    * falla por falta de conexión al API Gateway, se recurre automáticamente
    * a los datos simulados locales sin romper la interfaz de usuario.
+   * Solo aplica a errores de red: las respuestas de error del backend
+   * (credenciales inválidas, usuario repetido...) se muestran tal cual.
    */
   AUTO_FALLBACK_TO_MOCK: true,
 };

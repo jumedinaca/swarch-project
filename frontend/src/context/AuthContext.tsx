@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User } from '../types';
 import { authService } from '../services/auth/authService';
+import { apiClient } from '../services/api/apiClient';
 
 interface AuthContextType {
   user: User | null;
@@ -21,6 +22,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [authError, setAuthError] = useState<string | null>(null);
 
   const clearError = () => setAuthError(null);
+
+  // Si el refresh token ya no sirve (sesión revocada o vencida), se vuelve al login
+  useEffect(() => {
+    apiClient.setOnSessionExpired(() => {
+      setUser(null);
+      setAuthError('Tu sesión expiró. Inicia sesión de nuevo.');
+    });
+    return () => apiClient.setOnSessionExpired(null);
+  }, []);
 
   const login = async (usernameOrEmail: string, password?: string): Promise<boolean> => {
     setIsLoading(true);
