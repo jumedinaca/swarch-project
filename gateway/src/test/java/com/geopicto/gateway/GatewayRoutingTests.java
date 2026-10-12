@@ -147,21 +147,6 @@ class GatewayRoutingTests {
     }
 
     @Test
-    void networkRoutesRequireTokenAndStripNetworkPrefix() throws InterruptedException {
-        UUID userId = UUID.randomUUID();
-
-        client.get().uri("/api/network/friends?limit=10")
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token(userId.toString(), inOneHour()))
-                .exchange()
-                .expectStatus().isOk();
-
-        RecordedRequest forwarded = takeForwarded();
-        assertThat(forwarded.getPath()).isEqualTo("/friends?limit=10");
-        assertThat(forwarded.getHeader("X-User-ID")).isEqualTo(userId.toString());
-        assertThat(forwarded.getHeader(HttpHeaders.AUTHORIZATION)).isNull();
-    }
-
-    @Test
     void networkGraphqlIsForwardedWithUserId() throws InterruptedException {
         UUID userId = UUID.randomUUID();
 
@@ -179,9 +164,23 @@ class GatewayRoutingTests {
     }
 
     @Test
-    void networkRoutesWithoutTokenAreRejected() {
-        expectUnauthorized(client.get().uri("/api/network/friends").exchange(),
-                "Missing or invalid Authorization header");
+    void networkGraphqlWithoutTokenIsRejected() {
+        expectUnauthorized(client.post().uri("/api/network/graphql")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("{\"query\":\"{ friends { id } }\"}")
+                .exchange(), "Missing or invalid Authorization header");
+    }
+
+    @Test
+    void networkOnlyExposesGraphql() {
+        int before = backend.getRequestCount();
+
+        client.get().uri("/api/network/friends")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token(UUID.randomUUID().toString(), inOneHour()))
+                .exchange()
+                .expectStatus().isNotFound();
+
+        assertThat(backend.getRequestCount()).isEqualTo(before);
     }
 
     @Test

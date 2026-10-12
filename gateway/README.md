@@ -2,7 +2,7 @@
 
 ## Propósito y estado
 
-Este componente es el punto único de entrada para el frontend: enruta las peticiones hacia los microservicios internos de autenticación (`/api/auth/*`), mensajes (`/api/messages/*`) y red social (`/api/network/*`), valida los JWT emitidos por el servicio de autenticación y los traduce al header `X-User-ID` que esperan los servicios de mensajes y de red social. Está escrito en Java 21 con Spring Boot 4 y Spring Cloud Gateway (reactivo, sobre WebFlux). El formato de los tokens está en [`docs/jwt-contract.md`](../docs/jwt-contract.md).
+Este componente es el punto único de entrada para el frontend: enruta las peticiones hacia los microservicios internos de autenticación (`/api/auth/*`), mensajes (`/api/messages/*`) y red social (`/api/network/graphql`), valida los JWT emitidos por el servicio de autenticación y los traduce al header `X-User-ID` que esperan los servicios de mensajes y de red social. Está escrito en Java 21 con Spring Boot 4 y Spring Cloud Gateway (reactivo, sobre WebFlux). El formato de los tokens está en [`docs/jwt-contract.md`](../docs/jwt-contract.md).
 
 El código se organiza así:
 
@@ -19,7 +19,7 @@ El código se organiza así:
 | `/api/auth/**` | `AUTH_SERVICE_URL` | `StripPrefix=1` (sin JWT: aquí es donde se obtiene el token) |
 | `GET /api/messages/nearby` | `MESSAGES_SERVICE_URL` | `StripPrefix=1` (pública, sin JWT) |
 | `/api/messages/**` (resto) | `MESSAGES_SERVICE_URL` | `StripPrefix=1`, `JwtAuth` |
-| `/api/network/**` | `NETWORK_SERVICE_URL` | `StripPrefix=2`, `JwtAuth` (`/api/network/friends` → `/friends`, `/api/network/request` → `/request`, `/api/network/graphql` → `/graphql`) |
+| `/api/network/graphql` | `NETWORK_SERVICE_URL` | `StripPrefix=2`, `JwtAuth` (→ `/graphql`; el servicio de red social solo expone GraphQL) |
 
 Las rutas se evalúan en orden: por eso la regla específica de `nearby` está antes que la regla general de mensajes, que exige JWT.
 

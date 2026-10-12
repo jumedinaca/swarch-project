@@ -2,8 +2,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
-from app.api import friends_router
-from app.api import requests_router
 from app.core.config import Settings,get_settings, isDev
 from app.core.database import new_lifespan
 from app.core.errors import register_error_handlers
@@ -39,9 +37,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def health_check():
         return {"status": "ok", "service": settings.APP_NAME}
 
-    app.include_router(requests_router)
-    app.include_router(friends_router)
-    # Mismas operaciones expuestas como GraphQL (segundo tipo de conector HTTP)
+    # La API del servicio es GraphQL: un único endpoint en /graphql
     app.include_router(create_graphql_router(), prefix="/graphql", tags=["GraphQL"])
 
     return app
