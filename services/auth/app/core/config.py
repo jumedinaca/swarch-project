@@ -13,7 +13,10 @@ class Settings(BaseSettings):
     jwt_secret: str = Field(min_length=32)
     jwt_algorithm: str = "HS256"
     jwt_issuer: str = "geopicto-auth"
-    access_token_expire_minutes: int = 60
+    # Corto a propósito: el gateway valida la firma localmente y no consulta la sesión,
+    # así que un token sigue sirviendo tras el logout hasta que expira. El frontend
+    # renueva el token con el refresh token.
+    access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 7
     # Tolerancia a desfases de reloj entre contenedores al validar exp/iat
     jwt_leeway_seconds: int = 10

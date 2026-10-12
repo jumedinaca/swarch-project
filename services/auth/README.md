@@ -4,7 +4,7 @@
 
 Este componente gestiona la identidad de los usuarios de GeoPicto: registro, inicio de sesión, emisión y validación de tokens JWT y gestión de sesiones. Está escrito en **Python (FastAPI)** y persiste la información en **PostgreSQL**.
 
-Es la pieza que permite que el API Gateway sepa quién hace cada petición. El gateway valida el token con este servicio y reenvía el identificador del usuario (`X-User-ID`, un UUID) al servicio de mensajes.
+Es la pieza que permite que el API Gateway sepa quién hace cada petición: emite los JWT que el gateway verifica y cuyo `sub` (un UUID) reenvía como `X-User-ID` a los demás servicios.
 
 El código se organiza en las mismas capas que el servicio de mensajes:
 
@@ -28,8 +28,8 @@ El código se organiza en las mismas capas que el servicio de mensajes:
 ## Seguridad implementada
 
 - **Contraseñas con Argon2id.** Se re-hashean automáticamente si cambian los parámetros. Se usa un hash señuelo cuando el usuario no existe, para que el tiempo de respuesta no revele qué cuentas existen.
-- **Access token JWT (HS256)** con los claims `sub` (id del usuario), `sid` (sesión), `username`, `iss`, `iat`, `exp` y `jti`. Por defecto dura 60 minutos.
-- **Sesiones revocables.** Cada token apunta a una sesión en la base de datos. Por eso `logout` invalida el access token de inmediato, sin esperar a que expire.
+- **Access token JWT (HS256)** con los claims `sub` (id del usuario, siempre un UUID), `sid` (sesión), `username`, `iss`, `iat`, `exp` y `jti`. Por defecto dura 15 minutos; ver [Integración con el API Gateway](#integración-con-el-api-gateway).
+- **Sesiones revocables.** Cada token apunta a una sesión en la base de datos. `logout` revoca la sesión: el refresh token deja de servir de inmediato y las rutas de este servicio rechazan el access token. En el resto del sistema el access token deja de servir cuando expira (ver abajo).
 - **Refresh token opaco y rotativo** (con formato `<sessionId>.<secreto>`). En la base de datos solo se guarda su hash. Si alguien reutiliza un refresh token que ya fue rotado, se asume robo y se revoca toda la sesión.
 - **Bloqueo temporal de la cuenta** después de `MAX_FAILED_LOGIN_ATTEMPTS` intentos fallidos. Mientras dure, el login responde `423`.
 - Al **cambiar la contraseña** se cierran todas las demás sesiones abiertas.
@@ -50,16 +50,16 @@ La API queda publicada en `http://localhost:8200` y su documentación interactiv
 | Variable | Obligatoria | Valor por defecto | Descripción |
 | --- | --- | --- | --- |
 | `DATABASE_URL` | Sí | — | Cadena de conexión PostgreSQL (`postgresql://usuario:clave@host:puerto/bd`). |
-| `JWT_SECRET` | Sí | — | Secreto para firmar los JWT (mínimo 32 caracteres). Debe compartirse con el gateway solo si este valida los tokens por su cuenta. |
+| `JWT_SECRET` | Sí | — | Secreto para firmar los JWT (mínimo 32 caracteres). Debe ser el mismo `JWT_SECRET` del API Gateway, que verifica los tokens con él. |
 | `PORT` | No | `8000` | Puerto HTTP dentro del contenedor. |
 | `JWT_ALGORITHM` | No | `HS256` | Algoritmo de firma. |
-| `JWT_ISSUER` | No | `geopicto-auth` | Valor del claim `iss`. |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | No | `60` | Vigencia del access token. |
+| `JWT_ISSUER` | No | `geopicto-auth` | Valor del claim `iss`. El gateway exige este mismo valor. |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | No | `15` | Vigencia del access token. Es también el tiempo máximo que un token sigue sirviendo tras un logout. |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | No | `7` | Vigencia de la sesión y del refresh token. |
 | `JWT_LEEWAY_SECONDS` | No | `10` | Tolerancia de reloj al validar `exp` e `iat`. |
 | `MAX_FAILED_LOGIN_ATTEMPTS` | No | `5` | Intentos fallidos antes de bloquear la cuenta. |
 | `LOCKOUT_MINUTES` | No | `15` | Duración del bloqueo. |
-| `CORS_ORIGINS` | No | vacío | Orígenes permitidos separados por coma. Si se deja vacío, el gateway se encarga del CORS. |
+| `CORS_ORIGINS` | No | vacío | Orígenes permitidos separados por coma. Detrás del gateway debe quedar vacío: el gateway ya agrega las cabeceras CORS y, si ambos las ponen, el navegador rechaza la respuesta. |
 
 ## API HTTP
 
@@ -77,7 +77,7 @@ El servicio expone sus rutas bajo `/auth`. El gateway debe enrutar `/api/auth/*`
 | `POST /auth/register` | — | Crea un usuario. Recibe `{ username, email, password }` y responde `201` con `user`, `token` y `refreshToken`. |
 | `POST /auth/login` | — | Recibe `{ usernameOrEmail, password }` y responde `200` con `user`, `token` y `refreshToken`. |
 | `POST /auth/refresh` | — | Recibe `{ refreshToken }` y entrega un access token y un refresh token nuevos (rotación). |
-| `GET /auth/validate` | Bearer | **Para el gateway.** Responde `200` con las cabeceras `X-User-ID`, `X-User-Name`, `X-User-Color` y `X-Session-ID`, o `401` si el token no es válido. |
+| `GET /auth/validate` | Bearer | Comprueba un token contra su sesión. Responde `200` con las cabeceras `X-User-ID`, `X-User-Name`, `X-User-Color` y `X-Session-ID`, o `401` si el token no es válido o la sesión fue revocada. El gateway no lo usa hoy (ver abajo). |
 | `GET /auth/profile` | Bearer | Datos del usuario autenticado. |
 | `PATCH /auth/profile` | Bearer | Cambia el color del avatar con `{ color: "#RRGGBB" }`. |
 | `PUT /auth/password` | Bearer | Recibe `{ currentPassword, newPassword }` y cierra las demás sesiones. |
@@ -123,13 +123,15 @@ Ejemplo de respuesta de login o registro:
 
 ## Integración con el API Gateway
 
-Para las rutas protegidas (por ejemplo `/api/messages/*`), el gateway:
+El gateway verifica los access tokens **por su cuenta**, con el mismo `JWT_SECRET`, sin llamar a este servicio. El contrato completo está en [`docs/jwt-contract.md`](../../docs/jwt-contract.md).
 
-1. Recibe la petición con `Authorization: Bearer <token>`.
-2. Llama a `GET http://auth:8000/auth/validate` reenviando la misma cabecera `Authorization`.
-3. Si recibe `200`, reenvía la petición al servicio de mensajes y agrega `X-User-ID` (y, si se necesitan, `X-User-Name` y `X-User-Color`). Si recibe `401`, devuelve esa misma respuesta al cliente.
+1. El frontend llama a `/api/auth/*`; el gateway quita `/api` y reenvía a `/auth/*` en este servicio, sin exigir token.
+2. Para las rutas protegidas (por ejemplo `/api/messages/*`), el gateway comprueba la firma, `exp`, `iss` (`geopicto-auth`) y que `sub` sea un UUID. Si todo es válido, elimina `Authorization` y agrega `X-User-ID: <sub>` antes de reenviar.
+3. Los demás servicios confían en `X-User-ID` y no validan tokens.
 
-Este flujo encaja con el patrón `auth_request` de nginx o con un middleware en cualquier gateway. Validar en el servicio de autenticación, y no solo la firma del JWT, permite que un `logout` invalide el token de inmediato.
+Consecuencia: el gateway no consulta la tabla `sessions`, así que tras un `logout` el access token sigue sirviendo en las rutas protegidas hasta que expira. Por eso dura solo 15 minutos y el frontend debe renovarlo con `POST /auth/refresh`, que sí falla de inmediato si la sesión fue revocada.
+
+Se eligió así para que cada petición no dependa de este servicio ni de su base de datos. Si en el futuro se necesita revocación inmediata, el gateway puede llamar a `GET /auth/validate` antes de reenviar.
 
 ## Pruebas
 
