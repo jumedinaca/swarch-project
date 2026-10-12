@@ -127,6 +127,7 @@ class FriendshipService:
     async def list_for_user(
         self,
         user_id: UUID,
+        requested_from_user: bool = True,
         status: FriendshipStatus | None = None,
         limit: int = 20,
         cursor: str | None = None,
@@ -136,6 +137,7 @@ class FriendshipService:
 
         return await self.repository.list_for_user(
             user_id=str(user_id),
+            is_requested_by_user=True,
             status=status,
             limit=limit,
             cursor=cursor,
@@ -143,6 +145,7 @@ class FriendshipService:
 
     async def delete_friendship(
         self,
+        user_id: UUID,
         friendship_id: str
     ):
 

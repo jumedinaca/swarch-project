@@ -80,6 +80,7 @@ class FriendshipRepository:
     async def list_for_user(
         self,
         user_id: str,
+        is_requested_by_user: bool = True,
         status: FriendshipStatus | None = None,
         limit: int = 20,
         cursor: str | None = None,
@@ -90,6 +91,10 @@ class FriendshipRepository:
                 {"user_b": user_id},
             ]
         }
+        if is_requested_by_user:
+            query["requested_by"] = user_id
+        else:
+            query["requested_by"] = {"$ne": user_id}
 
         if status is not None:
             query["status"] = status.value
@@ -156,6 +161,7 @@ class FriendshipRepository:
 
     async def delete_by_id(
         self,
+        user_id: str,
         friendship_id: str,
     ) -> bool:
         if not ObjectId.is_valid(friendship_id):
@@ -163,6 +169,8 @@ class FriendshipRepository:
 
         result = await self.collection.delete_one({
             "_id": ObjectId(friendship_id),
+            "$or": [{"user_a": user_id},
+                    {"user_b": user_id}]
         })   
 
         return result.deleted_count == 1

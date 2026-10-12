@@ -28,6 +28,6 @@ class FriendshipListResponse(BaseModel):
 
 
 class FriendshipListQuery(BaseModel):
-    status: FriendshipStatus | None = None
+    #status: FriendshipStatus | None = None
     limit: int = Field(default=20, ge=1, le=100)
     cursor: str | None = None
