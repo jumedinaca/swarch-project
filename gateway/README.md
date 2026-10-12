@@ -10,7 +10,7 @@ El código se organiza así:
 - `src/main/resources/application.yml`: definición declarativa de rutas, CORS, el secreto JWT y el endpoint de salud.
 - `filter/JwtAuthGatewayFilterFactory`: filtro de ruta `JwtAuth` que exige `Authorization: Bearer <token>`, lo valida y lo reemplaza por `X-User-ID: <sub>` antes de reenviar la petición. Sus errores se responden como JSON `{"message": "..."}`.
 - `filter/StripUserIdGlobalFilter`: elimina en todas las rutas cualquier `X-User-ID` enviado por el cliente, para que solo `JwtAuth` pueda ponerlo.
-- `security/JwtService`: verificación de firma HS256 y de los claims `exp` y `sub` (que debe ser un UUID). Si `JWT_SECRET` falta o tiene menos de 32 bytes, la aplicación no arranca.
+- `security/JwtService`: verificación de firma HS256 y de los claims `exp`, `iss` (debe ser `JWT_ISSUER`) y `sub` (que debe ser un UUID). Si `JWT_SECRET` falta o tiene menos de 32 bytes, la aplicación no arranca.
 
 ## Rutas configuradas
 
@@ -31,6 +31,7 @@ Copia `.example.env` a `.env` y ajusta:
 | Variable | Obligatoria | Valor por defecto | Descripción |
 | --- | --- | --- | --- |
 | `JWT_SECRET` | Sí | Sin valor | Secreto HS256 compartido con el microservicio de autenticación. Mínimo 32 bytes; sin él la aplicación no arranca. |
+| `JWT_ISSUER` | No | `geopicto-auth` | Valor exigido en el claim `iss`. Debe coincidir con el del servicio de autenticación. |
 | `AUTH_SERVICE_URL` | No | `http://localhost:8101` | URL interna del microservicio de autenticación. |
 | `MESSAGES_SERVICE_URL` | No | `http://localhost:8100` | URL interna del microservicio de mensajes. |
 | `CORS_ALLOWED_ORIGINS` | No | `http://localhost:8081` | Orígenes del frontend autorizados, separados por comas. |
@@ -49,7 +50,7 @@ El gateway queda publicado en `http://localhost:8080` y apunta por defecto a los
 mvn test
 ```
 
-Las pruebas levantan el gateway contra un backend simulado (MockWebServer) y cubren el enrutamiento, el filtro `JwtAuth` (token válido, ausente, expirado, mal firmado, sin `sub` o sin `exp`), la eliminación de `X-User-ID` falsificados, CORS y el endpoint de salud.
+Las pruebas levantan el gateway contra un backend simulado (MockWebServer) y cubren el enrutamiento, el filtro `JwtAuth` (token válido, ausente, expirado, mal firmado, de otro emisor, sin `iss`, sin `sub` o sin `exp`), la eliminación de `X-User-ID` falsificados, CORS y el endpoint de salud.
 
 ## Ejecución con Docker Compose
 
@@ -64,5 +65,5 @@ docker compose up --build
 
 ## Pendientes conocidos
 
-- El microservicio de autenticación (`services/auth`) todavía no existe; las rutas `/api/auth/**` no tendrán a dónde reenviar hasta que se implemente. Esta configuración asume que, una vez construido, recibirá las peticiones como `/auth/login`, `/auth/register`, etc. (el gateway solo retira el prefijo `/api`) y firmará los JWT según [`docs/jwt-contract.md`](../docs/jwt-contract.md). Mientras tanto, `scripts/dev-token.mjs` genera tokens de prueba.
+- El gateway valida los tokens sin consultar al servicio de autenticación, así que un token sigue sirviendo hasta que expira (15 minutos) aunque el usuario cierre sesión. Ver [`docs/jwt-contract.md`](../docs/jwt-contract.md).
 - El contrato documentado en `frontend/API_GATEWAY_INTEGRATION.md` no coincide del todo con lo que implementa hoy `services/messages` (payload de creación de mensaje, filtros de `status`, endpoint de cambio de estado). Este gateway solo enruta y traduce autenticación; no intenta resolver esas discrepancias de contrato.

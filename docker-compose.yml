@@ -1,5 +1,5 @@
-# Entorno completo de GeoPicto: frontend web, API Gateway, servicio de
-# mensajes y su base de datos, todos en la misma red.
+# Entorno completo de GeoPicto: frontend web, API Gateway y los servicios de
+# autenticacion y de mensajes con sus bases de datos, todos en la misma red.
 #
 #   cp .env.example .env   # y define JWT_SECRET
 #   docker compose up --build
@@ -14,6 +14,41 @@
 name: geopicto
 
 services:
+  auth-db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: auth
+    volumes:
+      - auth_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d auth"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  auth:
+    build: ./services/auth
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@auth-db:5432/auth
+      PORT: "8080"
+      # Mismo secreto que el gateway: el gateway verifica con el los tokens que
+      # firma este servicio.
+      JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET en .env (minimo 32 bytes). Ver .env.example}
+      # Vacio a proposito: el gateway agrega las cabeceras CORS. Si ambos las
+      # pusieran, el navegador rechazaria las respuestas.
+      CORS_ORIGINS: ""
+    depends_on:
+      auth-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+
   messages-db:
     image: postgis/postgis:18-3.6
     environment:
@@ -50,13 +85,13 @@ services:
     environment:
       JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET en .env (minimo 32 bytes). Ver .env.example}
       MESSAGES_SERVICE_URL: http://messages:8080
-      # El servicio de autenticacion aun no existe; /api/auth/** fallara hasta
-      # que se agregue aqui como servicio "auth".
       AUTH_SERVICE_URL: http://auth:8080
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8081}
     ports:
       - "8080:8080"
     depends_on:
+      auth:
+        condition: service_healthy
       messages:
         condition: service_healthy
 
@@ -74,4 +109,5 @@ services:
       - gateway
 
 volumes:
+  auth_data:
   messages_data:

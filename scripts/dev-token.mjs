@@ -7,6 +7,7 @@
 //   node scripts/dev-token.mjs [user-uuid] [--hours N]
 //
 // Lee JWT_SECRET de la variable de entorno o, si no esta, del .env de la raiz.
+// El claim iss es JWT_ISSUER si esta definido, o geopicto-auth.
 // Imprime solo el token en stdout, para poder usarlo en $(...).
 
 import { createHmac, randomUUID } from 'node:crypto';
@@ -81,7 +82,10 @@ const { userId, hours } = parseArgs(process.argv.slice(2));
 const now = Math.floor(Date.now() / 1000);
 
 const header = base64url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
-const payload = base64url(JSON.stringify({ sub: userId, iat: now, exp: now + Math.round(hours * 3600) }));
+const issuer = process.env.JWT_ISSUER || 'geopicto-auth';
+const payload = base64url(
+  JSON.stringify({ sub: userId, iss: issuer, iat: now, exp: now + Math.round(hours * 3600) })
+);
 const signature = createHmac('sha256', secret).update(`${header}.${payload}`).digest('base64url');
 
 console.log(`${header}.${payload}.${signature}`);
