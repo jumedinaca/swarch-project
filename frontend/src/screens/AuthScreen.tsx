@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
+  Image,
   TextInput,
   StyleSheet,
   TouchableOpacity,
@@ -79,9 +80,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
         {/* Banner de Bienvenida estilo Menú Wii */}
         <View style={styles.headerBanner}>
           <View style={styles.logoBadge}>
-            <View style={styles.logoIconBg}>
-              <Ionicons name="chatbubbles" size={26} color="#FFFFFF" />
-            </View>
+            <Image
+              source={require('../../assets/logo.png')}
+              style={styles.logoImage}
+              accessibilityLabel="Logo de GeoPicto"
+            />
             <View>
               <Text style={styles.logoTitle}>GeoPicto</Text>
               <Text style={styles.logoSubtitle}>Plataforma Geoespacial Contextual</Text>
@@ -278,17 +281,9 @@ const styles = StyleSheet.create({
     borderColor: '#DFE8E4',
     ...nintendoTheme.shadows.wiiSoft,
   },
-  logoIconBg: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: nintendoTheme.colors.wiiBlue,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: nintendoTheme.colors.wiiBlue,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
+  logoImage: {
+    width: 56,
+    height: 56,
   },
   logoTitle: {
     fontSize: 22,
