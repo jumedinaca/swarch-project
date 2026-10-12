@@ -1,10 +1,9 @@
 """
-API GraphQL del servicio de red social.
+API GraphQL del servicio de red social (única interfaz del servicio).
 
-Expone las mismas operaciones que la API REST (/request y /friends) reutilizando
-los servicios de negocio, de modo que las reglas viven en un solo lugar. La
-ventaja de GraphQL aquí es que el cliente pide en una sola petición exactamente
-lo que necesita (por ejemplo amigos + solicitudes recibidas + enviadas).
+Los resolvers delegan en los servicios de negocio (app/services). Se eligió
+GraphQL porque la pantalla de amigos pide en una sola petición exactamente lo
+que necesita (por ejemplo amigos + solicitudes recibidas + enviadas).
 """
 from collections.abc import Awaitable
 from datetime import datetime

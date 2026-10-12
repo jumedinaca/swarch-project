@@ -49,7 +49,7 @@ Como el gateway no consulta las sesiones, un access token sigue sirviendo en las
 | `/api/auth/**` | Pública | `auth:/auth/…` (sin el prefijo `/api`) |
 | `GET /api/messages/nearby?lat=&lng=&radius=` | Pública | `messages:/messages/nearby` |
 | `/api/messages/**` (resto) | JWT | `messages:/messages/…` |
-| `/api/network/**` | JWT | `network:/…` (sin `/api/network`: `/api/network/friends` → `/friends`, `/api/network/graphql` → `/graphql`) |
+| `POST /api/network/graphql` | JWT | `network:/graphql` |
 
 ## Token de desarrollo
 

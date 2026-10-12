@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Prueba de integracion de punta a punta contra el sistema levantado con
-// `docker compose up`: recorre frontend -> gateway -> auth / messages / network
-// con dos usuarios nuevos, igual que lo haria la aplicacion.
+// `docker compose up`: recorre frontend -> gateway -> auth / messages (REST) y
+// network (GraphQL) con dos usuarios nuevos, igual que lo haria la aplicacion.
 //
 // Uso:
 //   node scripts/smoke-test.mjs [--gateway http://localhost:8080] [--frontend http://localhost:8081]
@@ -129,33 +129,52 @@ async function main() {
   const deleted = await call('DELETE', `/api/messages/${created.data?.id}`, { token: aliceToken });
   check('el autor borra su mensaje', deleted.status === 200);
 
-  // --- Red social (MongoDB) ---
-  const request = await call('POST', '/api/network/request', {
-    token: aliceToken,
-    body: { recipient_id: bob.user.id },
-  });
-  check('enviar solicitud de amistad', request.status === 201, JSON.stringify(request.data));
-
-  const incoming = await call('GET', '/api/network/request/incoming', { token: bob.token });
-  check(
-    'solicitud recibida por el destinatario',
-    incoming.status === 200 && incoming.data?.friendships?.some((f) => f.id === request.data?.id)
-  );
-
-  const accepted = await call('POST', `/api/network/request/accept/${request.data?.id}`, {
-    token: bob.token,
-  });
-  check('aceptar solicitud', accepted.status === 200 && accepted.data?.status === 'accepted');
-
-  const friends = await call('GET', '/api/network/friends', { token: aliceToken });
-  check('lista de amigos', friends.status === 200 && friends.data?.friendships?.length === 1);
-
-  const networkUnauth = await call('GET', '/api/network/friends');
-  check('red social sin token -> 401', networkUnauth.status === 401);
-
-  // --- Red social por GraphQL (segundo tipo de conector HTTP) ---
+  // --- Red social por GraphQL (MongoDB) ---
   const graphql = (query, variables, token) =>
     call('POST', '/api/network/graphql', { token, body: { query, variables } });
+
+  const request = await graphql(
+    'mutation($id: UUID!) { sendFriendRequest(recipientId: $id) { id status sentByMe } }',
+    { id: bob.user.id },
+    aliceToken
+  );
+  const requestId = request.data?.data?.sendFriendRequest?.id;
+  check(
+    'GraphQL: enviar solicitud de amistad',
+    request.status === 200 && !!requestId && request.data.data.sendFriendRequest.sentByMe === true,
+    JSON.stringify(request.data)
+  );
+
+  const duplicateRequest = await graphql(
+    'mutation($id: UUID!) { sendFriendRequest(recipientId: $id) { id } }',
+    { id: alice.user.id },
+    bob.token
+  );
+  check(
+    'GraphQL: solicitud duplicada -> error CONFLICT',
+    duplicateRequest.data?.errors?.[0]?.extensions?.code === 'CONFLICT',
+    JSON.stringify(duplicateRequest.data)
+  );
+
+  const pending = await graphql('{ incomingRequests { id otherUserId } }', {}, bob.token);
+  check(
+    'GraphQL: solicitud recibida por el destinatario',
+    pending.data?.data?.incomingRequests?.some(
+      (f) => f.id === requestId && f.otherUserId === alice.user.id
+    ),
+    JSON.stringify(pending.data)
+  );
+
+  const accepted = await graphql(
+    'mutation($id: ID!) { acceptFriendRequest(id: $id) { status } }',
+    { id: requestId },
+    bob.token
+  );
+  check(
+    'GraphQL: aceptar solicitud',
+    accepted.data?.data?.acceptFriendRequest?.status === 'ACCEPTED',
+    JSON.stringify(accepted.data)
+  );
 
   const dashboard = await graphql(
     '{ me friends { otherUserId status } incomingRequests { id } outgoingRequests { id } }',
@@ -175,17 +194,17 @@ async function main() {
     { id: alice.user.id },
     bob.token
   );
-  check('GraphQL: mutacion removeFriend', removed.data?.data?.removeFriend === true);
+  check('GraphQL: eliminar amistad', removed.data?.data?.removeFriend === true);
 
-  const gqlError = await graphql(
+  const notFriends = await graphql(
     'mutation($id: UUID!) { removeFriend(friendId: $id) }',
     { id: alice.user.id },
     bob.token
   );
   check(
     'GraphQL: error con codigo NOT_FOUND',
-    gqlError.data?.errors?.[0]?.extensions?.code === 'NOT_FOUND',
-    JSON.stringify(gqlError.data)
+    notFriends.data?.errors?.[0]?.extensions?.code === 'NOT_FOUND',
+    JSON.stringify(notFriends.data)
   );
 
   const gqlUnauth = await graphql('{ friends { id } }', {});
@@ -196,7 +215,6 @@ async function main() {
     ['/api/auth/login', 'POST'],
     ['/api/auth/profile', 'PATCH'],
     ['/api/messages', 'POST'],
-    ['/api/network/friends', 'GET'],
     ['/api/network/graphql', 'POST'],
   ]) {
     const preflight = await call('OPTIONS', path, {

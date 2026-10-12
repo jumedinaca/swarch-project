@@ -35,12 +35,12 @@ spring:
                 - StripPrefix=1
                 - JwtAuth
 
-            # Servicio de red social (amigos y solicitudes). Todo exige JWT.
-            # /api/network/friends -> /friends, /api/network/request -> /request
-            - id: network-protected
+            # Servicio de red social (amigos y solicitudes): solo expone GraphQL.
+            # /api/network/graphql -> /graphql. Exige JWT.
+            - id: network-graphql
               uri: ${NETWORK_SERVICE_URL:http://localhost:8001}
               predicates:
-                - Path=/api/network/**
+                - Path=/api/network/graphql
               filters:
                 - StripPrefix=2
                 - JwtAuth
