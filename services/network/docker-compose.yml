@@ -1,0 +1,46 @@
+services:
+  
+  network:
+    build: .
+    container_name: network
+    ports:
+      - "8001:8000"
+
+    environment:
+      APP_NAME: ${APP_NAME}
+      PORT: ${PORT}
+      # --- Database ---
+      MONGO_HOST: "network-db:27017"
+      MONGO_DB: ${MONGO_DB}
+      MONGO_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
+      MONGO_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+
+      # --- Security / JWT ---
+      PUBLIC_KEY: "mysecret"
+      ALGORITHM: "HS256"
+      # --- CORS ---
+      CORS_ORIGINS : "*"
+    
+    depends_on:
+      - network-db
+
+  network-db:
+    image: mongo
+    container_name: network-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: network_db
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+    volumes:
+      - network_mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  network_mongo_data:
