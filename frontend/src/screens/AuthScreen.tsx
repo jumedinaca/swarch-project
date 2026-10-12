@@ -238,14 +238,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
             </View>
           )}
         </View>
-
-        {/* Nota informativa estética estilo manual de Nintendo */}
-        <View style={styles.footerNote}>
-          <Ionicons name="sparkles-outline" size={14} color={nintendoTheme.colors.textMuted} />
-          <Text style={styles.footerNoteText}>
-            Inspirado en la estética lúdica y minimalista de Nintendo (Wii y DS).
-          </Text>
-        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -365,17 +357,5 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 10,
     textAlign: 'center',
-  },
-  footerNote: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    marginTop: 20,
-  },
-  footerNoteText: {
-    fontSize: 11,
-    color: nintendoTheme.colors.textMuted,
-    fontStyle: 'italic',
   },
 });
