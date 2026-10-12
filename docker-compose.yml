@@ -1,0 +1,77 @@
+# Entorno completo de GeoPicto: frontend web, API Gateway, servicio de
+# mensajes y su base de datos, todos en la misma red.
+#
+#   cp .env.example .env   # y define JWT_SECRET
+#   docker compose up --build
+#
+# Solo se publican al host el gateway (:8080) y el frontend (:8081). Los
+# servicios internos se alcanzan unicamente a traves del gateway, que es quien
+# valida el JWT y agrega X-User-ID.
+#
+# Cada componente conserva su propio docker-compose.yml para trabajar de forma
+# aislada; este archivo es el que levanta el sistema completo.
+
+name: geopicto
+
+services:
+  messages-db:
+    image: postgis/postgis:18-3.6
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: messages
+    volumes:
+      - messages_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d messages"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  messages:
+    build: ./services/messages
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@messages-db:5432/messages?sslmode=disable
+      PORT: "8080"
+    depends_on:
+      messages-db:
+        condition: service_healthy
+    healthcheck:
+      # El servicio no tiene endpoint de salud propio; una busqueda vacia
+      # comprueba a la vez que la API responde y que la base de datos esta lista.
+      test: ["CMD-SHELL", "wget -qO- 'http://localhost:8080/messages/nearby?lat=0&lng=0&radius=1' || exit 1"]
+      interval: 10s
+      timeout: 3s
+      start_period: 60s
+      retries: 5
+
+  gateway:
+    build: ./gateway
+    environment:
+      JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET en .env (minimo 32 bytes). Ver .env.example}
+      MESSAGES_SERVICE_URL: http://messages:8080
+      # El servicio de autenticacion aun no existe; /api/auth/** fallara hasta
+      # que se agregue aqui como servicio "auth".
+      AUTH_SERVICE_URL: http://auth:8080
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8081}
+    ports:
+      - "8080:8080"
+    depends_on:
+      messages:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Expo incrusta las variables EXPO_PUBLIC_* al compilar, por eso van
+        # como argumentos de build y no como variables de entorno del contenedor.
+        EXPO_PUBLIC_API_GATEWAY_URL: ${EXPO_PUBLIC_API_GATEWAY_URL:-http://localhost:8080}
+        EXPO_PUBLIC_USE_MOCK_DATA: ${EXPO_PUBLIC_USE_MOCK_DATA:-true}
+    ports:
+      - "8081:80"
+    depends_on:
+      - gateway
+
+volumes:
+  messages_data:

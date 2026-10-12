@@ -1,0 +1,60 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: gateway
+  cloud:
+    gateway:
+      server:
+        webflux:
+          # Las rutas se evaluan en orden; la primera cuyos predicates calcen gana.
+          # Por eso "messages-nearby" (publica) va antes que "messages-protected"
+          # (exige JWT), que matchea el resto de /api/messages/**.
+          routes:
+            - id: auth-service
+              uri: ${AUTH_SERVICE_URL:http://localhost:8101}
+              predicates:
+                - Path=/api/auth/**
+              filters:
+                - StripPrefix=1
+
+            - id: messages-nearby
+              uri: ${MESSAGES_SERVICE_URL:http://localhost:8100}
+              predicates:
+                - Path=/api/messages/nearby
+                - Method=GET
+              filters:
+                - StripPrefix=1
+
+            - id: messages-protected
+              uri: ${MESSAGES_SERVICE_URL:http://localhost:8100}
+              predicates:
+                - Path=/api/messages/**
+              filters:
+                - StripPrefix=1
+                - JwtAuth
+
+          # El frontend envia el JWT en el header Authorization (no usa cookies),
+          # por eso no se habilita allowCredentials.
+          globalcors:
+            cors-configurations:
+              "[/**]":
+                allowedOriginPatterns: ${CORS_ALLOWED_ORIGINS:http://localhost:8081}
+                allowedMethods: GET,POST,PUT,DELETE,OPTIONS
+                allowedHeaders: "*"
+
+# Secreto HS256 compartido con el microservicio de autenticacion para firmar
+# los JWT. Es obligatorio (minimo 32 bytes): el gateway no arranca sin el.
+jwt:
+  secret: ${JWT_SECRET:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO

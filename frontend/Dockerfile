@@ -15,6 +15,12 @@ RUN npm ci
 # Copiar el código fuente
 COPY . .
 
+# Expo incrusta las variables EXPO_PUBLIC_* en el bundle al compilar
+ARG EXPO_PUBLIC_API_GATEWAY_URL=http://localhost:8080
+ARG EXPO_PUBLIC_USE_MOCK_DATA=true
+ENV EXPO_PUBLIC_API_GATEWAY_URL=$EXPO_PUBLIC_API_GATEWAY_URL
+ENV EXPO_PUBLIC_USE_MOCK_DATA=$EXPO_PUBLIC_USE_MOCK_DATA
+
 # Compilar exportación web de producción
 RUN npm run build
 

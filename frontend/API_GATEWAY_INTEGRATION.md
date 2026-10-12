@@ -147,6 +147,17 @@ Para cuando tus compañeros o tú configuren el API Gateway y los microservicios
 
 ### B. Mensajes Geoespaciales (`/api/messages/*`)
 
+> **Estado actual (gateway implementado):** el servicio de mensajes expone hoy un contrato distinto al descrito abajo, y el frontend aún no lo usa (sigue en modo mock). Las rutas reales son:
+>
+> | Ruta | Auth | Cuerpo / parámetros | Respuesta |
+> | --- | --- | --- | --- |
+> | `GET /api/messages/nearby?lat=&lng=&radius=` | Pública | `radius` en metros | Lista de mensajes (`[]` si no hay) |
+> | `POST /api/messages` | JWT | `{ content, latitude, longitude }` | `201` con el mensaje |
+> | `GET /api/messages/:id` | JWT | — | Mensaje (solo si es del autor) |
+> | `DELETE /api/messages/:id` | JWT | — | `200` sin cuerpo |
+>
+> Cada mensaje tiene la forma `{ id, sender_id, content, location: { latitude, longitude }, created_at }`. No existen todavía `status`, `expiresAt`, ni datos del autor. Los errores del gateway llegan como `{ "message": "..." }`; los del servicio de mensajes, como texto plano. Ver [`docs/jwt-contract.md`](../docs/jwt-contract.md).
+
 #### 1. Listar Mensajes: `GET /api/messages`
 - **Query Params opcionales:** `?lat=4.6382&lng=-74.0841&radius=300&status=publicado`
 - **Response 200 OK:**

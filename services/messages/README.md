@@ -40,7 +40,7 @@ Las rutas registradas por el servicio son:
 | `POST /messages` | Crea un mensaje. Responde `201` con el mensaje creado. | Encabezado `X-User-ID` con UUID; JSON con `content`, `latitude` y `longitude`. |
 | `GET /messages/{id}` | Consulta un mensaje por UUID, únicamente si pertenece al usuario indicado. | Encabezado `X-User-ID` con UUID. |
 | `DELETE /messages/{id}` | Elimina un mensaje del usuario indicado. Responde `200` sin cuerpo. | Encabezado `X-User-ID` con UUID. |
-| `GET /messages/nearby` | Devuelve mensajes dentro del radio, ordenados por distancia. | JSON con `latitude`, `longitude` y `radius` en metros. |
+| `GET /messages/nearby?lat=&lng=&radius=` | Devuelve mensajes dentro del radio, ordenados por distancia. Responde `[]` si no hay ninguno. | Parámetros de consulta `lat`, `lng` y `radius` (en metros). |
 
 Ejemplo para crear un mensaje:
 
@@ -59,14 +59,7 @@ Content-Type: application/json
 Ejemplo para buscar mensajes cercanos:
 
 ```http
-GET /messages/nearby
-Content-Type: application/json
-
-{
-  "latitude": 40.4168,
-  "longitude": -3.7038,
-  "radius": 500
-}
+GET /messages/nearby?lat=40.4168&lng=-3.7038&radius=500
 ```
 
 La respuesta de un mensaje contiene `id`, `sender_id`, `content`, `location` (con `latitude` y `longitude`) y `created_at`. La búsqueda cercana devuelve una lista con esos mismos objetos.
@@ -74,10 +67,10 @@ La respuesta de un mensaje contiene `id`, `sender_id`, `content`, `location` (co
 ### Validaciones y consideraciones
 
 - La creación rechaza contenido vacío.
-- La búsqueda cercana comprueba que la latitud esté entre `-90` y `90`, la longitud entre `-180` y `180`, y que el radio sea mayor que cero.
+- La búsqueda cercana exige los tres parámetros de consulta como números y comprueba que la latitud esté entre `-90` y `90`, la longitud entre `-180` y `180`, y que el radio sea mayor que cero.
 - Los errores se responden como texto plano. Los UUID inválidos del mensaje generan `400`; la falta de un `X-User-ID` válido genera `401` en las operaciones que lo requieren.
 - `X-User-ID` se acepta como identificador enviado en la solicitud; este componente no implementa ni verifica autenticación por sí mismo.
-- La ruta de búsqueda está registrada como `GET` y lee sus parámetros desde el cuerpo JSON. Algunos clientes, proxies o intermediarios no manejan de forma fiable cuerpos en solicitudes `GET`.
+- En el entorno completo este servicio no se publica al host: se accede a través del API Gateway (`/api/messages/...`), que valida el JWT y añade `X-User-ID`.
 
 ## Alcance documentado
 
