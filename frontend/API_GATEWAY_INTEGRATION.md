@@ -53,7 +53,7 @@ flowchart TD
     Services -- "HTTP /api/* + Bearer JWT" --> Gateway
     Router -- "/api/auth/*" --> AuthMS
     Router -- "/api/messages/*" --> MsgMS
-    Router -- "/api/network/*" --> NetMS
+    Router -- "/api/network/graphql (GraphQL)" --> NetMS
 ```
 
 ---
@@ -229,33 +229,22 @@ Para cuando tus compañeros o tú configuren el API Gateway y los microservicios
 
 ---
 
-### C. Red Social y Amigos (`/api/network/*`)
+### C. Red Social y Amigos (`POST /api/network/graphql`)
 
-El microservicio de red social (`services/network`) guarda las relaciones en MongoDB y soporta dos conectores HTTP:
+El microservicio de red social (`services/network`) guarda las relaciones en MongoDB y **solo expone GraphQL**. `networkService.ts` hace todas las operaciones de la pantalla de amigos con este único endpoint (con `Authorization: Bearer <token>`).
 
-#### 1. Endpoints REST
-
-| Método | Ruta en Gateway | Descripción | Cuerpo / Parámetros | Respuesta |
-|---|---|---|---|---|
-| `POST` | `/api/network/request` | Envía solicitud de amistad | `{ "recipient_id": "<uuid>" }` | `201` Friendship |
-| `GET` | `/api/network/request/incoming` | Solicitudes pendientes recibidas | `?limit=20&cursor=` | `{ "friendships": [...] }` |
-| `GET` | `/api/network/request/outcoming` | Solicitudes pendientes enviadas | `?limit=20&cursor=` | `{ "friendships": [...] }` |
-| `POST` | `/api/network/request/accept/:id` | Aceptar solicitud | — | `200` Friendship |
-| `DELETE` | `/api/network/request/reject/:id` | Rechazar solicitud | — | `204` No Content |
-| `DELETE` | `/api/network/request/cancel/:id` | Cancelar solicitud enviada | — | `204` No Content |
-| `GET` | `/api/network/friends` | Lista de amigos aceptados | `?limit=20&cursor=` | `{ "friendships": [...] }` |
-| `DELETE` | `/api/network/friends/:friend_id` | Eliminar amistad | — | `204` No Content |
-
-#### 2. Endpoint GraphQL (`POST /api/network/graphql`)
-Permite consultar el panel de amigos y solicitudes en una sola petición HTTP:
+**Carga de la pantalla:** amigos, solicitudes recibidas y enviadas en una sola petición.
 ```graphql
-query Dashboard {
-  me
+query NetworkOverview {
   friends { id otherUserId status createdAt }
   incomingRequests { id otherUserId status createdAt }
   outgoingRequests { id otherUserId status createdAt }
 }
 ```
+
+**Acciones (mutaciones):** `sendFriendRequest(recipientId: UUID!)`, `acceptFriendRequest(id: ID!)`, `rejectFriendRequest(id: ID!)`, `cancelFriendRequest(id: ID!)` y `removeFriend(friendId: UUID!)`.
+
+Los errores de negocio (solicitud duplicada, sin permiso, no encontrada) llegan con HTTP `200` en `errors[].message`, con un código en `errors[].extensions.code`; `networkService` los muestra al usuario. El esquema completo está en el [README del servicio](../services/network/README.md).
 
 ---
 

@@ -1,16 +1,65 @@
 import { API_CONFIG } from '../../config/api.config';
 import { apiClient, isNetworkError } from '../api/apiClient';
-import {
-  Friendship,
-  FriendshipListResponse,
-  QueryFriendshipsParams,
-  GraphQLDashboardData,
-} from '../../types';
+import { Friendship, FriendshipStatus, GraphQLFriendship } from '../../types';
 import { INITIAL_MOCK_FRIENDSHIPS } from '../../data/mockNetworkData';
 
 /**
+ * El servicio de red social expone solo GraphQL (POST /api/network/graphql).
+ * Este servicio traduce las respuestas GraphQL (camelCase, status en mayúsculas)
+ * al modelo `Friendship` que usan el contexto y el modal de amigos.
+ */
+
+export interface NetworkOverview {
+  friends: Friendship[];
+  incoming: Friendship[];
+  outgoing: Friendship[];
+}
+
+type Result<T = undefined> = { success: boolean; data?: T; error?: string };
+
+/** Campos de una relación que se piden en todas las consultas */
+const FRIENDSHIP_FIELDS = `
+  id
+  userA
+  userB
+  status
+  requestedBy
+  createdAt
+  updatedAt
+  otherUserId
+  sentByMe
+`;
+
+/** Error de negocio devuelto por GraphQL (llega con HTTP 200 en `errors[]`) */
+class GraphQLRequestError extends Error {
+  constructor(message: string, public code?: string) {
+    super(message);
+    this.name = 'GraphQLRequestError';
+  }
+}
+
+interface GraphQLResponse<T> {
+  data?: T | null;
+  errors?: { message: string; extensions?: { code?: string } }[];
+}
+
+function toFriendship(f: GraphQLFriendship): Friendship {
+  return {
+    id: f.id,
+    user_a: f.userA,
+    user_b: f.userB,
+    status: f.status.toLowerCase() as FriendshipStatus,
+    requested_by: f.requestedBy,
+    created_at: f.createdAt,
+    updated_at: f.updatedAt,
+    other_user_id: f.otherUserId,
+    sent_by_me: f.sentByMe,
+  };
+}
+
+/**
  * Enriquecer la amistad calculando `other_user_id` y `sent_by_me`
- * con base en el usuario autenticado actual.
+ * con base en el usuario autenticado actual (usado por los datos simulados).
  */
 export function enrichFriendship(f: Friendship, currentUserId?: string): Friendship {
   const isUserA = currentUserId ? f.user_a === currentUserId : false;
@@ -28,470 +77,167 @@ class NetworkService {
   private mockFriendships: Friendship[] = [...INITIAL_MOCK_FRIENDSHIPS];
 
   /**
-   * Obtiene la lista de amigos aceptados (GET /api/network/friends)
+   * Ejecuta una operación GraphQL en el gateway. Lanza GraphQLRequestError si
+   * la respuesta trae `errors`, y ApiError si el gateway no responde o rechaza
+   * la petición (por ejemplo 401 sin token).
    */
-  public async getFriends(
-    currentUserId?: string,
-    params?: QueryFriendshipsParams
-  ): Promise<{ success: boolean; data: Friendship[]; error?: string }> {
+  private async graphql<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
+    const response = await apiClient.post<GraphQLResponse<T>>(API_CONFIG.ROUTES.NETWORK.GRAPHQL, {
+      query,
+      variables,
+    });
+
+    const body = response.data;
+    if (body?.errors?.length) {
+      const [first] = body.errors;
+      throw new GraphQLRequestError(first.message, first.extensions?.code);
+    }
+    if (!body?.data) {
+      throw new GraphQLRequestError('Respuesta vacía del servicio de red social.');
+    }
+    return body.data;
+  }
+
+  /**
+   * Ejecuta la operación real y, solo si el gateway no responde (error de red),
+   * recurre a los datos simulados. Los errores de negocio se devuelven tal cual.
+   */
+  private async run<T>(
+    operation: () => Promise<T>,
+    fallback: () => Result<T>,
+    defaultError: string
+  ): Promise<Result<T>> {
     if (API_CONFIG.USE_MOCKS) {
-      return { success: true, data: this.mockGetFriends(currentUserId) };
+      return fallback();
     }
 
     try {
-      const queryParams = new URLSearchParams();
-      if (params?.limit) queryParams.set('limit', String(params.limit));
-      if (params?.cursor) queryParams.set('cursor', params.cursor);
-
-      const qs = queryParams.toString();
-      const endpoint = `${API_CONFIG.ROUTES.NETWORK.FRIENDS}${qs ? `?${qs}` : ''}`;
-
-      const response = await apiClient.get<FriendshipListResponse>(endpoint);
-
-      if (response.success && response.data?.friendships) {
-        return {
-          success: true,
-          data: response.data.friendships.map((f) => enrichFriendship(f, currentUserId)),
-        };
-      }
-
-      return {
-        success: false,
-        data: [],
-        error: response.message || 'No se pudo obtener la lista de amigos.',
-      };
+      return { success: true, data: await operation() };
     } catch (error: any) {
-      console.warn(
-        `[NetworkService] Error al conectar con el Gateway (${API_CONFIG.ROUTES.NETWORK.FRIENDS}):`,
-        error.message
-      );
-
       if (API_CONFIG.AUTO_FALLBACK_TO_MOCK && isNetworkError(error)) {
-        console.info('[NetworkService] Activando fallback con amigos simulados locales.');
-        return { success: true, data: this.mockGetFriends(currentUserId) };
+        console.info('[NetworkService] Gateway no disponible: usando datos simulados.');
+        return fallback();
       }
-
-      return {
-        success: false,
-        data: [],
-        error: error.message || 'Error de conexión con el servicio de red social.',
-      };
+      console.warn('[NetworkService] Error en GraphQL:', error.message);
+      return { success: false, error: error.message || defaultError };
     }
   }
 
   /**
-   * Obtiene las solicitudes de amistad pendientes recibidas
-   * (GET /api/network/request/incoming)
+   * Amigos, solicitudes recibidas y solicitudes enviadas en una sola petición GraphQL.
    */
-  public async getIncomingRequests(
-    currentUserId?: string,
-    params?: QueryFriendshipsParams
-  ): Promise<{ success: boolean; data: Friendship[]; error?: string }> {
-    if (API_CONFIG.USE_MOCKS) {
-      return { success: true, data: this.mockGetIncoming(currentUserId) };
-    }
-
-    try {
-      const queryParams = new URLSearchParams();
-      if (params?.limit) queryParams.set('limit', String(params.limit));
-      if (params?.cursor) queryParams.set('cursor', params.cursor);
-
-      const qs = queryParams.toString();
-      const endpoint = `${API_CONFIG.ROUTES.NETWORK.INCOMING_REQUESTS}${qs ? `?${qs}` : ''}`;
-
-      const response = await apiClient.get<FriendshipListResponse>(endpoint);
-
-      if (response.success && response.data?.friendships) {
+  public async getNetwork(currentUserId?: string): Promise<Result<NetworkOverview>> {
+    return this.run(
+      async () => {
+        const data = await this.graphql<{
+          friends: GraphQLFriendship[];
+          incomingRequests: GraphQLFriendship[];
+          outgoingRequests: GraphQLFriendship[];
+        }>(`
+          query NetworkOverview {
+            friends { ${FRIENDSHIP_FIELDS} }
+            incomingRequests { ${FRIENDSHIP_FIELDS} }
+            outgoingRequests { ${FRIENDSHIP_FIELDS} }
+          }
+        `);
         return {
-          success: true,
-          data: response.data.friendships.map((f) => enrichFriendship(f, currentUserId)),
+          friends: data.friends.map(toFriendship),
+          incoming: data.incomingRequests.map(toFriendship),
+          outgoing: data.outgoingRequests.map(toFriendship),
         };
-      }
-
-      return {
-        success: false,
-        data: [],
-        error: response.message || 'No se pudieron obtener las solicitudes recibidas.',
-      };
-    } catch (error: any) {
-      console.warn(
-        `[NetworkService] Error al conectar con Gateway (${API_CONFIG.ROUTES.NETWORK.INCOMING_REQUESTS}):`,
-        error.message
-      );
-
-      if (API_CONFIG.AUTO_FALLBACK_TO_MOCK && isNetworkError(error)) {
-        console.info('[NetworkService] Fallback de solicitudes recibidas simuladas.');
-        return { success: true, data: this.mockGetIncoming(currentUserId) };
-      }
-
-      return {
-        success: false,
-        data: [],
-        error: error.message || 'Error al consultar solicitudes recibidas.',
-      };
-    }
+      },
+      () => ({
+        success: true,
+        data: {
+          friends: this.mockGetFriends(currentUserId),
+          incoming: this.mockGetIncoming(currentUserId),
+          outgoing: this.mockGetOutgoing(currentUserId),
+        },
+      }),
+      'No se pudo obtener la información de amigos.'
+    );
   }
 
-  /**
-   * Obtiene las solicitudes de amistad pendientes enviadas
-   * (GET /api/network/request/outcoming)
-   */
-  public async getOutgoingRequests(
-    currentUserId?: string,
-    params?: QueryFriendshipsParams
-  ): Promise<{ success: boolean; data: Friendship[]; error?: string }> {
-    if (API_CONFIG.USE_MOCKS) {
-      return { success: true, data: this.mockGetOutgoing(currentUserId) };
-    }
-
-    try {
-      const queryParams = new URLSearchParams();
-      if (params?.limit) queryParams.set('limit', String(params.limit));
-      if (params?.cursor) queryParams.set('cursor', params.cursor);
-
-      const qs = queryParams.toString();
-      const endpoint = `${API_CONFIG.ROUTES.NETWORK.OUTCOMING_REQUESTS}${qs ? `?${qs}` : ''}`;
-
-      const response = await apiClient.get<FriendshipListResponse>(endpoint);
-
-      if (response.success && response.data?.friendships) {
-        return {
-          success: true,
-          data: response.data.friendships.map((f) => enrichFriendship(f, currentUserId)),
-        };
-      }
-
-      return {
-        success: false,
-        data: [],
-        error: response.message || 'No se pudieron obtener las solicitudes enviadas.',
-      };
-    } catch (error: any) {
-      console.warn(
-        `[NetworkService] Error al conectar con Gateway (${API_CONFIG.ROUTES.NETWORK.OUTCOMING_REQUESTS}):`,
-        error.message
-      );
-
-      if (API_CONFIG.AUTO_FALLBACK_TO_MOCK && isNetworkError(error)) {
-        console.info('[NetworkService] Fallback de solicitudes enviadas simuladas.');
-        return { success: true, data: this.mockGetOutgoing(currentUserId) };
-      }
-
-      return {
-        success: false,
-        data: [],
-        error: error.message || 'Error al consultar solicitudes enviadas.',
-      };
-    }
-  }
-
-  /**
-   * Envía una nueva solicitud de amistad (POST /api/network/request)
-   */
+  /** Envía una solicitud de amistad (mutación sendFriendRequest) */
   public async sendFriendRequest(
     recipientId: string,
     currentUserId?: string
-  ): Promise<{ success: boolean; data?: Friendship; error?: string }> {
-    if (API_CONFIG.USE_MOCKS) {
-      return this.mockSendRequest(recipientId, currentUserId);
-    }
-
-    try {
-      const response = await apiClient.post<Friendship>(
-        API_CONFIG.ROUTES.NETWORK.REQUEST,
-        { recipient_id: recipientId }
-      );
-
-      if (response.success && response.data) {
-        return {
-          success: true,
-          data: enrichFriendship(response.data, currentUserId),
-        };
-      }
-
-      return {
-        success: false,
-        error: response.message || 'No se pudo enviar la solicitud de amistad.',
-      };
-    } catch (error: any) {
-      console.warn(
-        `[NetworkService] Error al enviar solicitud (${API_CONFIG.ROUTES.NETWORK.REQUEST}):`,
-        error.message
-      );
-
-      if (API_CONFIG.AUTO_FALLBACK_TO_MOCK && isNetworkError(error)) {
-        return this.mockSendRequest(recipientId, currentUserId);
-      }
-
-      return {
-        success: false,
-        error: error.message || 'Error de conexión al enviar la solicitud.',
-      };
-    }
+  ): Promise<Result<Friendship>> {
+    return this.run(
+      async () => {
+        const data = await this.graphql<{ sendFriendRequest: GraphQLFriendship }>(
+          `mutation SendFriendRequest($recipientId: UUID!) {
+            sendFriendRequest(recipientId: $recipientId) { ${FRIENDSHIP_FIELDS} }
+          }`,
+          { recipientId: recipientId.trim() }
+        );
+        return toFriendship(data.sendFriendRequest);
+      },
+      () => this.mockSendRequest(recipientId, currentUserId),
+      'No se pudo enviar la solicitud de amistad.'
+    );
   }
 
-  /**
-   * Acepta una solicitud de amistad recibida (POST /api/network/request/accept/:id)
-   */
+  /** Acepta una solicitud recibida (mutación acceptFriendRequest) */
   public async acceptFriendRequest(
     requestId: string,
     currentUserId?: string
-  ): Promise<{ success: boolean; data?: Friendship; error?: string }> {
-    if (API_CONFIG.USE_MOCKS) {
-      return this.mockAcceptRequest(requestId, currentUserId);
-    }
-
-    try {
-      const response = await apiClient.post<Friendship>(
-        API_CONFIG.ROUTES.NETWORK.ACCEPT_REQUEST(requestId)
-      );
-
-      if (response.success && response.data) {
-        return {
-          success: true,
-          data: enrichFriendship(response.data, currentUserId),
-        };
-      }
-
-      return {
-        success: false,
-        error: response.message || 'No se pudo aceptar la solicitud.',
-      };
-    } catch (error: any) {
-      console.warn(`[NetworkService] Error al aceptar solicitud (${requestId}):`, error.message);
-
-      if (API_CONFIG.AUTO_FALLBACK_TO_MOCK && isNetworkError(error)) {
-        return this.mockAcceptRequest(requestId, currentUserId);
-      }
-
-      return {
-        success: false,
-        error: error.message || 'Error de conexión al aceptar la solicitud.',
-      };
-    }
+  ): Promise<Result<Friendship>> {
+    return this.run(
+      async () => {
+        const data = await this.graphql<{ acceptFriendRequest: GraphQLFriendship }>(
+          `mutation AcceptFriendRequest($id: ID!) {
+            acceptFriendRequest(id: $id) { ${FRIENDSHIP_FIELDS} }
+          }`,
+          { id: requestId }
+        );
+        return toFriendship(data.acceptFriendRequest);
+      },
+      () => this.mockAcceptRequest(requestId, currentUserId),
+      'No se pudo aceptar la solicitud.'
+    );
   }
 
-  /**
-   * Rechaza una solicitud de amistad recibida (DELETE /api/network/request/reject/:id)
-   */
-  public async rejectFriendRequest(
-    requestId: string
-  ): Promise<{ success: boolean; error?: string }> {
-    if (API_CONFIG.USE_MOCKS) {
-      return this.mockDeleteRequest(requestId);
-    }
-
-    try {
-      const response = await apiClient.delete(
-        API_CONFIG.ROUTES.NETWORK.REJECT_REQUEST(requestId)
-      );
-
-      if (response.success) {
-        return { success: true };
-      }
-
-      return {
-        success: false,
-        error: response.message || 'No se pudo rechazar la solicitud.',
-      };
-    } catch (error: any) {
-      console.warn(`[NetworkService] Error al rechazar solicitud (${requestId}):`, error.message);
-
-      if (API_CONFIG.AUTO_FALLBACK_TO_MOCK && isNetworkError(error)) {
-        return this.mockDeleteRequest(requestId);
-      }
-
-      return {
-        success: false,
-        error: error.message || 'Error de conexión al rechazar la solicitud.',
-      };
-    }
+  /** Rechaza una solicitud recibida (mutación rejectFriendRequest) */
+  public async rejectFriendRequest(requestId: string): Promise<Result> {
+    return this.run(
+      async () => {
+        await this.graphql(`mutation RejectFriendRequest($id: ID!) { rejectFriendRequest(id: $id) }`, {
+          id: requestId,
+        });
+        return undefined;
+      },
+      () => this.mockDeleteRequest(requestId),
+      'No se pudo rechazar la solicitud.'
+    );
   }
 
-  /**
-   * Cancela una solicitud enviada previamente (DELETE /api/network/request/cancel/:id)
-   */
-  public async cancelFriendRequest(
-    requestId: string
-  ): Promise<{ success: boolean; error?: string }> {
-    if (API_CONFIG.USE_MOCKS) {
-      return this.mockDeleteRequest(requestId);
-    }
-
-    try {
-      const response = await apiClient.delete(
-        API_CONFIG.ROUTES.NETWORK.CANCEL_REQUEST(requestId)
-      );
-
-      if (response.success) {
-        return { success: true };
-      }
-
-      return {
-        success: false,
-        error: response.message || 'No se pudo cancelar la solicitud.',
-      };
-    } catch (error: any) {
-      console.warn(`[NetworkService] Error al cancelar solicitud (${requestId}):`, error.message);
-
-      if (API_CONFIG.AUTO_FALLBACK_TO_MOCK && isNetworkError(error)) {
-        return this.mockDeleteRequest(requestId);
-      }
-
-      return {
-        success: false,
-        error: error.message || 'Error de conexión al cancelar la solicitud.',
-      };
-    }
+  /** Cancela una solicitud enviada (mutación cancelFriendRequest) */
+  public async cancelFriendRequest(requestId: string): Promise<Result> {
+    return this.run(
+      async () => {
+        await this.graphql(`mutation CancelFriendRequest($id: ID!) { cancelFriendRequest(id: $id) }`, {
+          id: requestId,
+        });
+        return undefined;
+      },
+      () => this.mockDeleteRequest(requestId),
+      'No se pudo cancelar la solicitud.'
+    );
   }
 
-  /**
-   * Elimina una amistad existente (DELETE /api/network/friends/:friendId)
-   */
-  public async removeFriend(
-    friendId: string,
-    currentUserId?: string
-  ): Promise<{ success: boolean; error?: string }> {
-    if (API_CONFIG.USE_MOCKS) {
-      return this.mockRemoveFriend(friendId, currentUserId);
-    }
-
-    try {
-      const response = await apiClient.delete(
-        API_CONFIG.ROUTES.NETWORK.REMOVE_FRIEND(friendId)
-      );
-
-      if (response.success) {
-        return { success: true };
-      }
-
-      return {
-        success: false,
-        error: response.message || 'No se pudo eliminar al amigo.',
-      };
-    } catch (error: any) {
-      console.warn(`[NetworkService] Error al eliminar amigo (${friendId}):`, error.message);
-
-      if (API_CONFIG.AUTO_FALLBACK_TO_MOCK && isNetworkError(error)) {
-        return this.mockRemoveFriend(friendId, currentUserId);
-      }
-
-      return {
-        success: false,
-        error: error.message || 'Error de conexión al eliminar amigo.',
-      };
-    }
-  }
-
-  /**
-   * Ejecuta una consulta combinada vía GraphQL (POST /api/network/graphql)
-   * Obtiene amigos y solicitudes en una sola petición HTTP.
-   */
-  public async getDashboardGraphQL(
-    currentUserId?: string
-  ): Promise<{ success: boolean; data?: GraphQLDashboardData; error?: string }> {
-    if (API_CONFIG.USE_MOCKS) {
-      return {
-        success: true,
-        data: {
-          me: currentUserId,
-          friends: this.mockGetFriends(currentUserId).map((f) => ({
-            id: f.id,
-            userA: f.user_a,
-            userB: f.user_b,
-            status: 'ACCEPTED',
-            requestedBy: f.requested_by,
-            createdAt: f.created_at,
-            updatedAt: f.updated_at,
-            otherUserId: f.other_user_id || (f.user_a === currentUserId ? f.user_b : f.user_a),
-            sentByMe: f.requested_by === currentUserId,
-          })),
-          incomingRequests: this.mockGetIncoming(currentUserId).map((f) => ({
-            id: f.id,
-            userA: f.user_a,
-            userB: f.user_b,
-            status: 'PENDING',
-            requestedBy: f.requested_by,
-            createdAt: f.created_at,
-            updatedAt: f.updated_at,
-            otherUserId: f.other_user_id || (f.user_a === currentUserId ? f.user_b : f.user_a),
-            sentByMe: false,
-          })),
-          outgoingRequests: this.mockGetOutgoing(currentUserId).map((f) => ({
-            id: f.id,
-            userA: f.user_a,
-            userB: f.user_b,
-            status: 'PENDING',
-            requestedBy: f.requested_by,
-            createdAt: f.created_at,
-            updatedAt: f.updated_at,
-            otherUserId: f.other_user_id || (f.user_a === currentUserId ? f.user_b : f.user_a),
-            sentByMe: true,
-          })),
-        },
-      };
-    }
-
-    try {
-      const query = `
-        query Dashboard {
-          me
-          friends {
-            id
-            userA
-            userB
-            status
-            requestedBy
-            createdAt
-            updatedAt
-            otherUserId
-            sentByMe
-          }
-          incomingRequests {
-            id
-            userA
-            userB
-            status
-            requestedBy
-            createdAt
-            updatedAt
-            otherUserId
-            sentByMe
-          }
-          outgoingRequests {
-            id
-            userA
-            userB
-            status
-            requestedBy
-            createdAt
-            updatedAt
-            otherUserId
-            sentByMe
-          }
-        }
-      `;
-
-      const response = await apiClient.post<{ data: GraphQLDashboardData; errors?: any[] }>(
-        API_CONFIG.ROUTES.NETWORK.GRAPHQL,
-        { query }
-      );
-
-      if (response.success && response.data) {
-        const gqlData = (response.data as any).data || response.data;
-        return { success: true, data: gqlData };
-      }
-
-      return {
-        success: false,
-        error: response.message || 'Error en consulta GraphQL de red social.',
-      };
-    } catch (error: any) {
-      return {
-        success: false,
-        error: error.message || 'Error al ejecutar GraphQL en el gateway.',
-      };
-    }
+  /** Elimina una amistad (mutación removeFriend) */
+  public async removeFriend(friendId: string, currentUserId?: string): Promise<Result> {
+    return this.run(
+      async () => {
+        await this.graphql(`mutation RemoveFriend($friendId: UUID!) { removeFriend(friendId: $friendId) }`, {
+          friendId,
+        });
+        return undefined;
+      },
+      () => this.mockRemoveFriend(friendId, currentUserId),
+      'No se pudo eliminar al amigo.'
+    );
   }
 
   // ==========================================
@@ -531,10 +277,7 @@ class NetworkService {
       .map((f) => enrichFriendship(f, currentUserId));
   }
 
-  private mockSendRequest(
-    recipientId: string,
-    currentUserId?: string
-  ): { success: boolean; data?: Friendship; error?: string } {
+  private mockSendRequest(recipientId: string, currentUserId?: string): Result<Friendship> {
     const userA = currentUserId || 'user-demo-1';
     const userB = recipientId.trim();
 
@@ -571,10 +314,7 @@ class NetworkService {
     return { success: true, data: newFriendship };
   }
 
-  private mockAcceptRequest(
-    requestId: string,
-    currentUserId?: string
-  ): { success: boolean; data?: Friendship; error?: string } {
+  private mockAcceptRequest(requestId: string, currentUserId?: string): Result<Friendship> {
     const index = this.mockFriendships.findIndex((f) => f.id === requestId);
     if (index === -1) {
       return { success: false, error: 'Solicitud no encontrada.' };
@@ -592,12 +332,12 @@ class NetworkService {
     };
   }
 
-  private mockDeleteRequest(requestId: string): { success: boolean } {
+  private mockDeleteRequest(requestId: string): Result {
     this.mockFriendships = this.mockFriendships.filter((f) => f.id !== requestId);
     return { success: true };
   }
 
-  private mockRemoveFriend(friendId: string, currentUserId?: string): { success: boolean } {
+  private mockRemoveFriend(friendId: string, currentUserId?: string): Result {
     const me = currentUserId || 'user-demo-1';
     this.mockFriendships = this.mockFriendships.filter((f) => {
       const isPair =

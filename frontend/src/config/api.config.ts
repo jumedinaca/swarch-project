@@ -46,16 +46,7 @@ export const API_CONFIG = {
       CHANGE_STATUS: (id: string) => `/api/messages/${id}/status`,
     },
     NETWORK: {
-      BASE: '/api/network',
-      REQUEST: '/api/network/request',
-      INCOMING_REQUESTS: '/api/network/request/incoming',
-      OUTCOMING_REQUESTS: '/api/network/request/outcoming',
-      ACCEPT_REQUEST: (id: string) => `/api/network/request/accept/${id}`,
-      REJECT_REQUEST: (id: string) => `/api/network/request/reject/${id}`,
-      CANCEL_REQUEST: (id: string) => `/api/network/request/cancel/${id}`,
-      GET_REQUEST_BY_ID: (id: string) => `/api/network/request/${id}`,
-      FRIENDS: '/api/network/friends',
-      REMOVE_FRIEND: (friendId: string) => `/api/network/friends/${friendId}`,
+      // El servicio de red social solo expone GraphQL
       GRAPHQL: '/api/network/graphql',
     },
   },
