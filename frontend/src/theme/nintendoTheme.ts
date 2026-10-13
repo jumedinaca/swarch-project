@@ -1,94 +1,114 @@
 export const nintendoTheme = {
   colors: {
-    // Fondos principales Nintendo
-    background: '#F5F8F7',        // Perla menta muy suave
-    cardBackground: '#FFFFFF',    // Blanco brillante
-    surfaceAlt: '#EDF3F1',        // Gris perla suave
-    mintSoft: '#E6F7EF',          // Verde menta suave Wii/DS
-    mintBorder: '#BDE8D4',
+    // Fondos principales (Chasis retro Nintendo / Warm Monochrome)
+    background: '#F4F3EE',        // Tono hueso cálido clásico Game Boy / Famicom
+    cardBackground: '#FFFFFF',    // Superficie blanca limpia para bento cards
+    surfaceAlt: '#ECEAE3',        // Gris perla cálido de contraste
+    surfaceMuted: '#E2DFD6',      // Superficie secundaria hundida / bisel
     
-    // Acentos icónicos
-    wiiBlue: '#009CD8',           // Azul botón menú Wii
-    wiiBlueLight: '#D8F1FB',
-    miiverseGreen: '#2DC653',     // Verde césped StreetPass / Miiverse
-    miiverseGreenLight: '#E3F8EB',
-    miiPeach: '#FFA94D',          // Naranja cálido Mii
-    miiPeachLight: '#FFF2E2',
-    berryPink: '#E84393',
-    berryPinkLight: '#FDEBF4',
-    
-    // Textos
-    textPrimary: '#283338',       // Gris carbón redondeado y suave (no negro puro agresivo)
-    textSecondary: '#66757D',
-    textMuted: '#95A5A6',
+    // Acentos icónicos retro Nintendo (desaturados y editoriales)
+    famicomRed: '#B52B32',        // Rojo burdeos clásico Famicom / botón B
+    famicomRedLight: '#FDF1F1',
+    famicomRedBorder: '#F2C6C8',
+
+    wiiBlue: '#2563EB',           // Azul técnico sutil
+    wiiBlueLight: '#EFF6FF',
+    wiiBlueBorder: '#BFDBFE',
+
+    miiverseGreen: '#2D6A4F',     // Verde LCD / césped retro
+    miiverseGreenLight: '#EEF5ED',
+    miiverseGreenBorder: '#C6DEC4',
+
+    retroDpad: '#24272A',         // Carbón mate de cruceta direccional D-Pad
+    retroDpadLight: '#3A3F45',
+
+    miiPeach: '#92400E',          // Ámbar cálido / hardware
+    miiPeachLight: '#FEF3C7',
+
+    // Textos de alta legibilidad editorial
+    textPrimary: '#1C1F22',       // Carbón profundo (no negro puro #000)
+    textSecondary: '#525B62',     // Gris editorial medio
+    textMuted: '#848E96',         // Metadatos y notas técnicas
     textLight: '#FFFFFF',
 
-    // Cuadrícula y marcos PictoChat
-    pictoBorder: '#3A4449',       // Borde clásico definido PictoChat
-    pictoBorderSoft: '#C2CBD0',
-    pictoGridBg: '#F8FAF9',
-    pictoGridLine: '#E3E9E7',
+    // Líneas estructurales y cuadrícula PictoChat
+    borderLight: '#E2DFD8',       // Borde ultra-ligero bento
+    borderMedium: '#CBC7BD',      // Borde de separación
+    borderDark: '#24272A',        // Borde nítido retro 1.5px
+    pictoBorder: '#24272A',       // Borde contorno PictoChat
+    pictoBorderSoft: '#D8D4CA',   // Borde secundario de cuadrícula
+    pictoGridBg: '#FAF9F6',       // Papel cuadriculado PictoChat
+    pictoGridLine: '#E7E4DC',     // Línea tenue de libreta
 
-    // Estados del mensaje
+    // Estados semánticos (pasteles apagados acordes al protocolo minimalist-ui)
     status: {
       publicado: {
-        bg: '#E2F8EB',
-        text: '#1B823D',
-        border: '#A7E8C0',
+        bg: '#EDF5EE',
+        text: '#275E33',
+        border: '#C2DEC5',
         label: 'Publicado',
       },
       pendiente: {
-        bg: '#FFF6DF',
-        text: '#B27608',
-        border: '#FCE09E',
+        bg: '#FDF6E4',
+        text: '#8A5A00',
+        border: '#F4E2B2',
         label: 'Pendiente',
       },
       oculto: {
-        bg: '#EAEFF2',
-        text: '#5B6970',
-        border: '#CBD5DA',
+        bg: '#F0F2F4',
+        text: '#4B5762',
+        border: '#D3D8DD',
         label: 'Oculto',
       },
       eliminado: {
-        bg: '#FDEAEA',
-        text: '#B92D2D',
-        border: '#F8BDBD',
+        bg: '#FDF0F0',
+        text: '#A62626',
+        border: '#F5C6C6',
         label: 'Eliminado',
       },
     },
 
-    // Colores para avatares y marcadores
-    avatarColors: ['#2AC769', '#1EA4E8', '#F5A623', '#E84393', '#9B51E0'],
+    // Paleta de avatares retro (tonos apagados y con carácter)
+    avatarColors: ['#B52B32', '#2A5D84', '#2D6A4F', '#8A5A00', '#5E4378', '#2E6F68'],
   },
 
   borderRadius: {
-    sm: 10,
-    md: 18,
-    lg: 26,
-    pill: 999,
+    xs: 3,
+    sm: 6,
+    md: 8,
+    lg: 12,
+    pill: 9999,
   },
 
+  // Sombras ultra-difusas (< 0.05 de opacidad o planas táctiles)
   shadows: {
     wiiSoft: {
-      shadowColor: '#1A332B',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.08,
-      shadowRadius: 10,
-      elevation: 3,
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.04,
+      shadowRadius: 3,
+      elevation: 1,
     },
     wiiGlossy: {
-      shadowColor: '#0083B0',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.16,
-      shadowRadius: 8,
-      elevation: 4,
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 5,
+      elevation: 2,
     },
     pictoCard: {
-      shadowColor: '#283338',
-      shadowOffset: { width: 0, height: 5 },
-      shadowOpacity: 0.09,
-      shadowRadius: 12,
-      elevation: 4,
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.04,
+      shadowRadius: 3,
+      elevation: 1,
+    },
+    retroPhysical: {
+      shadowColor: '#1A1D20',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 0,
+      elevation: 2,
     },
   },
 };

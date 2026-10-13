@@ -66,7 +66,6 @@ export const NetworkModal: React.FC<NetworkModalProps> = ({
       setCopiedNotification(true);
       setTimeout(() => setCopiedNotification(false), 2500);
     } catch {
-      // Fallback
       Alert.alert('ID Copiado', idToCopy);
     }
   };
@@ -146,15 +145,15 @@ export const NetworkModal: React.FC<NetworkModalProps> = ({
         </TouchableOpacity>
 
         <View style={styles.modalCard}>
-          {/* Cabecera estilo Nintendo Wii */}
+          {/* Cabecera estilo Nintendo DS Friend Roster */}
           <View style={styles.header}>
             <View style={styles.headerTitleGroup}>
-              <View style={styles.headerIconCircle}>
-                <Ionicons name="people" size={18} color="#FFFFFF" />
+              <View style={styles.headerIconBox}>
+                <Ionicons name="people" size={15} color="#FFFFFF" />
               </View>
               <View>
-                <Text style={styles.headerTitle}>Red de Amigos</Text>
-                <Text style={styles.headerSubtitle}>Conexiones Sociales GeoPicto</Text>
+                <Text style={styles.headerTitle}>RED SOCIAL // AMIGOS</Text>
+                <Text style={styles.headerSubtitle}>LISTA DE EXPLORADORES REGISTRADOS</Text>
               </View>
             </View>
 
@@ -166,43 +165,35 @@ export const NetworkModal: React.FC<NetworkModalProps> = ({
               >
                 <Ionicons
                   name="refresh"
-                  size={16}
-                  color={isLoading ? nintendoTheme.colors.textMuted : nintendoTheme.colors.wiiBlue}
+                  size={14}
+                  color={isLoading ? nintendoTheme.colors.textMuted : nintendoTheme.colors.textPrimary}
                 />
               </TouchableOpacity>
               <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-                <Ionicons name="close" size={20} color={nintendoTheme.colors.textSecondary} />
+                <Ionicons name="close" size={18} color={nintendoTheme.colors.textSecondary} />
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* Selector de Pestañas Principales */}
+          {/* Selector de Pestañas Principales Bento */}
           <View style={styles.tabBar}>
             <TouchableOpacity
               style={[styles.tabButton, activeTab === 'friends' && styles.tabButtonActive]}
               onPress={() => setActiveTab('friends')}
+              activeOpacity={0.75}
             >
-              <Ionicons
-                name="people-outline"
-                size={16}
-                color={activeTab === 'friends' ? nintendoTheme.colors.wiiBlue : nintendoTheme.colors.textSecondary}
-              />
               <Text style={[styles.tabText, activeTab === 'friends' && styles.tabTextActive]}>
-                Amigos ({friends.length})
+                AMIGOS [{friends.length}]
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.tabButton, activeTab === 'requests' && styles.tabButtonActive]}
               onPress={() => setActiveTab('requests')}
+              activeOpacity={0.75}
             >
-              <Ionicons
-                name="mail-outline"
-                size={16}
-                color={activeTab === 'requests' ? nintendoTheme.colors.wiiBlue : nintendoTheme.colors.textSecondary}
-              />
               <Text style={[styles.tabText, activeTab === 'requests' && styles.tabTextActive]}>
-                Solicitudes
+                SOLICITUDES
               </Text>
               {pendingCount > 0 && (
                 <View style={styles.tabBadge}>
@@ -218,14 +209,10 @@ export const NetworkModal: React.FC<NetworkModalProps> = ({
                 setFormError(null);
                 setFormSuccess(null);
               }}
+              activeOpacity={0.75}
             >
-              <Ionicons
-                name="person-add-outline"
-                size={16}
-                color={activeTab === 'add' ? nintendoTheme.colors.miiverseGreen : nintendoTheme.colors.textSecondary}
-              />
               <Text style={[styles.tabText, activeTab === 'add' && styles.tabTextActive]}>
-                Agregar
+                + AGREGAR
               </Text>
             </TouchableOpacity>
           </View>
@@ -235,11 +222,10 @@ export const NetworkModal: React.FC<NetworkModalProps> = ({
             <ScrollView style={styles.scrollList} contentContainerStyle={styles.listContent}>
               {friends.length === 0 ? (
                 <View style={styles.emptyContainer}>
-                  <Ionicons name="people-circle-outline" size={48} color="#CBD5E1" />
-                  <Text style={styles.emptyTitle}>Sin amigos agregados</Text>
+                  <Ionicons name="people-outline" size={36} color="#B0B8BF" />
+                  <Text style={styles.emptyTitle}>[ LISTA VACÍA ]</Text>
                   <Text style={styles.emptyText}>
-                    Ve a la pestaña "Agregar" para enviar una solicitud ingresando el ID de otro usuario, o
-                    comparte tu propio ID.
+                    No tienes amigos agregados aún. Ve a "+ AGREGAR" para conectar con otro explorador.
                   </Text>
                 </View>
               ) : (
@@ -248,10 +234,12 @@ export const NetworkModal: React.FC<NetworkModalProps> = ({
                   const avatarColor = getColorForId(friendId);
                   return (
                     <View key={item.id} style={styles.friendCard}>
-                      <View style={[styles.avatarCircle, { backgroundColor: avatarColor }]}>
-                        <Text style={styles.avatarLetter}>
-                          {friendId.charAt(0).toUpperCase()}
-                        </Text>
+                      <View style={[styles.avatarBox, { borderColor: avatarColor }]}>
+                        <View style={[styles.avatarInner, { backgroundColor: avatarColor }]}>
+                          <Text style={styles.avatarLetter}>
+                            {friendId.charAt(0).toUpperCase()}
+                          </Text>
+                        </View>
                       </View>
 
                       <View style={styles.friendInfo}>
@@ -263,11 +251,11 @@ export const NetworkModal: React.FC<NetworkModalProps> = ({
                             onPress={() => handleCopyId(friendId)}
                             style={styles.copySmallBtn}
                           >
-                            <Ionicons name="copy-outline" size={12} color={nintendoTheme.colors.wiiBlue} />
+                            <Ionicons name="copy-outline" size={11} color={nintendoTheme.colors.textSecondary} />
                           </TouchableOpacity>
                         </View>
                         <Text style={styles.friendDateText}>
-                          Amigos desde {formatDate(item.updated_at || item.created_at)}
+                          DESDE {formatDate(item.updated_at || item.created_at).toUpperCase()}
                         </Text>
                       </View>
 
@@ -276,7 +264,7 @@ export const NetworkModal: React.FC<NetworkModalProps> = ({
                         onPress={() => handleRemoveFriend(friendId)}
                         activeOpacity={0.7}
                       >
-                        <Ionicons name="person-remove-outline" size={16} color="#DC2626" />
+                        <Ionicons name="trash-outline" size={13} color={nintendoTheme.colors.famicomRed} />
                       </TouchableOpacity>
                     </View>
                   );
@@ -288,11 +276,11 @@ export const NetworkModal: React.FC<NetworkModalProps> = ({
           {/* Contenido de la pestaña: SOLICITUDES */}
           {activeTab === 'requests' && (
             <View style={styles.tabContentContainer}>
-              {/* Sub-pestañas: Recibidas / Enviadas */}
               <View style={styles.subTabBar}>
                 <TouchableOpacity
                   style={[styles.subTabPill, requestSubTab === 'incoming' && styles.subTabPillActive]}
                   onPress={() => setRequestSubTab('incoming')}
+                  activeOpacity={0.75}
                 >
                   <Text
                     style={[
@@ -300,13 +288,14 @@ export const NetworkModal: React.FC<NetworkModalProps> = ({
                       requestSubTab === 'incoming' && styles.subTabTextActive,
                     ]}
                   >
-                    Recibidas ({incomingRequests.length})
+                    RECIBIDAS [{incomingRequests.length}]
                   </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   style={[styles.subTabPill, requestSubTab === 'outgoing' && styles.subTabPillActive]}
                   onPress={() => setRequestSubTab('outgoing')}
+                  activeOpacity={0.75}
                 >
                   <Text
                     style={[
@@ -314,7 +303,7 @@ export const NetworkModal: React.FC<NetworkModalProps> = ({
                       requestSubTab === 'outgoing' && styles.subTabTextActive,
                     ]}
                   >
-                    Enviadas ({outgoingRequests.length})
+                    ENVIADAS [{outgoingRequests.length}]
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -323,10 +312,10 @@ export const NetworkModal: React.FC<NetworkModalProps> = ({
                 {requestSubTab === 'incoming' ? (
                   incomingRequests.length === 0 ? (
                     <View style={styles.emptyContainer}>
-                      <Ionicons name="mail-open-outline" size={44} color="#CBD5E1" />
-                      <Text style={styles.emptyTitle}>No tienes solicitudes pendientes</Text>
+                      <Ionicons name="mail-outline" size={36} color="#B0B8BF" />
+                      <Text style={styles.emptyTitle}>[ BANDEJA VACÍA ]</Text>
                       <Text style={styles.emptyText}>
-                        Cuando otros usuarios te agreguen con tu ID, las verás aquí para aceptarlas.
+                        No hay solicitudes entrantes pendientes de aprobación.
                       </Text>
                     </View>
                   ) : (
@@ -336,34 +325,36 @@ export const NetworkModal: React.FC<NetworkModalProps> = ({
                       return (
                         <View key={req.id} style={styles.requestCard}>
                           <View style={styles.requestCardTop}>
-                            <View style={[styles.avatarCircle, { backgroundColor: avatarColor }]}>
-                              <Text style={styles.avatarLetter}>
-                                {requesterId.charAt(0).toUpperCase()}
-                              </Text>
+                            <View style={[styles.avatarBox, { borderColor: avatarColor }]}>
+                              <View style={[styles.avatarInner, { backgroundColor: avatarColor }]}>
+                                <Text style={styles.avatarLetter}>
+                                  {requesterId.charAt(0).toUpperCase()}
+                                </Text>
+                              </View>
                             </View>
                             <View style={styles.requestInfo}>
                               <Text style={styles.requestUserText} numberOfLines={1}>
-                                De: {requesterId}
+                                DE: {requesterId}
                               </Text>
                               <Text style={styles.friendDateText}>
-                                {formatDate(req.created_at)}
+                                {formatDate(req.created_at).toUpperCase()}
                               </Text>
                             </View>
                           </View>
 
                           <View style={styles.requestActionsRow}>
                             <WiiButton
-                              title="Rechazar"
+                              title="RECHAZAR"
                               variant="secondary"
                               size="sm"
                               onPress={() => rejectFriendRequest(req.id)}
                               style={{ flex: 1 }}
                             />
                             <WiiButton
-                              title="Aceptar"
+                              title="ACEPTAR"
                               variant="mint"
                               size="sm"
-                              icon={<Ionicons name="checkmark" size={14} color="#FFFFFF" />}
+                              icon={<Ionicons name="checkmark" size={13} color="#FFFFFF" />}
                               onPress={() => acceptFriendRequest(req.id)}
                               style={{ flex: 1.2 }}
                             />
@@ -374,10 +365,10 @@ export const NetworkModal: React.FC<NetworkModalProps> = ({
                   )
                 ) : outgoingRequests.length === 0 ? (
                   <View style={styles.emptyContainer}>
-                    <Ionicons name="paper-plane-outline" size={44} color="#CBD5E1" />
-                    <Text style={styles.emptyTitle}>No hay solicitudes enviadas</Text>
+                    <Ionicons name="paper-plane-outline" size={36} color="#B0B8BF" />
+                    <Text style={styles.emptyTitle}>[ SIN ENVÍOS ACTIVOS ]</Text>
                     <Text style={styles.emptyText}>
-                      Aquí aparecerán las solicitudes pendientes que hayas enviado a otros usuarios.
+                      Aquí verás las solicitudes que hayas enviado a otros exploradores.
                     </Text>
                   </View>
                 ) : (
@@ -387,24 +378,26 @@ export const NetworkModal: React.FC<NetworkModalProps> = ({
                     return (
                       <View key={req.id} style={styles.requestCard}>
                         <View style={styles.requestCardTop}>
-                          <View style={[styles.avatarCircle, { backgroundColor: avatarColor }]}>
-                            <Text style={styles.avatarLetter}>
-                              {recipientId.charAt(0).toUpperCase()}
-                            </Text>
+                          <View style={[styles.avatarBox, { borderColor: avatarColor }]}>
+                            <View style={[styles.avatarInner, { backgroundColor: avatarColor }]}>
+                              <Text style={styles.avatarLetter}>
+                                {recipientId.charAt(0).toUpperCase()}
+                              </Text>
+                            </View>
                           </View>
                           <View style={styles.requestInfo}>
                             <Text style={styles.requestUserText} numberOfLines={1}>
-                              Para: {recipientId}
+                              PARA: {recipientId}
                             </Text>
                             <Text style={styles.friendDateText}>
-                              Enviada el {formatDate(req.created_at)}
+                              ENVIADA: {formatDate(req.created_at).toUpperCase()}
                             </Text>
                           </View>
                         </View>
 
                         <View style={styles.requestActionsRow}>
                           <WiiButton
-                            title="Cancelar Solicitud"
+                            title="CANCELAR SOLICITUD"
                             variant="secondary"
                             size="sm"
                             onPress={() => cancelFriendRequest(req.id)}
@@ -425,8 +418,8 @@ export const NetworkModal: React.FC<NetworkModalProps> = ({
               {/* Tarjeta con ID propio del usuario */}
               <View style={styles.myIdCard}>
                 <View style={styles.myIdHeaderRow}>
-                  <Ionicons name="finger-print-outline" size={18} color={nintendoTheme.colors.wiiBlue} />
-                  <Text style={styles.myIdTitle}>Tu ID de Explorador</Text>
+                  <Ionicons name="finger-print-outline" size={15} color={nintendoTheme.colors.textPrimary} />
+                  <Text style={styles.myIdTitle}>TU ID DE EXPLORADOR</Text>
                 </View>
                 <Text style={styles.myIdText} numberOfLines={1} selectable>
                   {user?.id || 'No disponible'}
@@ -434,20 +427,20 @@ export const NetworkModal: React.FC<NetworkModalProps> = ({
                 <TouchableOpacity
                   style={styles.copyMyIdBtn}
                   onPress={() => user?.id && handleCopyId(user.id)}
-                  activeOpacity={0.8}
+                  activeOpacity={0.75}
                 >
                   <Ionicons
                     name={copiedNotification ? 'checkmark-circle' : 'copy-outline'}
-                    size={15}
-                    color={copiedNotification ? '#15803D' : nintendoTheme.colors.wiiBlue}
+                    size={13}
+                    color={copiedNotification ? '#275E33' : nintendoTheme.colors.textPrimary}
                   />
                   <Text
                     style={[
                       styles.copyMyIdText,
-                      copiedNotification && { color: '#15803D', fontWeight: '700' },
+                      copiedNotification && { color: '#275E33' },
                     ]}
                   >
-                    {copiedNotification ? '¡ID Copiado al portapapeles!' : 'Copiar mi ID para compartir'}
+                    {copiedNotification ? '¡ID COPIADO AL PORTAPAPELES!' : 'COPIAR MI ID'}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -455,14 +448,14 @@ export const NetworkModal: React.FC<NetworkModalProps> = ({
               {/* Formulario de envío de solicitud */}
               <View style={styles.formContainer}>
                 <Text style={styles.formLabel}>
-                  Ingresa el ID del usuario al que deseas agregar:
+                  INGRESA EL ID DEL EXPLORADOR QUE DESEAS AGREGAR:
                 </Text>
 
                 <View style={styles.inputBox}>
-                  <Ionicons name="person-add-outline" size={18} color={nintendoTheme.colors.textSecondary} />
+                  <Ionicons name="person-add-outline" size={15} color={nintendoTheme.colors.textSecondary} />
                   <TextInput
                     style={styles.textInput}
-                    placeholder="Ej: 123e4567-e89b-12d3-a456-426614174000"
+                    placeholder="ej. 123e4567-e89b-12d3-a456-426614174000"
                     placeholderTextColor={nintendoTheme.colors.textMuted}
                     value={targetIdInput}
                     onChangeText={(val) => {
@@ -474,23 +467,34 @@ export const NetworkModal: React.FC<NetworkModalProps> = ({
                     autoCorrect={false}
                   />
                   {targetIdInput.length > 0 && (
-                    <TouchableOpacity onPress={() => setTargetIdInput('')} style={{ padding: 4 }}>
-                      <Ionicons name="close-circle" size={16} color={nintendoTheme.colors.textMuted} />
+                    <TouchableOpacity onPress={() => setTargetIdInput('')} style={{ padding: 2 }}>
+                      <Ionicons name="close-circle" size={14} color={nintendoTheme.colors.textMuted} />
                     </TouchableOpacity>
                   )}
                 </View>
 
-                {formError ? <Text style={styles.errorText}>{formError}</Text> : null}
-                {formSuccess ? <Text style={styles.successText}>{formSuccess}</Text> : null}
+                {formError ? (
+                  <View style={styles.errorBox}>
+                    <Ionicons name="alert-circle-outline" size={13} color={nintendoTheme.colors.famicomRed} />
+                    <Text style={styles.errorText}>{formError}</Text>
+                  </View>
+                ) : null}
+
+                {formSuccess ? (
+                  <View style={styles.successBox}>
+                    <Ionicons name="checkmark-circle-outline" size={13} color="#275E33" />
+                    <Text style={styles.successText}>{formSuccess}</Text>
+                  </View>
+                ) : null}
 
                 <WiiButton
-                  title={isSubmitting ? 'Enviando Solicitud...' : 'Enviar Solicitud de Amistad'}
+                  title={isSubmitting ? 'ENVIANDO...' : 'ENVIAR SOLICITUD'}
                   variant="mint"
                   size="md"
                   disabled={!targetIdInput.trim() || isSubmitting}
-                  icon={<Ionicons name="send" size={15} color="#FFFFFF" />}
+                  icon={<Ionicons name="send" size={13} color="#FFFFFF" />}
                   onPress={handleSendRequest}
-                  style={{ marginTop: 14 }}
+                  style={{ marginTop: 12 }}
                 />
               </View>
             </ScrollView>
@@ -510,177 +514,195 @@ const styles = StyleSheet.create({
   },
   modalBackdrop: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(28, 40, 36, 0.45)',
+    backgroundColor: 'rgba(20, 24, 28, 0.55)',
   },
   modalCard: {
     width: '100%',
     maxWidth: 440,
     maxHeight: '85%',
     backgroundColor: '#FFFFFF',
-    borderRadius: nintendoTheme.borderRadius.lg,
-    borderWidth: 2,
-    borderColor: '#384347',
-    padding: 16,
+    borderRadius: nintendoTheme.borderRadius.md,
+    borderWidth: 1.5,
+    borderColor: nintendoTheme.colors.borderDark,
+    padding: 14,
     ...nintendoTheme.shadows.pictoCard,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingBottom: 12,
-    borderBottomWidth: 1.5,
-    borderBottomColor: '#EEF2F0',
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: nintendoTheme.colors.borderMedium,
   },
   headerTitleGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
-  headerIconCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: nintendoTheme.colors.wiiBlue,
+  headerIconBox: {
+    width: 24,
+    height: 24,
+    borderRadius: 2,
+    backgroundColor: nintendoTheme.colors.retroDpad,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
   },
   headerTitle: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '800',
     color: nintendoTheme.colors.textPrimary,
+    letterSpacing: 0.5,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   headerSubtitle: {
-    fontSize: 11,
+    fontSize: 9,
     fontWeight: '600',
     color: nintendoTheme.colors.textSecondary,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   refreshIconBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#EBF6FC',
+    width: 26,
+    height: 26,
+    borderRadius: nintendoTheme.borderRadius.xs,
+    backgroundColor: '#FAF9F6',
+    borderWidth: 1,
+    borderColor: '#E2DFD8',
     alignItems: 'center',
     justifyContent: 'center',
   },
   closeBtn: {
     padding: 4,
-    borderRadius: 16,
-    backgroundColor: '#F0F4F3',
+    borderRadius: nintendoTheme.borderRadius.xs,
+    backgroundColor: '#FAF9F6',
+    borderWidth: 1,
+    borderColor: '#E2DFD8',
   },
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: '#F1F5F4',
-    borderRadius: nintendoTheme.borderRadius.pill,
-    padding: 3,
-    marginTop: 12,
-    marginBottom: 8,
+    backgroundColor: '#ECEAE3',
+    borderRadius: nintendoTheme.borderRadius.xs,
+    padding: 2,
+    marginTop: 10,
+    marginBottom: 6,
+    borderWidth: 1,
+    borderColor: '#DFDCD4',
   },
   tabButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 7,
-    borderRadius: nintendoTheme.borderRadius.pill,
-    gap: 6,
+    paddingVertical: 6,
+    borderRadius: 2,
+    gap: 4,
     position: 'relative',
   },
   tabButtonActive: {
     backgroundColor: '#FFFFFF',
-    ...nintendoTheme.shadows.wiiSoft,
+    borderWidth: 1,
+    borderColor: '#CBC7BD',
   },
   tabText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 10,
+    fontWeight: '700',
     color: nintendoTheme.colors.textSecondary,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   tabTextActive: {
     color: nintendoTheme.colors.textPrimary,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   tabBadge: {
-    backgroundColor: '#EF4444',
-    borderRadius: 8,
-    paddingHorizontal: 5,
+    backgroundColor: nintendoTheme.colors.famicomRed,
+    borderRadius: 6,
+    paddingHorizontal: 4,
     paddingVertical: 1,
-    minWidth: 16,
+    minWidth: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
   tabBadgeText: {
     color: '#FFFFFF',
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: '800',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   tabContentContainer: {
     flex: 1,
   },
   subTabBar: {
     flexDirection: 'row',
-    gap: 8,
-    marginVertical: 8,
+    gap: 6,
+    marginVertical: 6,
   },
   subTabPill: {
     flex: 1,
-    paddingVertical: 5,
-    paddingHorizontal: 12,
-    borderRadius: nintendoTheme.borderRadius.pill,
-    backgroundColor: '#FAFDFB',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: nintendoTheme.borderRadius.xs,
+    backgroundColor: '#FAF9F6',
     borderWidth: 1,
-    borderColor: '#D4E0DC',
+    borderColor: '#D4D0C6',
     alignItems: 'center',
   },
   subTabPillActive: {
-    backgroundColor: '#EBF6FC',
-    borderColor: '#BAE3F7',
+    backgroundColor: nintendoTheme.colors.retroDpad,
+    borderColor: '#111315',
   },
   subTabText: {
-    fontSize: 12,
+    fontSize: 10,
     color: nintendoTheme.colors.textSecondary,
-    fontWeight: '600',
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   subTabTextActive: {
-    color: nintendoTheme.colors.wiiBlue,
-    fontWeight: '700',
+    color: '#FFFFFF',
   },
   scrollList: {
-    maxHeight: 340,
-    marginTop: 6,
+    maxHeight: 320,
+    marginTop: 4,
   },
   listContent: {
-    paddingVertical: 6,
-    gap: 10,
+    paddingVertical: 4,
+    gap: 8,
   },
   friendCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: nintendoTheme.borderRadius.md,
-    borderWidth: 1.5,
-    borderColor: '#DFE8E4',
-    padding: 10,
-    gap: 10,
+    backgroundColor: '#FAF9F6',
+    borderRadius: nintendoTheme.borderRadius.sm,
+    borderWidth: 1,
+    borderColor: nintendoTheme.colors.borderLight,
+    padding: 8,
+    gap: 8,
   },
-  avatarCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  avatarBox: {
+    width: 26,
+    height: 26,
+    borderRadius: 2,
+    borderWidth: 1,
+    padding: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInner: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarLetter: {
     color: '#FFFFFF',
     fontWeight: '800',
-    fontSize: 15,
+    fontSize: 11,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   friendInfo: {
     flex: 1,
@@ -688,60 +710,65 @@ const styles = StyleSheet.create({
   friendIdRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
   },
   friendIdLabel: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '700',
     color: nintendoTheme.colors.textPrimary,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
     maxWidth: 220,
   },
   copySmallBtn: {
     padding: 2,
   },
   friendDateText: {
-    fontSize: 11,
+    fontSize: 8,
     color: nintendoTheme.colors.textMuted,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
     marginTop: 2,
   },
   removeFriendBtn: {
     padding: 6,
-    borderRadius: 16,
-    backgroundColor: '#FEE2E2',
+    borderRadius: nintendoTheme.borderRadius.xs,
+    backgroundColor: nintendoTheme.colors.famicomRedLight,
+    borderWidth: 1,
+    borderColor: nintendoTheme.colors.famicomRedBorder,
   },
   requestCard: {
-    backgroundColor: '#FAFDFB',
-    borderRadius: nintendoTheme.borderRadius.md,
-    borderWidth: 1.5,
-    borderColor: '#DDE6E2',
-    padding: 12,
-    gap: 10,
+    backgroundColor: '#FAF9F6',
+    borderRadius: nintendoTheme.borderRadius.sm,
+    borderWidth: 1,
+    borderColor: nintendoTheme.colors.borderLight,
+    padding: 10,
+    gap: 8,
   },
   requestCardTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   requestInfo: {
     flex: 1,
   },
   requestUserText: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 10,
+    fontWeight: '800',
     color: nintendoTheme.colors.textPrimary,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   requestActionsRow: {
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 4,
+    gap: 6,
+    marginTop: 2,
   },
   myIdCard: {
-    backgroundColor: '#F0F9FF',
-    borderRadius: nintendoTheme.borderRadius.md,
-    borderWidth: 1.5,
-    borderColor: '#BAE6FD',
-    padding: 12,
-    marginBottom: 10,
+    backgroundColor: '#FAF9F6',
+    borderRadius: nintendoTheme.borderRadius.sm,
+    borderWidth: 1,
+    borderColor: nintendoTheme.colors.borderMedium,
+    padding: 10,
+    marginBottom: 8,
   },
   myIdHeaderRow: {
     flexDirection: 'row',
@@ -750,93 +777,127 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   myIdTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: nintendoTheme.colors.wiiBlue,
+    fontSize: 10,
+    fontWeight: '800',
+    color: nintendoTheme.colors.textPrimary,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   myIdText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
     color: nintendoTheme.colors.textPrimary,
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
     backgroundColor: '#FFFFFF',
     padding: 6,
-    borderRadius: 6,
+    borderRadius: 2,
     borderWidth: 1,
-    borderColor: '#E0F2FE',
+    borderColor: '#E2DFD8',
     marginTop: 4,
   },
   copyMyIdBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginTop: 8,
+    gap: 4,
+    marginTop: 6,
     alignSelf: 'flex-start',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 3,
+    paddingHorizontal: 6,
+    borderRadius: 2,
+    borderWidth: 1,
+    borderColor: '#E2DFD8',
   },
   copyMyIdText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: nintendoTheme.colors.wiiBlue,
+    fontSize: 9,
+    fontWeight: '700',
+    color: nintendoTheme.colors.textPrimary,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   formContainer: {
     backgroundColor: '#FFFFFF',
-    borderRadius: nintendoTheme.borderRadius.md,
-    borderWidth: 1.5,
-    borderColor: '#DFE8E4',
-    padding: 14,
+    borderRadius: nintendoTheme.borderRadius.sm,
+    borderWidth: 1,
+    borderColor: nintendoTheme.colors.borderLight,
+    padding: 12,
   },
   formLabel: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 9,
+    fontWeight: '800',
     color: nintendoTheme.colors.textSecondary,
-    marginBottom: 8,
-    lineHeight: 16,
+    marginBottom: 6,
+    letterSpacing: 0.4,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   inputBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FAFDFB',
-    borderRadius: nintendoTheme.borderRadius.md,
-    borderWidth: 1.5,
-    borderColor: '#D4DFDB',
-    paddingHorizontal: 12,
-    height: 44,
-    gap: 8,
+    backgroundColor: '#FAF9F6',
+    borderRadius: nintendoTheme.borderRadius.xs,
+    borderWidth: 1,
+    borderColor: '#D4D0C6',
+    paddingHorizontal: 10,
+    height: 38,
+    gap: 6,
   },
   textInput: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 11,
     color: nintendoTheme.colors.textPrimary,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: nintendoTheme.colors.famicomRedLight,
+    padding: 6,
+    borderRadius: 2,
+    marginTop: 6,
+    borderWidth: 1,
+    borderColor: nintendoTheme.colors.famicomRedBorder,
   },
   errorText: {
-    color: '#DC2626',
-    fontSize: 11,
-    fontWeight: '600',
-    marginTop: 8,
+    color: nintendoTheme.colors.famicomRed,
+    fontSize: 10,
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  successBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#EDF5EE',
+    padding: 6,
+    borderRadius: 2,
+    marginTop: 6,
+    borderWidth: 1,
+    borderColor: '#C2DEC5',
   },
   successText: {
-    color: '#15803D',
-    fontSize: 11,
+    color: '#275E33',
+    fontSize: 10,
     fontWeight: '700',
-    marginTop: 8,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 28,
-    paddingHorizontal: 16,
+    paddingVertical: 24,
+    paddingHorizontal: 12,
   },
   emptyTitle: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 11,
+    fontWeight: '800',
     color: nintendoTheme.colors.textPrimary,
-    marginTop: 8,
+    marginTop: 6,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   emptyText: {
-    fontSize: 12,
+    fontSize: 10,
     color: nintendoTheme.colors.textMuted,
     textAlign: 'center',
-    marginTop: 4,
-    lineHeight: 16,
+    marginTop: 2,
+    lineHeight: 14,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
 });

@@ -6,6 +6,7 @@ import {
   ViewStyle,
   TextStyle,
   View,
+  Platform,
 } from 'react-native';
 import { nintendoTheme } from '../../theme/nintendoTheme';
 
@@ -30,43 +31,37 @@ export const WiiButton: React.FC<WiiButtonProps> = ({
   style,
   textStyle,
 }) => {
-  // Configuración de colores según variante
   const getVariantStyles = () => {
     switch (variant) {
       case 'primary':
         return {
-          bg: nintendoTheme.colors.wiiBlue,
-          border: '#0083B8',
+          bg: nintendoTheme.colors.retroDpad,
+          border: '#111315',
           text: '#FFFFFF',
-          gloss: 'rgba(255, 255, 255, 0.35)',
         };
       case 'mint':
         return {
           bg: nintendoTheme.colors.miiverseGreen,
-          border: '#249C42',
+          border: '#204E3A',
           text: '#FFFFFF',
-          gloss: 'rgba(255, 255, 255, 0.35)',
         };
       case 'danger':
         return {
-          bg: '#E74C3C',
-          border: '#C0392B',
+          bg: nintendoTheme.colors.famicomRed,
+          border: '#8F1E24',
           text: '#FFFFFF',
-          gloss: 'rgba(255, 255, 255, 0.3)',
         };
       case 'secondary':
         return {
           bg: '#FFFFFF',
-          border: '#D0DADB',
+          border: nintendoTheme.colors.borderMedium,
           text: nintendoTheme.colors.textPrimary,
-          gloss: 'rgba(255, 255, 255, 0.7)',
         };
       case 'ghost':
         return {
           bg: 'transparent',
           border: 'transparent',
           text: nintendoTheme.colors.textSecondary,
-          gloss: 'transparent',
         };
     }
   };
@@ -75,25 +70,25 @@ export const WiiButton: React.FC<WiiButtonProps> = ({
     switch (size) {
       case 'sm':
         return {
-          paddingVertical: 7,
-          paddingHorizontal: 14,
-          fontSize: 13,
-          height: 34,
+          paddingVertical: 6,
+          paddingHorizontal: 12,
+          fontSize: 12,
+          height: 32,
         };
       case 'lg':
         return {
-          paddingVertical: 14,
-          paddingHorizontal: 28,
-          fontSize: 17,
-          height: 52,
+          paddingVertical: 12,
+          paddingHorizontal: 20,
+          fontSize: 14,
+          height: 46,
         };
       case 'md':
       default:
         return {
-          paddingVertical: 10,
-          paddingHorizontal: 20,
-          fontSize: 15,
-          height: 44,
+          paddingVertical: 9,
+          paddingHorizontal: 16,
+          fontSize: 13,
+          height: 40,
         };
     }
   };
@@ -103,33 +98,28 @@ export const WiiButton: React.FC<WiiButtonProps> = ({
 
   return (
     <TouchableOpacity
-      activeOpacity={0.82}
+      activeOpacity={0.78}
       onPress={onPress}
       disabled={disabled}
       style={[
         styles.buttonBase,
         {
-          backgroundColor: disabled ? '#D2DBDE' : vConfig.bg,
-          borderColor: disabled ? '#BDC6C9' : vConfig.border,
+          backgroundColor: disabled ? '#E2DFD6' : vConfig.bg,
+          borderColor: disabled ? '#D0CCC2' : vConfig.border,
           height: sConfig.height,
           paddingHorizontal: sConfig.paddingHorizontal,
         },
-        variant !== 'ghost' && styles.shadow,
+        variant !== 'ghost' && styles.subtleBorderBottom,
         style,
       ]}
     >
-      {/* Brillo superior característico estilo glossy Nintendo Wii */}
-      {variant !== 'ghost' && !disabled && (
-        <View style={[styles.glossHighlight, { backgroundColor: vConfig.gloss }]} />
-      )}
-
       <View style={styles.contentRow}>
         {icon && <View style={styles.iconWrapper}>{icon}</View>}
         <Text
           style={[
             styles.buttonText,
             {
-              color: disabled ? '#8E9DA3' : vConfig.text,
+              color: disabled ? '#949CA2' : vConfig.text,
               fontSize: sConfig.fontSize,
             },
             textStyle,
@@ -144,29 +134,14 @@ export const WiiButton: React.FC<WiiButtonProps> = ({
 
 const styles = StyleSheet.create({
   buttonBase: {
-    borderRadius: nintendoTheme.borderRadius.pill,
-    borderWidth: 1.5,
+    borderRadius: nintendoTheme.borderRadius.sm,
+    borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
-    overflow: 'hidden',
   },
-  shadow: {
-    shadowColor: '#1A332B',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  glossHighlight: {
-    position: 'absolute',
-    top: 0,
-    left: '10%',
-    right: '10%',
-    height: '40%',
-    borderBottomLeftRadius: 18,
-    borderBottomRightRadius: 18,
-    opacity: 0.65,
+  subtleBorderBottom: {
+    borderBottomWidth: 2,
   },
   contentRow: {
     flexDirection: 'row',
@@ -178,6 +153,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     fontWeight: '700',
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'sans-serif',
   },
 });

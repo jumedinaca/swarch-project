@@ -5,6 +5,7 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { RangeDistance } from '../../types';
@@ -29,22 +30,22 @@ interface RangeOption {
 const RANGE_OPTIONS: RangeOption[] = [
   {
     value: 100,
-    label: 'Corto',
-    badge: '100 m',
+    label: 'CORTO',
+    badge: '100 M',
     description: 'Zona inmediata y pasos cercanos alrededor',
     icon: 'walk-outline',
   },
   {
     value: 300,
-    label: 'Medio',
-    badge: '300 m',
+    label: 'MEDIO',
+    badge: '300 M',
     description: 'Entorno local, manzana y plazas contiguas',
     icon: 'navigate-circle-outline',
   },
   {
     value: 500,
-    label: 'Largo',
-    badge: '500 m',
+    label: 'LARGO',
+    badge: '500 M',
     description: 'Exploración extendida de todo el vecindario',
     icon: 'earth-outline',
   },
@@ -73,25 +74,25 @@ export const RangeConfigModal: React.FC<RangeConfigModalProps> = ({
         </View>
 
         <View style={styles.modalCard}>
-          {/* Cabecera estilo Nintendo DS / Wii */}
+          {/* Cabecera estilo menú de configuración Nintendo */}
           <View style={styles.modalHeader}>
             <View style={styles.headerTitleRow}>
-              <View style={styles.iconCircle}>
-                <Ionicons name="radio" size={16} color="#FFFFFF" />
+              <View style={styles.iconBox}>
+                <Ionicons name="radio" size={13} color="#FFFFFF" />
               </View>
-              <Text style={styles.modalTitle}>Alcance de Mensajes</Text>
+              <Text style={styles.modalTitle}>RADAR // ALCANCE DE MENSAJES</Text>
             </View>
 
             <TouchableOpacity onPress={onClose} style={styles.closeIconButton}>
-              <Ionicons name="close" size={20} color={nintendoTheme.colors.textSecondary} />
+              <Ionicons name="close" size={18} color={nintendoTheme.colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
           <Text style={styles.modalSubtitle}>
-            Selecciona el radio de búsqueda para descubrir notas geoespaciales en tu ubicación o en la vista libre del mapa:
+            Selecciona el radio de detección para sincronizar notas en tu ubicación o en la vista del mapa:
           </Text>
 
-          {/* Opciones de rango */}
+          {/* Opciones de rango en formato Bento Cards */}
           <View style={styles.optionsList}>
             {RANGE_OPTIONS.map((opt) => {
               const isSelected = currentRange === opt.value;
@@ -103,7 +104,7 @@ export const RangeConfigModal: React.FC<RangeConfigModalProps> = ({
                     isSelected && styles.optionCardSelected,
                   ]}
                   onPress={() => onSelectRange(opt.value)}
-                  activeOpacity={0.8}
+                  activeOpacity={0.75}
                 >
                   <View style={styles.optionLeftGroup}>
                     <View
@@ -114,8 +115,8 @@ export const RangeConfigModal: React.FC<RangeConfigModalProps> = ({
                     >
                       <Ionicons
                         name={opt.icon}
-                        size={20}
-                        color={isSelected ? nintendoTheme.colors.wiiBlue : nintendoTheme.colors.textSecondary}
+                        size={17}
+                        color={isSelected ? '#FFFFFF' : nintendoTheme.colors.textSecondary}
                       />
                     </View>
                     <View style={styles.optionTextContainer}>
@@ -140,7 +141,7 @@ export const RangeConfigModal: React.FC<RangeConfigModalProps> = ({
                               isSelected && styles.badgeTextSelected,
                             ]}
                           >
-                            {opt.badge}
+                            [{opt.badge}]
                           </Text>
                         </View>
                       </View>
@@ -150,8 +151,8 @@ export const RangeConfigModal: React.FC<RangeConfigModalProps> = ({
 
                   <View
                     style={[
-                      styles.radioCircle,
-                      isSelected && styles.radioCircleSelected,
+                      styles.radioSquare,
+                      isSelected && styles.radioSquareSelected,
                     ]}
                   >
                     {isSelected && <View style={styles.radioInnerDot} />}
@@ -163,19 +164,19 @@ export const RangeConfigModal: React.FC<RangeConfigModalProps> = ({
 
           {/* Nota informativa */}
           <View style={styles.infoBox}>
-            <Ionicons name="information-circle-outline" size={16} color={nintendoTheme.colors.textSecondary} />
+            <Ionicons name="information-circle-outline" size={14} color={nintendoTheme.colors.textSecondary} />
             <Text style={styles.infoText}>
-              El radio en metros es constante en el mapa y no varía según el nivel de zoom de la cámara.
+              El radio en metros es constante en el plano geodésico y no varía con el nivel de zoom.
             </Text>
           </View>
 
           {/* Botón de confirmación */}
           <View style={styles.actionRow}>
             <WiiButton
-              title="Aceptar"
+              title="ACEPTAR"
               variant="mint"
               onPress={onClose}
-              style={{ flex: 1 }}
+              style={{ width: '100%' }}
             />
           </View>
         </View>
@@ -193,92 +194,100 @@ const styles = StyleSheet.create({
   },
   modalBackdrop: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(28, 40, 36, 0.45)',
+    backgroundColor: 'rgba(20, 24, 28, 0.55)',
   },
   modalCard: {
     width: '100%',
-    maxWidth: 400,
+    maxWidth: 390,
     backgroundColor: '#FFFFFF',
-    borderRadius: nintendoTheme.borderRadius.lg,
-    borderWidth: 2,
-    borderColor: '#384347',
-    padding: 18,
+    borderRadius: nintendoTheme.borderRadius.md,
+    borderWidth: 1.5,
+    borderColor: nintendoTheme.colors.borderDark,
+    padding: 16,
     ...nintendoTheme.shadows.pictoCard,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingBottom: 12,
-    borderBottomWidth: 1.5,
-    borderBottomColor: '#E6ECE9',
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: nintendoTheme.colors.borderMedium,
   },
   headerTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  iconCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: nintendoTheme.colors.wiiBlue,
+  iconBox: {
+    width: 22,
+    height: 22,
+    borderRadius: 2,
+    backgroundColor: nintendoTheme.colors.retroDpad,
     alignItems: 'center',
     justifyContent: 'center',
   },
   modalTitle: {
-    fontSize: 16,
+    fontSize: 11,
     fontWeight: '800',
     color: nintendoTheme.colors.textPrimary,
+    letterSpacing: 0.5,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   closeIconButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F2F6F5',
+    width: 26,
+    height: 26,
+    borderRadius: nintendoTheme.borderRadius.xs,
+    backgroundColor: '#FAF9F6',
+    borderWidth: 1,
+    borderColor: '#E2DFD8',
     alignItems: 'center',
     justifyContent: 'center',
   },
   modalSubtitle: {
-    fontSize: 12,
+    fontSize: 11,
     color: nintendoTheme.colors.textSecondary,
-    lineHeight: 18,
+    lineHeight: 16,
     marginTop: 10,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   optionsList: {
-    gap: 10,
+    gap: 8,
   },
   optionCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FAFCFB',
-    borderRadius: nintendoTheme.borderRadius.md,
-    borderWidth: 1.5,
-    borderColor: '#D8E2DF',
-    padding: 12,
+    backgroundColor: '#FAF9F6',
+    borderRadius: nintendoTheme.borderRadius.sm,
+    borderWidth: 1,
+    borderColor: nintendoTheme.colors.borderLight,
+    padding: 10,
   },
   optionCardSelected: {
-    backgroundColor: '#EFF8FC',
-    borderColor: nintendoTheme.colors.wiiBlue,
+    backgroundColor: '#FFFFFF',
+    borderColor: nintendoTheme.colors.borderDark,
+    borderWidth: 1.5,
   },
   optionLeftGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
     flex: 1,
   },
   optionIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#EEF3F1',
+    width: 32,
+    height: 32,
+    borderRadius: 2,
+    backgroundColor: '#ECEAE3',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#DFDCD4',
   },
   optionIconContainerSelected: {
-    backgroundColor: '#D8F1FB',
+    backgroundColor: nintendoTheme.colors.retroDpad,
+    borderColor: '#111315',
   },
   optionTextContainer: {
     flex: 1,
@@ -286,75 +295,80 @@ const styles = StyleSheet.create({
   optionTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   optionLabel: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '800',
     color: nintendoTheme.colors.textPrimary,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   optionLabelSelected: {
-    color: '#007AA8',
+    color: nintendoTheme.colors.textPrimary,
   },
   badgePill: {
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: nintendoTheme.borderRadius.pill,
-    backgroundColor: '#E4ECE9',
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 2,
+    backgroundColor: '#ECEAE3',
   },
   badgePillSelected: {
-    backgroundColor: nintendoTheme.colors.wiiBlue,
+    backgroundColor: nintendoTheme.colors.miiverseGreenLight,
+    borderWidth: 1,
+    borderColor: nintendoTheme.colors.miiverseGreenBorder,
   },
   badgeText: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 9,
+    fontWeight: '800',
     color: nintendoTheme.colors.textSecondary,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   badgeTextSelected: {
-    color: '#FFFFFF',
+    color: nintendoTheme.colors.miiverseGreen,
   },
   optionDescription: {
-    fontSize: 11,
+    fontSize: 10,
     color: nintendoTheme.colors.textMuted,
     marginTop: 2,
   },
-  radioCircle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
-    borderColor: '#CBD5D1',
+  radioSquare: {
+    width: 18,
+    height: 18,
+    borderRadius: 2,
+    borderWidth: 1.5,
+    borderColor: '#B0B8BF',
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 8,
   },
-  radioCircleSelected: {
-    borderColor: nintendoTheme.colors.wiiBlue,
+  radioSquareSelected: {
+    borderColor: nintendoTheme.colors.borderDark,
+    backgroundColor: '#FAF9F6',
   },
   radioInnerDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: nintendoTheme.colors.wiiBlue,
+    width: 8,
+    height: 8,
+    borderRadius: 1,
+    backgroundColor: nintendoTheme.colors.retroDpad,
   },
   infoBox: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#F5F8F7',
-    borderRadius: nintendoTheme.borderRadius.sm,
+    backgroundColor: '#ECEAE3',
+    borderRadius: nintendoTheme.borderRadius.xs,
     padding: 8,
-    marginTop: 12,
+    marginTop: 10,
     borderWidth: 1,
-    borderColor: '#E2EBE8',
+    borderColor: '#DFDCD4',
   },
   infoText: {
-    fontSize: 11,
+    fontSize: 10,
     color: nintendoTheme.colors.textSecondary,
     flex: 1,
-    lineHeight: 15,
+    lineHeight: 14,
   },
   actionRow: {
-    marginTop: 14,
+    marginTop: 12,
   },
 });

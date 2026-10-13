@@ -5,6 +5,7 @@ import {
   Modal,
   StyleSheet,
   TouchableOpacity,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { GeoMessage } from '../../types';
@@ -95,13 +96,14 @@ export const MessageDetailModal: React.FC<MessageDetailModalProps> = ({
         </TouchableOpacity>
 
         <View style={styles.modalContainer}>
+          {/* Cabecera del diálogo */}
           <View style={styles.modalHeader}>
             <View style={styles.headerLeft}>
-              <Ionicons name="chatbubble-ellipses" size={18} color={nintendoTheme.colors.wiiBlue} />
-              <Text style={styles.headerTitle}>Detalle del Mensaje</Text>
+              <Ionicons name="chatbubble-outline" size={15} color={nintendoTheme.colors.textPrimary} />
+              <Text style={styles.headerTitle}>NOTA // DETALLE</Text>
             </View>
             <TouchableOpacity onPress={handleClose} style={styles.closeBtn}>
-              <Ionicons name="close" size={20} color={nintendoTheme.colors.textSecondary} />
+              <Ionicons name="close" size={18} color={nintendoTheme.colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
@@ -113,26 +115,26 @@ export const MessageDetailModal: React.FC<MessageDetailModalProps> = ({
             <View style={styles.networkActionSection}>
               {relationship === 'friend' && (
                 <View style={styles.friendBadgeBox}>
-                  <Ionicons name="sparkles" size={15} color="#15803D" />
-                  <Text style={styles.friendBadgeText}>¡Es tu amigo en GeoPicto!</Text>
+                  <Ionicons name="checkmark-circle-outline" size={14} color="#275E33" />
+                  <Text style={styles.friendBadgeText}>AMIGO EN TU RED SOCIAL</Text>
                 </View>
               )}
 
               {relationship === 'outgoing' && (
                 <View style={styles.pendingBadgeBox}>
-                  <Ionicons name="time-outline" size={15} color="#B45309" />
-                  <Text style={styles.pendingBadgeText}>Solicitud de amistad enviada (pendiente)</Text>
+                  <Ionicons name="time-outline" size={14} color="#8A5A00" />
+                  <Text style={styles.pendingBadgeText}>SOLICITUD ENVIADA (PENDIENTE)</Text>
                 </View>
               )}
 
               {relationship === 'incoming' && (
                 <View style={styles.incomingActionBox}>
                   <View style={styles.incomingTextRow}>
-                    <Ionicons name="mail-unread-outline" size={15} color={nintendoTheme.colors.wiiBlue} />
-                    <Text style={styles.incomingText}>¡Te ha enviado una solicitud de amistad!</Text>
+                    <Ionicons name="mail-unread-outline" size={14} color={nintendoTheme.colors.wiiBlue} />
+                    <Text style={styles.incomingText}>¡TE HA ENVIADO UNA SOLICITUD!</Text>
                   </View>
                   <WiiButton
-                    title="Aceptar Amistad"
+                    title="ACEPTAR AMISTAD"
                     variant="mint"
                     size="sm"
                     onPress={handleAcceptIncoming}
@@ -144,10 +146,10 @@ export const MessageDetailModal: React.FC<MessageDetailModalProps> = ({
               {relationship === 'none' && (
                 <View style={styles.connectBox}>
                   <WiiButton
-                    title={isSending ? 'Conectando...' : 'Conectar como Amigo'}
+                    title={isSending ? 'CONECTANDO...' : 'CONECTAR COMO AMIGO'}
                     variant="mint"
                     size="sm"
-                    icon={<Ionicons name="person-add" size={14} color="#FFFFFF" />}
+                    icon={<Ionicons name="person-add-outline" size={13} color="#FFFFFF" />}
                     onPress={handleSendFriendRequest}
                     disabled={isSending}
                     style={{ width: '100%' }}
@@ -170,15 +172,15 @@ export const MessageDetailModal: React.FC<MessageDetailModalProps> = ({
 
           {/* Información contextual geoespacial */}
           <View style={styles.geoInfoBox}>
-            <Ionicons name="location-outline" size={14} color={nintendoTheme.colors.textSecondary} />
+            <Ionicons name="location-outline" size={13} color={nintendoTheme.colors.textSecondary} />
             <Text style={styles.geoCoordsText}>
-              Coordenadas: {message.latitude.toFixed(5)}, {message.longitude.toFixed(5)}
+              COORDS // LAT {message.latitude.toFixed(5)}, LNG {message.longitude.toFixed(5)}
             </Text>
           </View>
 
           <View style={styles.buttonRow}>
             <WiiButton
-              title="Cerrar"
+              title="CERRAR"
               variant="secondary"
               onPress={handleClose}
               style={{ width: '100%' }}
@@ -199,93 +201,109 @@ const styles = StyleSheet.create({
   },
   modalBackdrop: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(28, 40, 36, 0.45)',
+    backgroundColor: 'rgba(20, 24, 28, 0.55)',
   },
   modalContainer: {
     width: '100%',
     maxWidth: 400,
     backgroundColor: '#FFFFFF',
-    borderRadius: nintendoTheme.borderRadius.lg,
-    borderWidth: 2,
-    borderColor: '#384347',
-    padding: 16,
+    borderRadius: nintendoTheme.borderRadius.md,
+    borderWidth: 1.5,
+    borderColor: nintendoTheme.colors.borderDark,
+    padding: 14,
     ...nintendoTheme.shadows.pictoCard,
   },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 10,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: nintendoTheme.colors.borderMedium,
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   headerTitle: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '800',
     color: nintendoTheme.colors.textPrimary,
+    letterSpacing: 0.5,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   closeBtn: {
     padding: 4,
-    borderRadius: 16,
-    backgroundColor: '#F0F4F3',
+    borderRadius: nintendoTheme.borderRadius.xs,
+    backgroundColor: '#FAF9F6',
+    borderWidth: 1,
+    borderColor: '#E2DFD8',
   },
   geoInfoBox: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#F5F9F7',
+    backgroundColor: '#ECEAE3',
     padding: 8,
-    borderRadius: nintendoTheme.borderRadius.sm,
+    borderRadius: nintendoTheme.borderRadius.xs,
     marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#DFDCD4',
   },
   geoCoordsText: {
-    fontSize: 11,
+    fontSize: 10,
     color: nintendoTheme.colors.textSecondary,
-    fontWeight: '500',
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   networkActionSection: {
-    marginTop: 10,
-    backgroundColor: '#FAFDFB',
-    borderRadius: nintendoTheme.borderRadius.md,
-    borderWidth: 1.5,
-    borderColor: '#DFE8E4',
-    padding: 10,
+    marginTop: 8,
+    backgroundColor: '#FAF9F6',
+    borderRadius: nintendoTheme.borderRadius.sm,
+    borderWidth: 1,
+    borderColor: nintendoTheme.colors.borderLight,
+    padding: 8,
   },
   friendBadgeBox: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: '#DCFCE7',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: nintendoTheme.borderRadius.pill,
+    backgroundColor: '#EDF5EE',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: nintendoTheme.borderRadius.xs,
+    borderWidth: 1,
+    borderColor: '#C2DEC5',
   },
   friendBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#15803D',
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#275E33',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   pendingBadgeBox: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: '#FEF3C7',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: nintendoTheme.borderRadius.pill,
+    backgroundColor: '#FDF6E4',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: nintendoTheme.borderRadius.xs,
+    borderWidth: 1,
+    borderColor: '#F4E2B2',
   },
   pendingBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#B45309',
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#8A5A00',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   incomingActionBox: {
-    gap: 8,
+    gap: 6,
   },
   incomingTextRow: {
     flexDirection: 'row',
@@ -294,26 +312,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   incomingText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: nintendoTheme.colors.wiiBlue,
+    fontSize: 10,
+    fontWeight: '800',
+    color: nintendoTheme.colors.textPrimary,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   connectBox: {
     width: '100%',
   },
   feedbackText: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 10,
+    fontWeight: '700',
     textAlign: 'center',
     marginTop: 6,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   feedbackSuccess: {
-    color: '#15803D',
+    color: '#275E33',
   },
   feedbackError: {
-    color: '#DC2626',
+    color: nintendoTheme.colors.famicomRed,
   },
   buttonRow: {
-    marginTop: 14,
+    marginTop: 10,
   },
 });
