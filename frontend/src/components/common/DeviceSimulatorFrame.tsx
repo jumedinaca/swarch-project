@@ -18,61 +18,89 @@ export const DeviceSimulatorFrame: React.FC<DeviceSimulatorFrameProps> = ({ chil
   const { width, height } = useWindowDimensions();
   const [forceFullWidth, setForceFullWidth] = useState(false);
 
-  // Consideramos pantalla de escritorio si el ancho es superior a 768px (en Web)
+  // Pantalla de escritorio si el ancho supera 768px (en Web)
   const isDesktop = Platform.OS === 'web' && width > 768 && !forceFullWidth;
 
   if (!isDesktop) {
-    // Modo nativo / pantalla móvil completa
     return <View style={styles.fullscreenContainer}>{children}</View>;
   }
 
-  // Dimensiones simuladas de smartphone (proporción tipo iPhone 15 / Galaxy estándar)
-  const phoneWidth = 390;
-  const phoneHeight = Math.min(height - 40, 840);
+  // Dimensiones equilibradas tipo consola portátil Nintendo
+  const consoleWidth = 420;
+  const consoleHeight = Math.min(height - 32, 860);
 
   return (
     <View style={styles.desktopBackdrop}>
-      {/* Barra de control del simulador de escritorio */}
+      {/* Barra de herramientas superior del entorno */}
       <View style={styles.desktopToolbar}>
-        <View style={styles.toolbarBadge}>
-          <Ionicons name="phone-portrait-outline" size={16} color={nintendoTheme.colors.wiiBlue} />
-          <Text style={styles.toolbarText}>Simulador Móvil Nintendo</Text>
+        <View style={styles.toolbarBrand}>
+          <View style={styles.dpadIcon}>
+            <View style={styles.dpadV} />
+            <View style={styles.dpadH} />
+          </View>
+          <Text style={styles.toolbarText}>GEOPICTO // SISTEMA NINTENDO</Text>
         </View>
 
         <TouchableOpacity
           style={styles.expandButton}
           onPress={() => setForceFullWidth(true)}
-          activeOpacity={0.8}
+          activeOpacity={0.7}
         >
-          <Ionicons name="expand-outline" size={16} color={nintendoTheme.colors.textSecondary} />
-          <Text style={styles.expandButtonText}>Pantalla Completa</Text>
+          <Ionicons name="expand-outline" size={13} color={nintendoTheme.colors.textSecondary} />
+          <Text style={styles.expandButtonText}>EXPANDIR</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Carcasa del teléfono celular */}
-      <View style={[styles.phoneBezel, { width: phoneWidth, height: phoneHeight }]}>
-        {/* Borde metálico exterior sutil */}
-        <View style={styles.phoneScreen}>
-          {/* Barra de estado simulada del smartphone */}
-          <View style={styles.statusBar}>
-            <Text style={styles.statusTime}>12:30</Text>
-            {/* Isla / Bocina frontal */}
-            <View style={styles.cameraIsland}>
-              <View style={styles.cameraLens} />
-            </View>
-            <View style={styles.statusIcons}>
-              <Ionicons name="cellular" size={12} color="#4A5568" style={{ marginRight: 4 }} />
-              <Ionicons name="wifi" size={12} color="#4A5568" style={{ marginRight: 4 }} />
-              <Ionicons name="battery-full" size={13} color="#4A5568" />
-            </View>
+      {/* Chasis exterior de consola portátil retro Nintendo */}
+      <View style={[styles.consoleChassis, { width: consoleWidth, height: consoleHeight }]}>
+        {/* Cabecera del chasis: LED de batería y relieve de marca */}
+        <View style={styles.chassisHeader}>
+          <View style={styles.batteryIndicator}>
+            <View style={styles.powerLed} />
+            <Text style={styles.batteryLabel}>POWER</Text>
           </View>
 
-          {/* Contenido de la aplicación */}
-          <View style={styles.screenContent}>{children}</View>
+          <Text style={styles.brandEmboss}>GEOPICTO BOY</Text>
 
-          {/* Barra de gestos inferior de smartphone */}
-          <View style={styles.homeIndicatorContainer}>
-            <View style={styles.homeIndicator} />
+          <View style={styles.speakerGrille}>
+            <View style={styles.speakerHole} />
+            <View style={styles.speakerHole} />
+            <View style={styles.speakerHole} />
+          </View>
+        </View>
+
+        {/* Marco biselado de la pantalla LCD */}
+        <View style={styles.screenBezel}>
+          {/* Pantalla activa de la aplicación */}
+          <View style={styles.screenInner}>
+            {/* Barra de estado retro minimalista */}
+            <View style={styles.statusBar}>
+              <Text style={styles.statusTime}>12:30</Text>
+
+              <View style={styles.statusCenterTag}>
+                <Text style={styles.statusCenterText}>NINTENDO // PICTO-NET</Text>
+              </View>
+
+              <View style={styles.statusIcons}>
+                <Text style={styles.statusMeter}>GPS [●●○]</Text>
+              </View>
+            </View>
+
+            {/* Contenido interactivo */}
+            <View style={styles.screenContent}>{children}</View>
+          </View>
+        </View>
+
+        {/* Pie del chasis: Botones SELECT y START minimalistas */}
+        <View style={styles.chassisFooter}>
+          <View style={styles.controlPillContainer}>
+            <View style={styles.controlButtonAngled} />
+            <Text style={styles.controlLabel}>SELECT</Text>
+          </View>
+
+          <View style={styles.controlPillContainer}>
+            <View style={styles.controlButtonAngled} />
+            <Text style={styles.controlLabel}>START</Text>
           </View>
         </View>
       </View>
@@ -91,118 +119,212 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     height: '100%',
-    backgroundColor: '#EBF1F0', // Fondo neutro con toque menta suave
+    backgroundColor: '#E6E4DD', // Tono ambiente de escritorio cálido y suave
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
+    paddingVertical: 12,
   },
   desktopToolbar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    width: 390,
-    marginBottom: 10,
-    paddingHorizontal: 8,
+    width: 420,
+    marginBottom: 8,
+    paddingHorizontal: 4,
   },
-  toolbarBadge: {
+  toolbarBrand: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: nintendoTheme.borderRadius.pill,
-    gap: 6,
-    ...nintendoTheme.shadows.wiiSoft,
+    gap: 8,
+  },
+  dpadIcon: {
+    width: 14,
+    height: 14,
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dpadV: {
+    position: 'absolute',
+    width: 4,
+    height: 14,
+    backgroundColor: nintendoTheme.colors.textPrimary,
+    borderRadius: 1,
+  },
+  dpadH: {
+    position: 'absolute',
+    width: 14,
+    height: 4,
+    backgroundColor: nintendoTheme.colors.textPrimary,
+    borderRadius: 1,
   },
   toolbarText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 10,
+    fontWeight: '800',
     color: nintendoTheme.colors.textPrimary,
+    letterSpacing: 0.8,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   expandButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: nintendoTheme.borderRadius.pill,
-    gap: 6,
+    backgroundColor: '#FAF9F6',
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: nintendoTheme.borderRadius.xs,
+    borderWidth: 1,
+    borderColor: '#D4D0C5',
+    gap: 5,
   },
   expandButtonText: {
-    fontSize: 12,
+    fontSize: 9,
+    fontWeight: '700',
     color: nintendoTheme.colors.textSecondary,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
-  phoneBezel: {
-    backgroundColor: '#262C30',
-    borderRadius: 48,
-    padding: 10,
-    shadowColor: '#0A251C',
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.22,
-    shadowRadius: 28,
-    elevation: 12,
+  consoleChassis: {
+    backgroundColor: '#EAE8E1', // Chasis tipo Game Boy Pocket / Nintendo DS Lite
+    borderRadius: 18,
+    paddingTop: 12,
+    paddingBottom: 14,
+    paddingHorizontal: 14,
     borderWidth: 1.5,
-    borderColor: '#4A5560',
+    borderColor: '#CCC8BC',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    display: 'flex',
+    flexDirection: 'column',
   },
-  phoneScreen: {
-    flex: 1,
-    backgroundColor: nintendoTheme.colors.background,
-    borderRadius: 40,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  statusBar: {
-    height: 38,
-    backgroundColor: nintendoTheme.colors.cardBackground,
+  chassisHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    zIndex: 20,
+    paddingHorizontal: 6,
+    marginBottom: 8,
+  },
+  batteryIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  powerLed: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#22C55E', // LED verde activo
+    borderWidth: 1,
+    borderColor: '#15803D',
+  },
+  batteryLabel: {
+    fontSize: 8,
+    fontWeight: '800',
+    color: '#768087',
+    letterSpacing: 0.5,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  brandEmboss: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#8A9298',
+    letterSpacing: 1.5,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  speakerGrille: {
+    flexDirection: 'row',
+    gap: 3,
+  },
+  speakerHole: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#C5C1B4',
+  },
+  screenBezel: {
+    flex: 1,
+    backgroundColor: '#32363B', // Bisel oscuro elegante de pantalla retro
+    borderRadius: 10,
+    padding: 3,
+    borderWidth: 1,
+    borderColor: '#202326',
+    overflow: 'hidden',
+  },
+  screenInner: {
+    flex: 1,
+    backgroundColor: nintendoTheme.colors.background,
+    borderRadius: 7,
+    overflow: 'hidden',
+  },
+  statusBar: {
+    height: 26,
+    backgroundColor: '#FAF9F6',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#EEF2F0',
+    borderBottomColor: '#E2DFD8',
+    zIndex: 20,
   },
   statusTime: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '700',
-    color: '#2D3748',
-    width: 45,
+    color: nintendoTheme.colors.textPrimary,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
-  cameraIsland: {
-    width: 72,
-    height: 18,
-    backgroundColor: '#1A202C',
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+  statusCenterTag: {
+    backgroundColor: '#ECEAE3',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 2,
   },
-  cameraLens: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#2D3748',
+  statusCenterText: {
+    fontSize: 8,
+    fontWeight: '800',
+    color: nintendoTheme.colors.textSecondary,
+    letterSpacing: 0.6,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   statusIcons: {
     flexDirection: 'row',
     alignItems: 'center',
-    width: 45,
-    justifyContent: 'flex-end',
+  },
+  statusMeter: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: nintendoTheme.colors.textSecondary,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   screenContent: {
     flex: 1,
     width: '100%',
   },
-  homeIndicatorContainer: {
-    height: 18,
-    backgroundColor: nintendoTheme.colors.cardBackground,
-    alignItems: 'center',
+  chassisFooter: {
+    flexDirection: 'row',
     justifyContent: 'center',
-    zIndex: 20,
+    gap: 32,
+    marginTop: 10,
   },
-  homeIndicator: {
-    width: 110,
-    height: 4,
-    backgroundColor: '#A0AEC0',
-    borderRadius: 2,
+  controlPillContainer: {
+    alignItems: 'center',
+    gap: 3,
+  },
+  controlButtonAngled: {
+    width: 32,
+    height: 8,
+    backgroundColor: '#8C949A',
+    borderRadius: 4,
+    transform: [{ rotate: '-25deg' }],
+    borderWidth: 1,
+    borderColor: '#72797E',
+  },
+  controlLabel: {
+    fontSize: 8,
+    fontWeight: '800',
+    color: '#8A9298',
+    letterSpacing: 0.8,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    marginTop: 2,
   },
 });

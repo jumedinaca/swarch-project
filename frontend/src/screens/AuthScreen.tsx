@@ -102,62 +102,58 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Banner de Bienvenida estilo Menú Wii */}
+        {/* Encabezado Editorial Retro Nintendo */}
         <View style={styles.headerBanner}>
+          <View style={styles.systemTag}>
+            <Text style={styles.systemTagText}>[ SISTEMA GEOESPACIAL // V1.0 ]</Text>
+          </View>
+
           <View style={styles.logoBadge}>
-            <Image
-              source={require('../../assets/logo.png')}
-              style={styles.logoImage}
-              accessibilityLabel="Logo de GeoPicto"
-            />
+            <View style={styles.logoWrapper}>
+              <Image
+                source={require('../../assets/logo.png')}
+                style={styles.logoImage}
+                accessibilityLabel="Logo de GeoPicto"
+              />
+            </View>
             <View>
               <Text style={styles.logoTitle}>GeoPicto</Text>
-              <Text style={styles.logoSubtitle}>Plataforma Geoespacial Contextual</Text>
+              <Text style={styles.logoSubtitle}>Red de Notas de Proximidad</Text>
             </View>
           </View>
         </View>
 
-        {/* Tarjeta principal estilo canal de Wii / consola Nintendo */}
+        {/* Tarjeta Bento principal de Autenticación */}
         <View style={styles.authCard}>
-          {/* Selector de modo estilo píldora */}
+          {/* Selector de modo estilo pestañas de cartucho */}
           <View style={styles.modeToggleContainer}>
             <TouchableOpacity
               style={[styles.modeToggleTab, mode === 'login' && styles.modeToggleActive]}
               onPress={() => switchMode('login')}
-              activeOpacity={0.8}
+              activeOpacity={0.7}
             >
-              <Ionicons
-                name="log-in-outline"
-                size={16}
-                color={mode === 'login' ? nintendoTheme.colors.wiiBlue : nintendoTheme.colors.textSecondary}
-              />
               <Text
                 style={[
                   styles.modeToggleText,
                   mode === 'login' && styles.modeToggleTextActive,
                 ]}
               >
-                Iniciar Sesión
+                INICIAR SESIÓN
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.modeToggleTab, mode === 'register' && styles.modeToggleActive]}
               onPress={() => switchMode('register')}
-              activeOpacity={0.8}
+              activeOpacity={0.7}
             >
-              <Ionicons
-                name="person-add-outline"
-                size={16}
-                color={mode === 'register' ? nintendoTheme.colors.miiverseGreen : nintendoTheme.colors.textSecondary}
-              />
               <Text
                 style={[
                   styles.modeToggleText,
                   mode === 'register' && styles.modeToggleTextActive,
                 ]}
               >
-                Registrarse
+                REGISTRARSE
               </Text>
             </TouchableOpacity>
           </View>
@@ -166,102 +162,134 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
           {mode === 'login' ? (
             <View style={styles.formSection}>
               <Text style={styles.sectionSubtitle}>
-                Ingresa con tu cuenta para descubrir y publicar notas:
+                Ingresa con tus credenciales para acceder a la red:
               </Text>
 
-              <View style={styles.inputContainer}>
-                <Ionicons name="person-outline" size={18} color={nintendoTheme.colors.textSecondary} />
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Usuario o correo electrónico"
-                  placeholderTextColor={nintendoTheme.colors.textMuted}
-                  value={username}
-                  onChangeText={setUsername}
-                  autoCapitalize="none"
-                />
+              <View style={styles.fieldGroup}>
+                <Text style={styles.fieldLabel}>USUARIO O CORREO</Text>
+                <View style={styles.inputContainer}>
+                  <Ionicons name="person-outline" size={16} color={nintendoTheme.colors.textSecondary} />
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="ej. explorador o correo@ejemplo.com"
+                    placeholderTextColor={nintendoTheme.colors.textMuted}
+                    value={username}
+                    onChangeText={setUsername}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                </View>
               </View>
 
-              <View style={[styles.inputContainer, { marginTop: 12 }]}>
-                <Ionicons name="lock-closed-outline" size={18} color={nintendoTheme.colors.textSecondary} />
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Contraseña"
-                  placeholderTextColor={nintendoTheme.colors.textMuted}
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  autoCapitalize="none"
-                />
+              <View style={[styles.fieldGroup, { marginTop: 12 }]}>
+                <Text style={styles.fieldLabel}>CONTRASEÑA</Text>
+                <View style={styles.inputContainer}>
+                  <Ionicons name="lock-closed-outline" size={16} color={nintendoTheme.colors.textSecondary} />
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="••••••••"
+                    placeholderTextColor={nintendoTheme.colors.textMuted}
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry
+                    autoCapitalize="none"
+                  />
+                </View>
               </View>
 
-              {displayedError ? <Text style={styles.errorText}>{displayedError}</Text> : null}
+              {displayedError ? (
+                <View style={styles.errorBox}>
+                  <Ionicons name="alert-circle-outline" size={15} color={nintendoTheme.colors.famicomRed} />
+                  <Text style={styles.errorText}>{displayedError}</Text>
+                </View>
+              ) : null}
 
               <WiiButton
-                title={isLoading ? 'Conectando...' : 'Iniciar Sesión'}
+                title={isLoading ? 'CONECTANDO...' : 'INICIAR SESIÓN'}
                 variant="primary"
                 size="lg"
                 disabled={isLoading}
                 onPress={handleLogin}
-                style={{ marginTop: 20 }}
+                style={{ marginTop: 18 }}
               />
             </View>
           ) : (
             /* Formulario de Registro */
             <View style={styles.formSection}>
               <Text style={styles.sectionSubtitle}>
-                Crea una cuenta para compartir notas contextuales:
+                Crea un nuevo perfil para publicar notas en el mapa:
               </Text>
 
-              <View style={styles.inputContainer}>
-                <Ionicons name="person-outline" size={18} color={nintendoTheme.colors.textSecondary} />
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Nombre de usuario"
-                  placeholderTextColor={nintendoTheme.colors.textMuted}
-                  value={username}
-                  onChangeText={setUsername}
-                  autoCapitalize="none"
-                />
+              <View style={styles.fieldGroup}>
+                <Text style={styles.fieldLabel}>NOMBRE DE USUARIO</Text>
+                <View style={styles.inputContainer}>
+                  <Ionicons name="person-outline" size={16} color={nintendoTheme.colors.textSecondary} />
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="ej. explorador_01"
+                    placeholderTextColor={nintendoTheme.colors.textMuted}
+                    value={username}
+                    onChangeText={setUsername}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                </View>
               </View>
 
-              <View style={[styles.inputContainer, { marginTop: 12 }]}>
-                <Ionicons name="mail-outline" size={18} color={nintendoTheme.colors.textSecondary} />
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="correo@ejemplo.com"
-                  placeholderTextColor={nintendoTheme.colors.textMuted}
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
+              <View style={[styles.fieldGroup, { marginTop: 12 }]}>
+                <Text style={styles.fieldLabel}>CORREO ELECTRÓNICO</Text>
+                <View style={styles.inputContainer}>
+                  <Ionicons name="mail-outline" size={16} color={nintendoTheme.colors.textSecondary} />
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="correo@ejemplo.com"
+                    placeholderTextColor={nintendoTheme.colors.textMuted}
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                </View>
               </View>
 
-              <View style={[styles.inputContainer, { marginTop: 12 }]}>
-                <Ionicons name="lock-closed-outline" size={18} color={nintendoTheme.colors.textSecondary} />
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Contraseña"
-                  placeholderTextColor={nintendoTheme.colors.textMuted}
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  autoCapitalize="none"
-                />
+              <View style={[styles.fieldGroup, { marginTop: 12 }]}>
+                <Text style={styles.fieldLabel}>CONTRASEÑA (MÍNIMO 8 CARACTERES)</Text>
+                <View style={styles.inputContainer}>
+                  <Ionicons name="lock-closed-outline" size={16} color={nintendoTheme.colors.textSecondary} />
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="••••••••"
+                    placeholderTextColor={nintendoTheme.colors.textMuted}
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry
+                    autoCapitalize="none"
+                  />
+                </View>
               </View>
 
-              {displayedError ? <Text style={styles.errorText}>{displayedError}</Text> : null}
+              {displayedError ? (
+                <View style={styles.errorBox}>
+                  <Ionicons name="alert-circle-outline" size={15} color={nintendoTheme.colors.famicomRed} />
+                  <Text style={styles.errorText}>{displayedError}</Text>
+                </View>
+              ) : null}
 
               <WiiButton
-                title={isLoading ? 'Registrando...' : 'Crear Cuenta'}
+                title={isLoading ? 'REGISTRANDO...' : 'CREAR CUENTA'}
                 variant="mint"
                 size="lg"
                 disabled={isLoading}
                 onPress={handleRegister}
-                style={{ marginTop: 20 }}
+                style={{ marginTop: 18 }}
               />
             </View>
           )}
+        </View>
+
+        {/* Pie de página con información del sistema */}
+        <View style={styles.systemFooter}>
+          <Text style={styles.footerNote}>GEOPICTO CONTEXTUAL CLIENT // BOGOTÁ RADAR</Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -276,111 +304,166 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 24,
-    maxWidth: 440,
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+    maxWidth: 420,
     alignSelf: 'center',
     width: '100%',
   },
   headerBanner: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
+  },
+  systemTag: {
+    marginBottom: 8,
+  },
+  systemTagText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: nintendoTheme.colors.textMuted,
+    letterSpacing: 0.8,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   logoBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     backgroundColor: '#FFFFFF',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: nintendoTheme.borderRadius.lg,
-    borderWidth: 1.5,
-    borderColor: '#DFE8E4',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: nintendoTheme.borderRadius.md,
+    borderWidth: 1,
+    borderColor: nintendoTheme.colors.borderMedium,
     ...nintendoTheme.shadows.wiiSoft,
   },
+  logoWrapper: {
+    width: 44,
+    height: 44,
+    borderRadius: nintendoTheme.borderRadius.xs,
+    borderWidth: 1,
+    borderColor: nintendoTheme.colors.borderLight,
+    padding: 3,
+    backgroundColor: '#FAF9F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   logoImage: {
-    width: 56,
-    height: 56,
+    width: 36,
+    height: 36,
   },
   logoTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '800',
     color: nintendoTheme.colors.textPrimary,
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
   logoSubtitle: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
     color: nintendoTheme.colors.textSecondary,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   authCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 28,
-    padding: 22,
-    borderWidth: 1.5,
-    borderColor: '#DDE6E2',
-    ...nintendoTheme.shadows.wiiSoft,
+    borderRadius: nintendoTheme.borderRadius.lg,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: nintendoTheme.colors.borderMedium,
+    ...nintendoTheme.shadows.pictoCard,
   },
   modeToggleContainer: {
     flexDirection: 'row',
-    backgroundColor: '#EEF3F1',
-    borderRadius: nintendoTheme.borderRadius.pill,
-    padding: 4,
-    marginBottom: 18,
+    backgroundColor: '#ECEAE3',
+    borderRadius: nintendoTheme.borderRadius.sm,
+    padding: 3,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#DFDCD4',
   },
   modeToggleTab: {
     flex: 1,
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
-    borderRadius: nintendoTheme.borderRadius.pill,
-    gap: 6,
+    paddingVertical: 7,
+    borderRadius: nintendoTheme.borderRadius.xs,
   },
   modeToggleActive: {
     backgroundColor: '#FFFFFF',
-    ...nintendoTheme.shadows.wiiSoft,
+    borderWidth: 1,
+    borderColor: '#CBC7BD',
   },
   modeToggleText: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
     color: nintendoTheme.colors.textSecondary,
+    letterSpacing: 0.5,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   modeToggleTextActive: {
     color: nintendoTheme.colors.textPrimary,
-    fontWeight: '700',
   },
   formSection: {
     width: '100%',
   },
   sectionSubtitle: {
-    fontSize: 13,
+    fontSize: 12,
     color: nintendoTheme.colors.textSecondary,
-    marginBottom: 16,
-    lineHeight: 18,
+    marginBottom: 14,
+    lineHeight: 16,
+  },
+  fieldGroup: {
+    width: '100%',
+  },
+  fieldLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: nintendoTheme.colors.textSecondary,
+    marginBottom: 5,
+    letterSpacing: 0.6,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FAFDFB',
-    borderRadius: nintendoTheme.borderRadius.md,
-    borderWidth: 1.5,
-    borderColor: '#D4DFDB',
-    paddingHorizontal: 14,
-    height: 48,
-    gap: 10,
+    backgroundColor: '#FAF9F6',
+    borderRadius: nintendoTheme.borderRadius.sm,
+    borderWidth: 1,
+    borderColor: '#D4D0C6',
+    paddingHorizontal: 12,
+    height: 42,
+    gap: 8,
   },
   textInput: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 13,
     color: nintendoTheme.colors.textPrimary,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: nintendoTheme.colors.famicomRedLight,
+    borderRadius: nintendoTheme.borderRadius.xs,
+    borderWidth: 1,
+    borderColor: nintendoTheme.colors.famicomRedBorder,
+    padding: 8,
+    marginTop: 12,
   },
   errorText: {
-    color: '#D32F2F',
-    fontSize: 12,
+    color: nintendoTheme.colors.famicomRed,
+    fontSize: 11,
     fontWeight: '600',
-    marginTop: 10,
-    textAlign: 'center',
+    flex: 1,
+  },
+  systemFooter: {
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  footerNote: {
+    fontSize: 9,
+    color: nintendoTheme.colors.textMuted,
+    letterSpacing: 0.5,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
 });
