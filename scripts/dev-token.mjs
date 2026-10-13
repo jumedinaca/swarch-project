@@ -7,6 +7,7 @@
 //   node scripts/dev-token.mjs [user-uuid] [--hours N]
 //
 // Lee JWT_SECRET de la variable de entorno o, si no esta, del .env de la raiz.
+// Si tampoco esta ahi, usa el mismo valor por defecto que docker-compose.yml.
 // El claim iss es JWT_ISSUER si esta definido, o geopicto-auth.
 // Imprime solo el token en stdout, para poder usarlo en $(...).
 
@@ -17,6 +18,8 @@ import { fileURLToPath } from 'node:url';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MIN_SECRET_BYTES = 32;
+// Mismo valor por defecto que x-jwt-secret en docker-compose.yml
+const DEFAULT_SECRET = 'geopicto-prototipo-secreto-local-no-usar-en-produccion';
 
 function fail(message) {
   console.error(`dev-token: ${message}`);
@@ -29,19 +32,16 @@ function readSecret() {
   }
 
   const envPath = join(dirname(fileURLToPath(import.meta.url)), '..', '.env');
-  let contents;
+  let contents = '';
   try {
     contents = readFileSync(envPath, 'utf8');
   } catch {
-    fail('JWT_SECRET no esta definido y no se encontro .env en la raiz del repositorio.');
+    // Sin .env, docker compose usa el secreto por defecto
   }
 
   const line = contents.split(/\r?\n/).find((l) => l.startsWith('JWT_SECRET='));
   const value = line?.slice('JWT_SECRET='.length).trim().replace(/^["']|["']$/g, '');
-  if (!value) {
-    fail('JWT_SECRET esta vacio en .env.');
-  }
-  return value;
+  return value || DEFAULT_SECRET;
 }
 
 function parseArgs(argv) {
