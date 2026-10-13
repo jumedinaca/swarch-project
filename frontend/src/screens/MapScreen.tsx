@@ -288,6 +288,9 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
           {/* Marcas de visor HUD en esquinas superiores */}
           <View style={styles.hudCornerTL} pointerEvents="none" />
           <View style={styles.hudCornerTR} pointerEvents="none" />
+          <View style={styles.hudRadarTag} pointerEvents="none">
+            <Text style={styles.hudRadarTagText}>MAPA ISO-3D // RADAR</Text>
+          </View>
 
           {/* Botón Flotante de Acción: Escribir Nota */}
           <TouchableOpacity
@@ -550,6 +553,24 @@ const styles = StyleSheet.create({
     borderTopWidth: 2,
     borderColor: '#24272A',
     opacity: 0.6,
+  },
+  hudRadarTag: {
+    position: 'absolute',
+    top: 10,
+    left: 28,
+    backgroundColor: 'rgba(250, 249, 246, 0.88)',
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: nintendoTheme.borderRadius.xs,
+    borderWidth: 1,
+    borderColor: '#D4D0C6',
+  },
+  hudRadarTagText: {
+    fontSize: 8,
+    fontWeight: '800',
+    color: nintendoTheme.colors.textSecondary,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    letterSpacing: 0.5,
   },
   composeFab: {
     position: 'absolute',

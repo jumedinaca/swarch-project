@@ -51,7 +51,7 @@ export const MapLibreOsmView = forwardRef<MapLibreOsmViewRef, MapLibreOsmViewPro
   const initialLat = useRef(userLocation.latitude).current;
   const initialLng = useRef(userLocation.longitude).current;
 
-  // Generamos el HTML embebido de MapLibre con OpenStreetMap y perspectiva isométrica 3D
+  // Generamos el HTML embebido de MapLibre con estilo ultra-minimalista Positron y textura táctil
   const mapHtml = useMemo(() => {
     const messagesJson = JSON.stringify(messages);
 
@@ -61,53 +61,95 @@ export const MapLibreOsmView = forwardRef<MapLibreOsmViewRef, MapLibreOsmViewPro
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>MapLibre OSM 3D</title>
+  <title>MapLibre Minimalist 3D</title>
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" />
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body, #map {
+    html, body {
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background: #eef2ed;
+      background: #F4F3EE;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Courier New", monospace;
     }
+    #map {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    /* Trama de cuadrícula arquitectónica milimétrica retro Nintendo */
+    #texture-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 2;
+      background-image: 
+        radial-gradient(rgba(36, 39, 42, 0.09) 1px, transparent 1px),
+        linear-gradient(to right, rgba(36, 39, 42, 0.025) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(36, 39, 42, 0.025) 1px, transparent 1px);
+      background-size: 24px 24px, 48px 48px, 48px 48px;
+    }
     
-    /* Marcador del Usuario estilo radar retro */
+    /* Marcador del Usuario: punto de mira y radar táctico retro */
     .user-marker {
       width: 24px;
       height: 24px;
       position: relative;
       cursor: pointer;
     }
+    .user-marker-cross-v {
+      position: absolute;
+      width: 2px;
+      height: 28px;
+      left: 11px;
+      top: -2px;
+      background: rgba(181, 43, 50, 0.4);
+      pointer-events: none;
+    }
+    .user-marker-cross-h {
+      position: absolute;
+      width: 28px;
+      height: 2px;
+      left: -2px;
+      top: 11px;
+      background: rgba(181, 43, 50, 0.4);
+      pointer-events: none;
+    }
     .user-marker-pulse {
       position: absolute;
-      width: 40px;
-      height: 40px;
-      left: -8px;
-      top: -8px;
+      width: 44px;
+      height: 44px;
+      left: -10px;
+      top: -10px;
       border-radius: 50%;
-      background: rgba(181, 43, 50, 0.22);
-      animation: pulse 2s infinite ease-out;
+      background: rgba(181, 43, 50, 0.14);
+      border: 1px dashed rgba(181, 43, 50, 0.45);
+      animation: pulse 2.2s infinite ease-out;
     }
     .user-marker-dot {
       position: absolute;
-      width: 18px;
-      height: 18px;
-      left: 3px;
-      top: 3px;
+      width: 16px;
+      height: 16px;
+      left: 4px;
+      top: 4px;
       border-radius: 50%;
       background: #B52B32;
-      border: 2px solid #ffffff;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+      border: 2px solid #FFFFFF;
+      box-shadow: 0 1px 4px rgba(36, 39, 42, 0.4);
     }
     @keyframes pulse {
       0% { transform: scale(0.6); opacity: 0.9; }
       100% { transform: scale(1.6); opacity: 0; }
     }
 
-    /* Marcador estilo globo de diálogo PictoChat retro */
+    /* Marcador estilo globo PictoChat minimalista */
     .billboard-marker {
       display: flex;
       flex-direction: column;
@@ -120,17 +162,17 @@ export const MapLibreOsmView = forwardRef<MapLibreOsmViewRef, MapLibreOsmViewPro
       transform: translateY(-6px) scale(1.06);
     }
     .billboard-bubble {
-      background: #ffffff;
-      border-radius: 4px;
+      background: #FFFFFF;
+      border-radius: 3px;
       border: 1.5px solid #24272A;
-      padding: 5px 8px;
+      padding: 4px 8px;
       display: flex;
       align-items: center;
       gap: 6px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.14);
+      box-shadow: 0 3px 8px rgba(36, 39, 42, 0.12);
       position: relative;
       white-space: nowrap;
-      max-width: 150px;
+      max-width: 160px;
     }
     .billboard-bubble::after {
       content: '';
@@ -145,8 +187,8 @@ export const MapLibreOsmView = forwardRef<MapLibreOsmViewRef, MapLibreOsmViewPro
       border-top: 6px solid #24272A;
     }
     .billboard-avatar {
-      width: 12px;
-      height: 12px;
+      width: 10px;
+      height: 10px;
       border-radius: 2px;
       flex-shrink: 0;
     }
@@ -161,8 +203,8 @@ export const MapLibreOsmView = forwardRef<MapLibreOsmViewRef, MapLibreOsmViewPro
     }
     .billboard-shadow {
       width: 18px;
-      height: 6px;
-      background: rgba(0, 0, 0, 0.2);
+      height: 5px;
+      background: rgba(36, 39, 42, 0.2);
       border-radius: 50%;
       margin-top: 8px;
     }
@@ -170,6 +212,7 @@ export const MapLibreOsmView = forwardRef<MapLibreOsmViewRef, MapLibreOsmViewPro
 </head>
 <body>
   <div id="map"></div>
+  <div id="texture-overlay"></div>
 
   <script>
     const userCoords = [${initialLng}, ${initialLat}];
@@ -214,7 +257,6 @@ export const MapLibreOsmView = forwardRef<MapLibreOsmViewRef, MapLibreOsmViewPro
       };
     }
 
-    // Cálculo de distancia esférica (Haversine) en metros
     function getDistanceMeters(lat1, lon1, lat2, lon2) {
       const R = 6371000;
       const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -227,10 +269,10 @@ export const MapLibreOsmView = forwardRef<MapLibreOsmViewRef, MapLibreOsmViewPro
       return R * c;
     }
 
-    // Estilo vectorial abierto de OpenStreetMap con capas de extrusión 3D
-    const osmVectorStyle = 'https://tiles.openfreemap.org/styles/liberty';
+    // Estilo CartoDB Positron: mapa vectorial abierto limpio, monocromático cálido y sin saturaciones
+    const osmVectorStyle = 'https://tiles.openfreemap.org/styles/positron';
 
-    // Inicializamos MapLibre con proyección 3D isométrica y cámara inclinada
+    // Inicializamos MapLibre con proyección 3D isométrica limpia
     const map = new maplibregl.Map({
       container: 'map',
       style: osmVectorStyle,
@@ -276,7 +318,7 @@ export const MapLibreOsmView = forwardRef<MapLibreOsmViewRef, MapLibreOsmViewPro
           el.innerHTML = \`
             <div class="billboard-bubble">
               <div class="billboard-avatar" style="background: \${msg.authorColor};"></div>
-              <div class="billboard-text">\${msg.content.substring(0, 20)}\${msg.content.length > 20 ? '...' : ''}</div>
+              <div class="billboard-text">\${msg.content.substring(0, 22)}\${msg.content.length > 22 ? '...' : ''}</div>
             </div>
             <div class="billboard-shadow"></div>
           \`;
@@ -338,14 +380,29 @@ export const MapLibreOsmView = forwardRef<MapLibreOsmViewRef, MapLibreOsmViewPro
     map.on('load', () => {
       isMapLoaded = true;
 
-      // Marcador del usuario actual
+      // Personalización cromática minimalista de capas OpenStreetMap
+      if (map.getLayer('background')) {
+        map.setPaintProperty('background', 'background-color', '#F4F3EE');
+      }
+      if (map.getLayer('water')) {
+        map.setPaintProperty('water', 'fill-color', '#D0DDE5');
+      }
+      if (map.getLayer('park')) {
+        map.setPaintProperty('park', 'fill-color', '#E2ECE1');
+      }
+      if (map.getLayer('building')) {
+        map.setLayoutProperty('building', 'visibility', 'none');
+      }
+
+      // Marcador del usuario actual estilo mira radar
       const userEl = document.createElement('div');
       userEl.className = 'user-marker';
-      userEl.innerHTML = '<div class="user-marker-pulse"></div><div class="user-marker-dot"></div>';
+      userEl.innerHTML = '<div class="user-marker-cross-v"></div><div class="user-marker-cross-h"></div><div class="user-marker-pulse"></div><div class="user-marker-dot"></div>';
       userMarker = new maplibregl.Marker({ element: userEl, anchor: 'center' })
         .setLngLat(userCoords)
         .addTo(map);
 
+      // Círculo del radar de alcance en el terreno
       map.addSource('range-circle-source', {
         type: 'geojson',
         data: getGeoJSONCircle(currentCenter[0], currentCenter[1], currentRange)
@@ -357,7 +414,7 @@ export const MapLibreOsmView = forwardRef<MapLibreOsmViewRef, MapLibreOsmViewPro
         source: 'range-circle-source',
         paint: {
           'fill-color': '#2D6A4F',
-          'fill-opacity': 0.12
+          'fill-opacity': 0.08
         }
       });
 
@@ -368,29 +425,21 @@ export const MapLibreOsmView = forwardRef<MapLibreOsmViewRef, MapLibreOsmViewPro
         paint: {
           'line-color': '#24272A',
           'line-width': 1.5,
-          'line-opacity': 0.8,
-          'line-dasharray': [4, 2]
+          'line-opacity': 0.75,
+          'line-dasharray': [4, 3]
         }
       });
 
+      // Luz diurna suave para resaltar aristas arquitectónicas
       map.setLight({
         anchor: 'viewport',
-        color: '#ffffff',
-        intensity: 0.65,
-        position: [1.5, 210, 45]
+        color: '#FAF8F5',
+        intensity: 0.58,
+        position: [1.5, 215, 50]
       });
 
-      if (map.getLayer('building-3d')) {
-        map.setPaintProperty('building-3d', 'fill-extrusion-opacity', 0.9);
-        map.setPaintProperty('building-3d', 'fill-extrusion-color', [
-          'interpolate',
-          ['linear'],
-          ['get', 'render_height'],
-          0, '#dedbd2',
-          40, '#ccc7bd',
-          120, '#b5b0a4'
-        ]);
-      } else if (map.getSource('openmaptiles') && !map.getLayer('custom-3d-buildings')) {
+      // Edificios 3D con degradado monocromático cálido tipo maqueta de papel
+      if (map.getSource('openmaptiles') && !map.getLayer('custom-3d-buildings')) {
         map.addLayer({
           'id': 'custom-3d-buildings',
           'source': 'openmaptiles',
@@ -398,10 +447,18 @@ export const MapLibreOsmView = forwardRef<MapLibreOsmViewRef, MapLibreOsmViewPro
           'type': 'fill-extrusion',
           'minzoom': 13,
           'paint': {
-            'fill-extrusion-color': '#d8d4ca',
+            'fill-extrusion-color': [
+              'interpolate',
+              ['linear'],
+              ['get', 'render_height'],
+              0, '#E8E5DD',
+              25, '#DAD5CB',
+              60, '#CBC5B8',
+              120, '#B8B1A2'
+            ],
             'fill-extrusion-height': ['get', 'render_height'],
             'fill-extrusion-base': ['get', 'render_min_height'],
-            'fill-extrusion-opacity': 0.85
+            'fill-extrusion-opacity': 0.92
           }
         });
       }
@@ -428,7 +485,6 @@ export const MapLibreOsmView = forwardRef<MapLibreOsmViewRef, MapLibreOsmViewPro
       });
     }
 
-    // Manejador único de comandos provenientes de React / React Native
     function handleCommand(raw) {
       try {
         const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
@@ -448,7 +504,6 @@ export const MapLibreOsmView = forwardRef<MapLibreOsmViewRef, MapLibreOsmViewPro
           if (userMarker) {
             userMarker.setLngLat([lng, lat]);
           }
-          // Siempre movemos la cámara al recentrar; la cámara funciona aunque el estilo no haya cargado
           if (data.type === 'RECENTER' || data.fly) {
             flyToUser(lng, lat);
           }
@@ -469,13 +524,10 @@ export const MapLibreOsmView = forwardRef<MapLibreOsmViewRef, MapLibreOsmViewPro
       } catch (err) {}
     }
 
-    // Acceso directo (iframe same-origin en web / injectJavaScript en nativo)
     window.__mapCommand = handleCommand;
-    // Compatibilidad con postMessage: iOS despacha en window y Android en document
     window.addEventListener('message', (event) => handleCommand(event.data));
     document.addEventListener('message', (event) => handleCommand(event.data));
 
-    // Avisar al host que el mapa está listo para recibir el estado actual
     notifyParent({ type: 'MAP_READY' });
   </script>
 </body>
@@ -483,7 +535,6 @@ export const MapLibreOsmView = forwardRef<MapLibreOsmViewRef, MapLibreOsmViewPro
     `;
   }, []);
 
-  // Último estado conocido, para reenviarlo cuando el mapa avise que está listo
   const latestRef = useRef({ userLocation, rangeDistance, messages });
   latestRef.current = { userLocation, rangeDistance, messages };
 
@@ -492,14 +543,12 @@ export const MapLibreOsmView = forwardRef<MapLibreOsmViewRef, MapLibreOsmViewPro
     if (Platform.OS === 'web') {
       const win: any = iframeRef.current?.contentWindow;
       if (!win) return;
-      // El iframe srcDoc es same-origin: llamamos directamente al manejador
       if (typeof win.__mapCommand === 'function') {
         win.__mapCommand(payloadObj);
       } else {
         win.postMessage(payload, '*');
       }
     } else if (webViewRef.current) {
-      // injectJavaScript es fiable en iOS y Android (postMessage en Android despacha en document)
       webViewRef.current.injectJavaScript(
         `window.__mapCommand && window.__mapCommand(${payload}); true;`
       );
@@ -532,7 +581,6 @@ export const MapLibreOsmView = forwardRef<MapLibreOsmViewRef, MapLibreOsmViewPro
     },
   }));
 
-  // Sincronizar radio cuando cambie
   useEffect(() => {
     postToMap({
       type: 'SET_RANGE',
@@ -540,7 +588,6 @@ export const MapLibreOsmView = forwardRef<MapLibreOsmViewRef, MapLibreOsmViewPro
     });
   }, [rangeDistance]);
 
-  // Sincronizar ubicación del usuario cuando cambie en React Native
   useEffect(() => {
     postToMap({
       type: 'SET_USER_LOCATION',
@@ -549,7 +596,6 @@ export const MapLibreOsmView = forwardRef<MapLibreOsmViewRef, MapLibreOsmViewPro
     });
   }, [userLocation.latitude, userLocation.longitude]);
 
-  // Sincronizar mensajes cuando cambien
   useEffect(() => {
     postToMap({
       type: 'UPDATE_MESSAGES',
@@ -580,7 +626,6 @@ export const MapLibreOsmView = forwardRef<MapLibreOsmViewRef, MapLibreOsmViewPro
   useEffect(() => {
     if (Platform.OS === 'web') {
       const listener = (event: MessageEvent) => {
-        // Solo aceptamos mensajes provenientes del iframe del mapa
         if (iframeRef.current && event.source !== iframeRef.current.contentWindow) return;
         if (typeof event.data === 'string') {
           handleMapMessage(event.data);
@@ -649,7 +694,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     position: 'relative',
-    backgroundColor: '#EEF2ED',
+    backgroundColor: '#F4F3EE',
   },
   webIframe: {
     width: '100%',
@@ -658,7 +703,7 @@ const styles = StyleSheet.create({
   },
   nativeWebView: {
     flex: 1,
-    backgroundColor: '#EEF2ED',
+    backgroundColor: '#F4F3EE',
   },
   fallbackContainer: {
     flex: 1,
