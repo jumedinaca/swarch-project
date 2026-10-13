@@ -54,17 +54,16 @@ export const NetworkProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     setError(null);
     try {
-      const [friendsRes, incomingRes, outgoingRes] = await Promise.all([
-        networkService.getFriends(user.id),
-        networkService.getIncomingRequests(user.id),
-        networkService.getOutgoingRequests(user.id),
-      ]);
+      // Una sola petición GraphQL trae amigos y solicitudes recibidas y enviadas
+      const res = await networkService.getNetwork(user.id);
 
-      if (friendsRes.success) setFriends(friendsRes.data);
-      if (incomingRes.success) setIncomingRequests(incomingRes.data);
-      if (outgoingRes.success) setOutgoingRequests(outgoingRes.data);
-
-      if (!friendsRes.success && friendsRes.error) setError(friendsRes.error);
+      if (res.success && res.data) {
+        setFriends(res.data.friends);
+        setIncomingRequests(res.data.incoming);
+        setOutgoingRequests(res.data.outgoing);
+      } else if (res.error) {
+        setError(res.error);
+      }
     } catch (err: any) {
       console.warn('[NetworkContext] Error al actualizar red social:', err.message);
       setError(err.message || 'Error al obtener datos de la red social.');

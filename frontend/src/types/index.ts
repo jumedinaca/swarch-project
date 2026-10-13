@@ -90,6 +90,7 @@ export interface QueryMessagesParams {
 
 export type FriendshipStatus = 'pending' | 'accepted';
 
+/** Relación de amistad tal como la usa la interfaz (convertida desde GraphQL en networkService) */
 export interface Friendship {
   id: string;
   user_a: string;
@@ -102,19 +103,6 @@ export interface Friendship {
   other_user_id?: string;
   /** Campo derivado: true si la solicitud fue emitida por el usuario actual */
   sent_by_me?: boolean;
-}
-
-export interface SendFriendRequestDto {
-  recipient_id: string;
-}
-
-export interface FriendshipListResponse {
-  friendships: Friendship[];
-}
-
-export interface QueryFriendshipsParams {
-  limit?: number;
-  cursor?: string;
 }
 
 /** Representación devuelta por la API GraphQL de Network */
@@ -130,10 +118,4 @@ export interface GraphQLFriendship {
   sentByMe: boolean;
 }
 
-export interface GraphQLDashboardData {
-  me?: string;
-  friends?: GraphQLFriendship[];
-  incomingRequests?: GraphQLFriendship[];
-  outgoingRequests?: GraphQLFriendship[];
-}
 
