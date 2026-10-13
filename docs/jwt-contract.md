@@ -7,7 +7,7 @@ Este documento define el access token que emite el servicio de autenticación (`
 | Elemento | Valor |
 | --- | --- |
 | Algoritmo | `HS256` (HMAC-SHA256) |
-| Secreto | Variable `JWT_SECRET`, compartida entre el gateway y el servicio de autenticación. Mínimo 32 bytes. |
+| Secreto | Variable `JWT_SECRET`, compartida entre el gateway y el servicio de autenticación. Mínimo 32 bytes. Si no se define, `docker-compose.yml` usa un valor por defecto pensado solo para ejecutar el prototipo en local. |
 | `sub` | **Obligatorio.** UUID del usuario. Es el valor que el gateway reenvía como `X-User-ID`. |
 | `iss` | **Obligatorio.** `geopicto-auth` (configurable con `JWT_ISSUER` en ambos servicios). |
 | `exp` | **Obligatorio.** Fecha de expiración (segundos desde epoch). El servicio de autenticación emite tokens de 15 minutos. |
@@ -59,4 +59,4 @@ Para probar sin pasar por el registro:
 node scripts/dev-token.mjs 550e8400-e29b-41d4-a716-446655440000
 ```
 
-Lee `JWT_SECRET` del entorno o del `.env` de la raíz. Sin UUID, genera uno aleatorio. `--hours N` cambia la duración (24 h por defecto).
+Lee `JWT_SECRET` del entorno o del `.env` de la raíz; si no está definido, usa el mismo valor por defecto que `docker-compose.yml`. Sin UUID, genera uno aleatorio. `--hours N` cambia la duración (24 h por defecto).

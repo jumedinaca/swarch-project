@@ -2,8 +2,11 @@
 # autenticacion, mensajes y red social con sus bases de datos, todos en la
 # misma red.
 #
-#   cp .env.example .env   # y define JWT_SECRET
 #   docker compose up --build
+#
+# No requiere configuracion previa: JWT_SECRET tiene un valor por defecto para
+# el prototipo (ver x-jwt-secret abajo). Para usar uno propio, define
+# JWT_SECRET en un archivo .env (ver .env.example).
 #
 # Solo se publican al host el gateway (:8080) y el frontend (:8081). Los
 # servicios internos se alcanzan unicamente a traves del gateway, que es quien
@@ -13,6 +16,12 @@
 # aislada; este archivo es el que levanta el sistema completo.
 
 name: geopicto
+
+# Secreto HS256 compartido: auth firma los JWT y el gateway los verifica, asi
+# que ambos deben recibir el mismo valor. El valor por defecto es solo para
+# ejecutar el prototipo en local; en cualquier entorno compartido se debe
+# definir JWT_SECRET en .env (minimo 32 bytes).
+x-jwt-secret: &jwt-secret ${JWT_SECRET:-geopicto-prototipo-secreto-local-no-usar-en-produccion}
 
 services:
   auth-db:
@@ -36,7 +45,7 @@ services:
       PORT: "8080"
       # Mismo secreto que el gateway: el gateway verifica con el los tokens que
       # firma este servicio.
-      JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET en .env (minimo 32 bytes). Ver .env.example}
+      JWT_SECRET: *jwt-secret
       # Vacio a proposito: el gateway agrega las cabeceras CORS. Si ambos las
       # pusieran, el navegador rechazaria las respuestas.
       CORS_ORIGINS: ""
@@ -121,7 +130,7 @@ services:
   gateway:
     build: ./gateway
     environment:
-      JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET en .env (minimo 32 bytes). Ver .env.example}
+      JWT_SECRET: *jwt-secret
       MESSAGES_SERVICE_URL: http://messages:8080
       AUTH_SERVICE_URL: http://auth:8080
       NETWORK_SERVICE_URL: http://network:8080

@@ -16,17 +16,15 @@ El formato de los tokens y el enrutamiento están en [`docs/jwt-contract.md`](do
 
 ## Ejecutar todo el sistema
 
-Requiere Docker con Compose.
+Requiere Docker con Compose. No hace falta ninguna configuración previa:
 
 ```bash
-cp .env.example .env
-```
-
-Define `JWT_SECRET` en `.env` (mínimo 32 bytes; por ejemplo, el resultado de `openssl rand -base64 48`) y luego:
-
-```bash
+git clone https://github.com/jumedinaca/swarch-project.git
+cd swarch-project
 docker compose up --build
 ```
+
+El secreto con el que se firman los JWT (`JWT_SECRET`) tiene un valor por defecto en el `docker-compose.yml`, pensado solo para ejecutar el prototipo en local. Para usar uno propio, copia `.env.example` a `.env` y define `JWT_SECRET` (mínimo 32 bytes; por ejemplo, el resultado de `openssl rand -base64 48`).
 
 | Servicio | URL |
 | --- | --- |
