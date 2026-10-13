@@ -15,6 +15,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useMessages } from '../../context/MessagesContext';
 import { nintendoTheme } from '../../theme/nintendoTheme';
 import { WiiButton } from '../common/WiiButton';
+import { validateMessageContent, validateCoordinates } from '../../utils/validators';
 
 interface CreateMessageModalProps {
   visible: boolean;
@@ -39,9 +40,22 @@ export const CreateMessageModal: React.FC<CreateMessageModalProps> = ({
 
   const handlePublish = async () => {
     setErrorMsg('');
+
+    const contentVal = validateMessageContent(content);
+    if (!contentVal.isValid) {
+      setErrorMsg(contentVal.error || 'Mensaje inválido.');
+      return;
+    }
+
+    const coordsVal = validateCoordinates(targetCoords.latitude, targetCoords.longitude);
+    if (!coordsVal.isValid) {
+      setErrorMsg(coordsVal.error || 'Coordenadas inválidas.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const res = await createMessage(content, targetCoords, 'publicado', 24);
+      const res = await createMessage(content.trim(), targetCoords, 'publicado', 24);
       if (res.success) {
         setContent('');
         onClose();

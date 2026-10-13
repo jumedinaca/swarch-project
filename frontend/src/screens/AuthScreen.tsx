@@ -14,6 +14,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { nintendoTheme } from '../theme/nintendoTheme';
 import { WiiButton } from '../components/common/WiiButton';
+import {
+  validateUsername,
+  validateEmail,
+  validatePassword,
+  validateUsernameOrEmail,
+} from '../utils/validators';
 
 interface AuthScreenProps {
   onSuccess: () => void;
@@ -33,10 +39,19 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
   const handleLogin = async () => {
     setLocalError('');
     clearError();
-    if (!username.trim()) {
-      setLocalError('Por favor ingresa tu nombre de usuario o correo.');
+
+    const userVal = validateUsernameOrEmail(username);
+    if (!userVal.isValid) {
+      setLocalError(userVal.error || 'Por favor ingresa tu nombre de usuario o correo.');
       return;
     }
+
+    const passVal = validatePassword(password, false);
+    if (!passVal.isValid) {
+      setLocalError(passVal.error || 'Ingresa tu contraseña.');
+      return;
+    }
+
     const success = await login(username, password);
     if (success) {
       onSuccess();
@@ -46,12 +61,22 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
   const handleRegister = async () => {
     setLocalError('');
     clearError();
-    if (!username.trim()) {
-      setLocalError('Ingresa un nombre de usuario.');
+
+    const userVal = validateUsername(username);
+    if (!userVal.isValid) {
+      setLocalError(userVal.error || 'Nombre de usuario inválido.');
       return;
     }
-    if (!email.trim() || !email.includes('@')) {
-      setLocalError('Ingresa un correo electrónico válido.');
+
+    const emailVal = validateEmail(email);
+    if (!emailVal.isValid) {
+      setLocalError(emailVal.error || 'Correo electrónico inválido.');
+      return;
+    }
+
+    const passVal = validatePassword(password, true);
+    if (!passVal.isValid) {
+      setLocalError(passVal.error || 'La contraseña debe tener al menos 8 caracteres.');
       return;
     }
 

@@ -32,26 +32,28 @@ La aplicación cliente **solo se comunica con el API Gateway**, y este se encarg
 ```mermaid
 flowchart TD
     subgraph Cliente["📱 Componente de Presentación (Frontend)"]
-        UI["Pantallas (AuthScreen / MapScreen)"]
-        Context["Contextos (AuthContext / MessagesContext)"]
-        Services["Servicios (authService / messagesService / apiClient)"]
+        UI["Pantallas y Modales\n(AuthScreen / MapScreen / NetworkModal)"]
+        Context["Contextos\n(AuthContext / MessagesContext / NetworkContext)"]
+        Services["Servicios\n(authService / messagesService / networkService / apiClient)"]
         UI --> Context
         Context --> Services
     end
 
     subgraph Gateway["🚪 API Gateway (Puerto Central :8080)"]
         Router["Enrutador de Peticiones"]
-        AuthFilter["Gestión de Cabecera Authorization: Bearer JWT"]
+        AuthFilter["Validación JWT y traducción a X-User-ID"]
     end
 
     subgraph Backend["☁️ Microservicios Internos"]
-        AuthMS["🔐 Microservicio de Autenticación\n(puerto 5001 / interno)"]
-        MessagesMS["📍 Microservicio de Mensajes\n(puerto 5002 / interno)"]
+        AuthMS["🔐 MS Autenticación (FastAPI / PostgreSQL)"]
+        MsgMS["📍 MS Mensajes Geoespaciales (Go / PostGIS)"]
+        NetMS["👥 MS Red Social (FastAPI / Strawberry GraphQL / MongoDB)"]
     end
 
-    Services -- "HTTP /api/*" --> Gateway
+    Services -- "HTTP /api/* + Bearer JWT" --> Gateway
     Router -- "/api/auth/*" --> AuthMS
-    Router -- "/api/messages/*" --> MessagesMS
+    Router -- "/api/messages/*" --> MsgMS
+    Router -- "/api/network/*" --> NetMS
 ```
 
 ---
@@ -224,6 +226,36 @@ Para cuando tus compañeros o tú configuren el API Gateway y los microservicios
     "message": "Mensaje eliminado con éxito"
   }
   ```
+
+---
+
+### C. Red Social y Amigos (`/api/network/*`)
+
+El microservicio de red social (`services/network`) guarda las relaciones en MongoDB y soporta dos conectores HTTP:
+
+#### 1. Endpoints REST
+
+| Método | Ruta en Gateway | Descripción | Cuerpo / Parámetros | Respuesta |
+|---|---|---|---|---|
+| `POST` | `/api/network/request` | Envía solicitud de amistad | `{ "recipient_id": "<uuid>" }` | `201` Friendship |
+| `GET` | `/api/network/request/incoming` | Solicitudes pendientes recibidas | `?limit=20&cursor=` | `{ "friendships": [...] }` |
+| `GET` | `/api/network/request/outcoming` | Solicitudes pendientes enviadas | `?limit=20&cursor=` | `{ "friendships": [...] }` |
+| `POST` | `/api/network/request/accept/:id` | Aceptar solicitud | — | `200` Friendship |
+| `DELETE` | `/api/network/request/reject/:id` | Rechazar solicitud | — | `204` No Content |
+| `DELETE` | `/api/network/request/cancel/:id` | Cancelar solicitud enviada | — | `204` No Content |
+| `GET` | `/api/network/friends` | Lista de amigos aceptados | `?limit=20&cursor=` | `{ "friendships": [...] }` |
+| `DELETE` | `/api/network/friends/:friend_id` | Eliminar amistad | — | `204` No Content |
+
+#### 2. Endpoint GraphQL (`POST /api/network/graphql`)
+Permite consultar el panel de amigos y solicitudes en una sola petición HTTP:
+```graphql
+query Dashboard {
+  me
+  friends { id otherUserId status createdAt }
+  incomingRequests { id otherUserId status createdAt }
+  outgoingRequests { id otherUserId status createdAt }
+}
+```
 
 ---
 

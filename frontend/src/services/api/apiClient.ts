@@ -162,11 +162,22 @@ class ApiClient {
       }
 
       if (!response.ok) {
-        const errorMsg =
-          data?.message ||
-          data?.error ||
-          data?.raw?.trim() ||
-          `Error en API Gateway (${response.status}: ${response.statusText})`;
+        let errorMsg = data?.message || data?.error;
+
+        if (!errorMsg && data?.detail) {
+          if (Array.isArray(data.detail)) {
+            errorMsg = data.detail.map((d: any) => d.msg || JSON.stringify(d)).join(', ');
+          } else if (typeof data.detail === 'string') {
+            errorMsg = data.detail;
+          }
+        }
+
+        if (!errorMsg) {
+          errorMsg =
+            data?.raw?.trim() ||
+            `Error en API Gateway (${response.status}: ${response.statusText})`;
+        }
+
         throw new ApiError(errorMsg, response.status, data);
       }
 
