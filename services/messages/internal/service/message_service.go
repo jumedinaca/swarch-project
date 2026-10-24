@@ -3,7 +3,9 @@ package service
 import (
 	"context"
 	"fmt"
+
 	"github.com/google/uuid"
+
 	"messages/internal/domain"
 	"messages/internal/repository"
 )
@@ -32,30 +34,63 @@ func (s *MessageService) CreateMessage(
 	return s.repository.Create(ctx, message)
 }
 
+func (s *MessageService) UpdateMessage(
+	ctx context.Context,
+	messageID uuid.UUID,
+	userID uuid.UUID,
+	message *domain.Message,
+) (*domain.Message, error) {
+
+	if message.Content == "" {
+		return nil, fmt.Errorf("content cannot be empty")
+	}
+
+	existing, err := s.repository.GetByID(ctx, messageID)
+	if err != nil {
+		return nil, err
+	}
+
+	if existing.SenderID != userID {
+		return nil, fmt.Errorf("message not found or user is not the owner")
+	}
+
+	return s.repository.Update(ctx, messageID, message)
+}
+
 func (s *MessageService) DeleteMessage(
-    ctx context.Context,
-    messageID uuid.UUID,
-    userID uuid.UUID,
+	ctx context.Context,
+	messageID uuid.UUID,
+	userID uuid.UUID,
 ) error {
 
-    return s.repository.Delete(
-        ctx,
-        messageID,
-        userID,
-    )
+	existing, err := s.repository.GetByID(ctx, messageID)
+	if err != nil {
+		return err
+	}
+
+	if existing.SenderID != userID {
+		return fmt.Errorf("message not found or user is not the owner")
+	}
+
+	return s.repository.Delete(ctx, messageID)
 }
 
 func (s *MessageService) GetMessageById(
-    ctx context.Context,
-    messageID uuid.UUID,
-    userID uuid.UUID,
+	ctx context.Context,
+	messageID uuid.UUID,
+	userID uuid.UUID,
 ) (*domain.Message, error) {
 
-    return s.repository.GetByID(
-        ctx,
-        messageID,
-        userID,
-    )
+	message, err := s.repository.GetByID(ctx, messageID)
+	if err != nil {
+		return nil, err
+	}
+
+	if message.SenderID != userID {
+		return nil, fmt.Errorf("message not found or user is not the owner")
+	}
+
+	return message, nil
 }
 
 func (s *MessageService) GetNearby(

@@ -1,6 +1,8 @@
 services:
   messages:
-    build: .
+    build:
+      context: .
+      target: development
     container_name: messages
 
     env_file:

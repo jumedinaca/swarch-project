@@ -22,11 +22,15 @@ func (f *fakeRepository) Create(ctx context.Context, message *domain.Message) (*
 	return message, nil
 }
 
-func (f *fakeRepository) Delete(ctx context.Context, id uuid.UUID, senderID uuid.UUID) error {
+func (f *fakeRepository) Update(ctx context.Context, id uuid.UUID, message *domain.Message) (*domain.Message, error) {
+	return message, nil
+}
+
+func (f *fakeRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-func (f *fakeRepository) GetByID(ctx context.Context, id uuid.UUID, senderID uuid.UUID) (*domain.Message, error) {
+func (f *fakeRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Message, error) {
 	return nil, nil
 }
 
