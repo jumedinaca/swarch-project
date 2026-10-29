@@ -16,7 +16,8 @@ async def test_register_returns_frontend_contract(client, settings):
     uuid.UUID(user["id"])  # el servicio de mensajes exige UUID en X-User-ID
     assert user["username"] == "Explorador"
     assert user["email"] == "explorador@geochat.org"
-    assert user["color"] in settings.avatar_color_list
+    assert user["isActive"] is True
+    assert "color" not in user  # el color ahora pertenece a profile
     assert "password" not in str(user).lower()
     assert body["data"]["token"]
     assert body["data"]["refreshToken"]
@@ -87,29 +88,10 @@ async def test_profile_requires_token(client):
     assert res.json()["data"]["username"] == "Explorador"
 
 
-async def test_update_profile_color(client):
-    token = (await register(client)).json()["data"]["token"]
-    res = await client.patch("/auth/profile", json={"color": "#abcdef"}, headers=bearer(token))
-    assert res.status_code == 200
-    assert res.json()["data"]["color"] == "#ABCDEF"
-
-    res = await client.patch("/auth/profile", json={"color": "rojo"}, headers=bearer(token))
-    assert res.status_code == 422
-
-
-async def test_validate_exposes_identity_headers(client):
-    data = (await register(client)).json()["data"]
-    res = await client.get("/auth/validate", headers=bearer(data["token"]))
-    assert res.status_code == 200
-    assert res.headers["X-User-ID"] == data["user"]["id"]
-    assert res.headers["X-User-Name"] == "Explorador"
-    assert res.json()["data"]["userId"] == data["user"]["id"]
-
-
-async def test_validate_rejects_bad_tokens(client, settings):
+async def test_profile_rejects_bad_tokens(client, settings):
     data = (await register(client)).json()["data"]
 
-    res = await client.get("/auth/validate", headers=bearer(data["token"] + "x"))
+    res = await client.get("/auth/profile", headers=bearer(data["token"] + "x"))
     assert res.status_code == 401
 
     forged = jwt.encode(
@@ -117,13 +99,13 @@ async def test_validate_rejects_bad_tokens(client, settings):
         "otro-secreto-otro-secreto-otro-secreto",
         algorithm="HS256",
     )
-    res = await client.get("/auth/validate", headers=bearer(forged))
+    res = await client.get("/auth/profile", headers=bearer(forged))
     assert res.status_code == 401
 
     claims = jwt.decode(data["token"], options={"verify_signature": False})
     claims["exp"] = security.utcnow() - timedelta(seconds=settings.jwt_leeway_seconds + 60)
     expired = jwt.encode(claims, settings.jwt_secret, algorithm="HS256")
-    res = await client.get("/auth/validate", headers=bearer(expired))
+    res = await client.get("/auth/profile", headers=bearer(expired))
     assert res.status_code == 401
     assert res.json()["message"] == "El token ha expirado"
 
@@ -132,7 +114,7 @@ async def test_logout_revokes_access_token(client):
     token = (await register(client)).json()["data"]["token"]
     res = await client.post("/auth/logout", headers=bearer(token))
     assert res.status_code == 200
-    res = await client.get("/auth/validate", headers=bearer(token))
+    res = await client.get("/auth/profile", headers=bearer(token))
     assert res.status_code == 401
 
 
@@ -166,8 +148,8 @@ async def test_change_password_closes_other_sessions(client):
         headers=bearer(first),
     )
     assert res.status_code == 200
-    assert (await client.get("/auth/validate", headers=bearer(first))).status_code == 200
-    assert (await client.get("/auth/validate", headers=bearer(second))).status_code == 401
+    assert (await client.get("/auth/profile", headers=bearer(first))).status_code == 200
+    assert (await client.get("/auth/profile", headers=bearer(second))).status_code == 401
 
     res = await client.post(
         "/auth/login", json={"usernameOrEmail": "explorador", "password": "nuevoSecreto456"}
@@ -190,7 +172,7 @@ async def test_list_and_revoke_sessions(client):
     other = next(s for s in sessions if not s["current"])
     res = await client.delete(f"/auth/sessions/{other['id']}", headers=bearer(first))
     assert res.status_code == 200
-    assert (await client.get("/auth/validate", headers=bearer(second))).status_code == 401
+    assert (await client.get("/auth/profile", headers=bearer(second))).status_code == 401
 
 
 async def test_logout_all(client):
@@ -198,9 +180,42 @@ async def test_logout_all(client):
     await client.post("/auth/login", json={"usernameOrEmail": "explorador", "password": "secreto123"})
     res = await client.post("/auth/logout-all", headers=bearer(first))
     assert res.status_code == 200
-    assert (await client.get("/auth/validate", headers=bearer(first))).status_code == 401
+    assert (await client.get("/auth/profile", headers=bearer(first))).status_code == 401
 
 
 async def test_health(client):
     res = await client.get("/health")
     assert res.status_code == 200
+
+
+async def test_register_publishes_user_registered_event(client, publisher):
+    res = await register(client)
+    assert res.status_code == 201
+    user = res.json()["data"]["user"]
+
+    assert len(publisher.events) == 1
+    event = publisher.events[0]
+    wire = event.model_dump(mode="json", by_alias=True)
+
+    assert wire["eventType"] == "user.registered.v1"
+    assert wire["version"] == 1
+    assert wire["producer"] == "auth"
+    assert wire["causationId"] is None
+    assert wire["correlationId"]
+    assert wire["occurredAt"].endswith("Z") or wire["occurredAt"].endswith("+00:00")
+    assert set(wire["payload"]) == {"userId", "username", "email", "registeredAt"}
+    assert wire["payload"]["userId"] == user["id"]
+    assert wire["payload"]["username"] == "Explorador"
+    assert wire["payload"]["email"] == "explorador@geochat.org"
+    assert "color" not in wire["payload"]
+
+
+async def test_register_succeeds_when_event_publishing_fails(client, publisher):
+    publisher.fail = True
+
+    res = await register(client)
+    assert res.status_code == 201
+    assert res.json()["data"]["user"]["username"] == "Explorador"
+
+    token = res.json()["data"]["token"]
+    assert (await client.get("/auth/profile", headers=bearer(token))).status_code == 200

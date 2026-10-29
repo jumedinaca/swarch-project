@@ -22,7 +22,7 @@ El código se organiza en las mismas capas que el servicio de mensajes:
 
 | Tabla | Contenido |
 | --- | --- |
-| `users` | `id` (UUID), `username` y `email` únicos sin distinguir mayúsculas, `password_hash` (Argon2id), `color` de avatar, `is_active`, contador de intentos fallidos, `locked_until`, `last_login_at` y marcas de tiempo. |
+| `users` | `id` (UUID), `username` y `email` únicos sin distinguir mayúsculas, `password_hash` (Argon2id), `is_active`, `is_admin` (reservado, sin uso en P2), contador de intentos fallidos, `locked_until`, `last_login_at` y marcas de tiempo. Este servicio no guarda datos públicos de perfil (`displayName`, `about`, `avatarUrl`, `color`): esos pertenecen a `profile`. |
 | `sessions` | Una fila por inicio de sesión: `user_id`, hash SHA-256 del refresh token, `user_agent`, `ip_address`, `expires_at`, `last_used_at` y `revoked_at`. |
 
 ## Seguridad implementada
@@ -60,6 +60,8 @@ La API queda publicada en `http://localhost:8200` y su documentación interactiv
 | `MAX_FAILED_LOGIN_ATTEMPTS` | No | `5` | Intentos fallidos antes de bloquear la cuenta. |
 | `LOCKOUT_MINUTES` | No | `15` | Duración del bloqueo. |
 | `CORS_ORIGINS` | No | vacío | Orígenes permitidos separados por coma. Detrás del gateway debe quedar vacío: el gateway ya agrega las cabeceras CORS y, si ambos las ponen, el navegador rechaza la respuesta. |
+| `RABBITMQ_URL` | No | vacío | Cadena AMQP para publicar eventos. Si está vacía, el servicio arranca y funciona, pero no publica eventos. |
+| `RABBITMQ_EXCHANGE` | No | `geopicto.events` | Exchange de tipo `topic` donde se publican los eventos. |
 
 ## API HTTP
 
@@ -77,9 +79,7 @@ El servicio expone sus rutas bajo `/auth`. El gateway debe enrutar `/api/auth/*`
 | `POST /auth/register` | — | Crea un usuario. Recibe `{ username, email, password }` y responde `201` con `user`, `token` y `refreshToken`. |
 | `POST /auth/login` | — | Recibe `{ usernameOrEmail, password }` y responde `200` con `user`, `token` y `refreshToken`. |
 | `POST /auth/refresh` | — | Recibe `{ refreshToken }` y entrega un access token y un refresh token nuevos (rotación). |
-| `GET /auth/validate` | Bearer | Comprueba un token contra su sesión. Responde `200` con las cabeceras `X-User-ID`, `X-User-Name`, `X-User-Color` y `X-Session-ID`, o `401` si el token no es válido o la sesión fue revocada. El gateway no lo usa hoy (ver abajo). |
-| `GET /auth/profile` | Bearer | Datos del usuario autenticado. |
-| `PATCH /auth/profile` | Bearer | Cambia el color del avatar con `{ color: "#RRGGBB" }`. |
+| `GET /auth/profile` | Bearer | Datos de identidad del usuario autenticado. La edición del perfil público pasa a `PATCH /api/profiles/me`. |
 | `PUT /auth/password` | Bearer | Recibe `{ currentPassword, newPassword }` y cierra las demás sesiones. |
 | `POST /auth/logout` | Bearer | Revoca la sesión actual. |
 | `POST /auth/logout-all` | Bearer | Revoca todas las sesiones del usuario. |
@@ -97,7 +97,7 @@ Ejemplo de respuesta de login o registro:
       "id": "7b8339ec-2e38-47b3-9d3b-7643652f1fc7",
       "username": "ExploradorGeo",
       "email": "explorador@geochat.org",
-      "color": "#2AC769",
+      "isActive": true,
       "createdAt": "2026-10-12T00:38:01.092780Z"
     },
     "token": "eyJhbGciOiJIUzI1NiIs...",
@@ -121,6 +121,32 @@ Ejemplo de respuesta de login o registro:
 | 422 | `validation_error` | Los datos de entrada no son válidos. `message` explica el problema. |
 | 423 | `account_locked` | La cuenta está bloqueada temporalmente por intentos fallidos. |
 
+## Eventos publicados
+
+Después del commit del registro se publica `user.registered.v1` en el exchange `topic` `geopicto.events`, con routing key `user.registered.v1` (las colas de `profile` y `email` se enlazan a esa routing key). El payload no incluye `color`: el color lo genera `profile`.
+
+```json
+{
+  "eventId": "0192f3a4-7b2c-7d1e-8f00-123456789abc",
+  "eventType": "user.registered.v1",
+  "version": 1,
+  "occurredAt": "2026-10-24T14:30:00Z",
+  "producer": "auth",
+  "correlationId": "b3b1c2d4-...",
+  "causationId": null,
+  "payload": {
+    "userId": "7b8339ec-...",
+    "username": "ExploradorGeo",
+    "email": "explorador@geochat.org",
+    "registeredAt": "2026-10-24T14:30:00Z"
+  }
+}
+```
+
+- No hay outbox ni tabla de eventos procesados en P2. Si RabbitMQ falla, el registro responde `201` igualmente y el error queda en el log.
+- `user.updated.v1` queda documentado para cuando exista un endpoint de cambio de `username`; hoy no se publica.
+- Las cabeceras AMQP incluyen `x-event-id`, `x-event-type` y `x-correlation-id`, y el mensaje es persistente.
+
 ## Integración con el API Gateway
 
 El gateway verifica los access tokens **por su cuenta**, con el mismo `JWT_SECRET`, sin llamar a este servicio. El contrato completo está en [`docs/jwt-contract.md`](../../docs/jwt-contract.md).
@@ -131,14 +157,13 @@ El gateway verifica los access tokens **por su cuenta**, con el mismo `JWT_SECRE
 
 Consecuencia: el gateway no consulta la tabla `sessions`, así que tras un `logout` el access token sigue sirviendo en las rutas protegidas hasta que expira. Por eso dura solo 15 minutos y el frontend debe renovarlo con `POST /auth/refresh`, que sí falla de inmediato si la sesión fue revocada.
 
-Se eligió así para que cada petición no dependa de este servicio ni de su base de datos. Si en el futuro se necesita revocación inmediata, el gateway puede llamar a `GET /auth/validate` antes de reenviar.
+Se eligió así para que cada petición no dependa de este servicio ni de su base de datos. Si en el futuro se necesita revocación inmediata, el gateway tendría que consultar la sesión antes de reenviar.
 
 ## Pruebas
 
 Las pruebas usan SQLite en un archivo temporal, así que no necesitan Docker:
 
-```powershell
-python -m venv .venv
-.venv\Scripts\python -m pip install -r requirements-dev.txt
-.venv\Scripts\python -m pytest
+```bash
+uv sync
+uv run pytest
 ```

@@ -41,10 +41,6 @@ class ChangePasswordRequest(CamelModel):
     new_password: str = Field(min_length=8, max_length=128)
 
 
-class UpdateProfileRequest(CamelModel):
-    color: str | None = Field(default=None, pattern=r"^#[0-9A-Fa-f]{6}$")
-
-
 # ==========================================
 # Responses
 # ==========================================
@@ -53,7 +49,7 @@ class UserOut(CamelModel):
     id: uuid.UUID
     username: str
     email: str
-    color: str
+    is_active: bool
     created_at: datetime
 
 
@@ -63,13 +59,6 @@ class AuthData(CamelModel):
     refresh_token: str
     token_type: str = "Bearer"
     expires_in: int
-
-
-class TokenValidation(CamelModel):
-    user_id: uuid.UUID
-    username: str
-    session_id: uuid.UUID
-    expires_at: datetime
 
 
 class SessionOut(CamelModel):
