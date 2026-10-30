@@ -25,8 +25,8 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(30), nullable=False)
     email: Mapped[str] = mapped_column(String(254), nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
-    color: Mapped[str] = mapped_column(String(7), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     failed_login_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

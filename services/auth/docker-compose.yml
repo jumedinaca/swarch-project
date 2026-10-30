@@ -8,8 +8,14 @@ services:
     env_file:
       - .env
 
+    environment:
+      RABBITMQ_URL: amqp://geopicto:geopicto@rabbitmq:5672/geopicto
+      RABBITMQ_EXCHANGE: geopicto.events
+
     depends_on:
       auth-db:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
     ports:
@@ -37,8 +43,8 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: auth
 
-    # ports:
-    #   - "5433:5432"
+    ports:
+      - "5433:5432"
 
     volumes:
       - auth_data:/var/lib/postgresql
@@ -50,6 +56,25 @@ services:
           "pg_isready -U postgres -d auth"
         ]
       interval: 5s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: auth_rabbitmq
+
+    environment:
+      RABBITMQ_DEFAULT_USER: geopicto
+      RABBITMQ_DEFAULT_PASS: geopicto
+      RABBITMQ_DEFAULT_VHOST: geopicto
+
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
       timeout: 5s
       retries: 10
 

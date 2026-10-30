@@ -1,3 +1,4 @@
+import logging
 import math
 import uuid
 from dataclasses import dataclass
@@ -9,7 +10,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core import security
 from app.core.config import Settings
 from app.domain.models import Session, User
+from app.messaging import UserEventPublisher
+from app.messaging.events import UserRegisteredEvent, UserRegisteredPayload
 from app.repository.auth_repository import SessionRepository, UserRepository
+
+logger = logging.getLogger(__name__)
 
 
 class AuthError(Exception):
@@ -50,11 +55,17 @@ def as_utc(value: datetime | None) -> datetime | None:
 
 
 class AuthService:
-    def __init__(self, db: AsyncSession, settings: Settings):
+    def __init__(
+        self,
+        db: AsyncSession,
+        settings: Settings,
+        user_event_publisher: UserEventPublisher | None,
+    ):
         self.db = db
         self.settings = settings
         self.users = UserRepository(db)
         self.sessions = SessionRepository(db)
+        self.user_event_publisher = user_event_publisher
 
     # ==========================================
     # Registro y login
@@ -71,13 +82,11 @@ class AuthService:
         if await self.users.email_exists(email):
             raise AuthError(409, "email_taken", "El correo electrónico ya está registrado.")
 
-        palette = self.settings.avatar_color_list
         user = User(
             id=uuid.uuid4(),
             username=username,
             email=email,
             password_hash=security.hash_password(password),
-            color=palette[await self.users.count() % len(palette)],
             last_login_at=security.utcnow(),
         )
         self.users.add(user)
@@ -90,6 +99,11 @@ class AuthService:
 
         tokens = self._start_session(user, client)
         await self.db.commit()
+
+        # Después del commit: si RabbitMQ falla, el usuario ya quedó registrado
+        # y la petición debe seguir respondiendo 201.
+        await self._publish_user_registered(user)
+
         return tokens
 
     async def login(self, identifier: str, password: str, client: ClientInfo) -> IssuedTokens:
@@ -225,16 +239,32 @@ class AuthService:
         await self.sessions.revoke_all(user.id, security.utcnow(), except_session=current_session.id)
         await self.db.commit()
 
-    async def update_profile(self, user: User, color: str | None) -> User:
-        if color is not None:
-            user.color = color.upper()
-        await self.db.commit()
-        await self.db.refresh(user)
-        return user
-
     # ==========================================
     # Internos
     # ==========================================
+
+    async def _publish_user_registered(self, user: User) -> None:
+        if self.user_event_publisher is None:
+            logger.warning(
+                "RABBITMQ_URL no configurada; no se publica user.registered.v1 (userId=%s).",
+                user.id,
+            )
+            return
+
+        event = UserRegisteredEvent(
+            payload=UserRegisteredPayload(
+                user_id=user.id,
+                username=user.username,
+                email=user.email,
+                registered_at=security.utcnow(),
+            )
+        )
+        try:
+            await self.user_event_publisher.publish(event)
+        except Exception:
+            logger.exception(
+                "No se pudo publicar user.registered.v1 (userId=%s).", user.id
+            )
 
     def _start_session(self, user: User, client: ClientInfo) -> IssuedTokens:
         session_id = uuid.uuid4()
