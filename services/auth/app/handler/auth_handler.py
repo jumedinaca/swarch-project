@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, status
 
 from app.handler.deps import CurrentAuth, get_auth_service, get_client_info, get_current_auth
 from app.schema.auth_schema import (
@@ -11,8 +11,6 @@ from app.schema.auth_schema import (
     RefreshRequest,
     RegisterRequest,
     SessionOut,
-    TokenValidation,
-    UpdateProfileRequest,
     UserOut,
 )
 from app.service.auth_service import AuthService, ClientInfo, IssuedTokens
@@ -60,47 +58,12 @@ async def refresh(body: RefreshRequest, service: AuthService = Depends(get_auth_
 
 
 # ==========================================
-# Para el API Gateway
-# ==========================================
-
-@router.get("/validate", response_model=Envelope[TokenValidation])
-async def validate(response: Response, auth: CurrentAuth = Depends(get_current_auth)):
-    """
-    Verifica el token del encabezado Authorization. Si es válido responde 200 y expone la
-    identidad en cabeceras para que el gateway las propague (X-User-ID es la que usa el
-    servicio de mensajes). Si no, responde 401.
-    """
-    response.headers["X-User-ID"] = str(auth.user.id)
-    response.headers["X-User-Name"] = auth.user.username
-    response.headers["X-User-Color"] = auth.user.color
-    response.headers["X-Session-ID"] = str(auth.session.id)
-    return Envelope(
-        data=TokenValidation(
-            user_id=auth.user.id,
-            username=auth.user.username,
-            session_id=auth.session.id,
-            expires_at=auth.claims.expires_at,
-        )
-    )
-
-
-# ==========================================
 # Autenticados
 # ==========================================
 
 @router.get("/profile", response_model=Envelope[UserOut])
 async def get_profile(auth: CurrentAuth = Depends(get_current_auth)):
     return Envelope(data=UserOut.model_validate(auth.user))
-
-
-@router.patch("/profile", response_model=Envelope[UserOut])
-async def update_profile(
-    body: UpdateProfileRequest,
-    auth: CurrentAuth = Depends(get_current_auth),
-    service: AuthService = Depends(get_auth_service),
-):
-    user = await service.update_profile(auth.user, body.color)
-    return Envelope(data=UserOut.model_validate(user), message="Perfil actualizado.")
 
 
 @router.put("/password", response_model=Envelope[None])

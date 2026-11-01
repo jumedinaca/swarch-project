@@ -27,16 +27,13 @@ class Settings(BaseSettings):
     # Lista separada por comas. Vacío = sin CORS (el API Gateway lo centraliza).
     cors_origins: str = ""
 
-    # Paleta de colores de avatar, igual a nintendoTheme.colors.avatarColors del frontend
-    avatar_colors: str = "#2AC769,#1EA4E8,#F5A623,#E84393,#9B51E0"
+    # Si está vacío, los eventos no se publican (el servicio sigue funcionando).
+    rabbitmq_url: str = ""
+    rabbitmq_exchange: str = "geopicto.events"
 
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
-
-    @property
-    def avatar_color_list(self) -> list[str]:
-        return [c.strip() for c in self.avatar_colors.split(",") if c.strip()]
 
 
 @lru_cache

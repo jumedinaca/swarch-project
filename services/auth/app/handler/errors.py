@@ -14,7 +14,6 @@ FIELD_MESSAGES = {
     "usernameOrEmail": "Ingresa tu nombre de usuario o correo.",
     "currentPassword": "Ingresa tu contraseña actual.",
     "refreshToken": "Falta el refresh token.",
-    "color": "El color debe tener formato hexadecimal (#RRGGBB).",
 }
 
 

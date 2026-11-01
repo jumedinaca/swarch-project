@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import AccessTokenClaims
 from app.domain.models import Session, User
+from app.messaging.publisher import UserEventPublisher
 from app.service.auth_service import AuthError, AuthService, ClientInfo
 
 _bearer = HTTPBearer(auto_error=False)
@@ -17,8 +18,16 @@ async def get_db(request: Request) -> AsyncIterator[AsyncSession]:
         yield session
 
 
-def get_auth_service(request: Request, db: AsyncSession = Depends(get_db)) -> AuthService:
-    return AuthService(db, request.app.state.settings)
+def get_user_event_publisher(request: Request) -> UserEventPublisher | None:
+    return request.app.state.user_event_publisher
+
+
+def get_auth_service(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user_event_publisher: UserEventPublisher | None = Depends(get_user_event_publisher),
+) -> AuthService:
+    return AuthService(db, request.app.state.settings, user_event_publisher)
 
 
 def get_client_info(request: Request) -> ClientInfo:
