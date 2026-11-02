@@ -1,0 +1,8 @@
+_build
+deps
+.git
+.env
+erl_crash.dump
+test
+README*.md
+docker-compose.yml

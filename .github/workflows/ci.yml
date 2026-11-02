@@ -108,6 +108,22 @@ jobs:
       # aplicación se construye sin errores de importación.
       - run: uv run --locked python -c "from app.main import create_app; create_app()"
 
+  realtime:
+    name: Realtime (Elixir)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/realtime
+    steps:
+      - uses: actions/checkout@v7
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: "27.2"
+          elixir-version: "1.18.2"
+      - run: mix deps.get
+      - run: mix compile --warnings-as-errors
+      - run: mix test
+
   frontend:
     name: Frontend (TypeScript)
     runs-on: ubuntu-latest

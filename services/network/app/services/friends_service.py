@@ -1,11 +1,15 @@
 """
 Service for handling user friends queries
 """
-from uuid import UUID
+from datetime import datetime, timezone
+from uuid import UUID, uuid4
 
 from app.models import Friendship, FriendshipStatus
 from app.repositories.friendship_repository import FriendshipRepository
-from app.services.requests_service import FriendshipNotFoundError
+from app.services.requests_service import (
+    FriendshipNotFoundError,
+    _publish_rabbit_event,
+)
 
 
 class FriendsService():
@@ -44,5 +48,22 @@ class FriendsService():
 
         await self.repository.delete_by_id(
             friendship_id=friendship.id
+        )
+
+        now_iso = datetime.now(timezone.utc).isoformat()
+        _publish_rabbit_event(
+            "activity.created.v1",
+            {
+                "eventId": str(uuid4()),
+                "event": "activity.created.v1",
+                "occurredAt": now_iso,
+                "payload": {
+                    "userId": str(user_del_id),
+                    "actorId": str(user_id),
+                    "activityType": "FRIEND_REMOVED",
+                    "referenceId": str(friendship.id),
+                    "summary": f"El explorador {str(user_id)[:6]} actualizó su lista de amigos.",
+                },
+            },
         )
         

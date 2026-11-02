@@ -6,8 +6,39 @@
  */
 
 // Permite leer variables de entorno con prefijo EXPO_PUBLIC_ en Expo SDK 57+
-const GATEWAY_URL =
-  process.env.EXPO_PUBLIC_API_GATEWAY_URL || 'http://localhost:8080';
+function resolveGatewayUrl(): string {
+  // Si se abre en navegador web vía localhost/127.0.0.1, usar siempre localhost:8080
+  // para evitar que una IP LAN de otra red Wi-Fi bloquee la versión web.
+  if (
+    typeof window !== 'undefined' &&
+    window.location &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  ) {
+    return `http://${window.location.hostname}:8080`;
+  }
+  return process.env.EXPO_PUBLIC_API_GATEWAY_URL || 'http://localhost:8080';
+}
+
+const GATEWAY_URL = resolveGatewayUrl();
+
+/**
+ * Deriva la URL base de WebSocket a partir de EXPO_PUBLIC_WS_URL o de la URL HTTP del Gateway
+ * convirtiendo http:// -> ws:// y https:// -> wss://.
+ */
+export function deriveWsBaseUrl(httpBaseUrl: string): string {
+  const explicitWs = process.env.EXPO_PUBLIC_WS_URL;
+  if (explicitWs && explicitWs.trim() !== '') {
+    return explicitWs.trim().replace(/\/$/, '');
+  }
+  const normalized = httpBaseUrl.trim().replace(/\/$/, '');
+  if (normalized.startsWith('https://')) {
+    return `wss://${normalized.slice('https://'.length)}`;
+  }
+  if (normalized.startsWith('http://')) {
+    return `ws://${normalized.slice('http://'.length)}`;
+  }
+  return `ws://${normalized}`;
+}
 
 // Determina si se usan mocks por defecto (útil para desarrollo offline o antes de desplegar el Gateway)
 // Si EXPO_PUBLIC_USE_MOCK_DATA está explícitamente en 'false', se conectará a la red.
@@ -21,6 +52,7 @@ export const API_CONFIG = {
    * Ejemplo en producción: https://gateway.geopicto.org
    */
   BASE_URL: GATEWAY_URL,
+  WS_URL: deriveWsBaseUrl(GATEWAY_URL),
 
   /**
    * Rutas estándar enrutadas por el API Gateway:
@@ -48,6 +80,18 @@ export const API_CONFIG = {
     NETWORK: {
       // El servicio de red social solo expone GraphQL
       GRAPHQL: '/api/network/graphql',
+    },
+    RATINGS: {
+      BY_MESSAGE: (messageId: string) => `/api/ratings/messages/${messageId}`,
+      BATCH: '/api/ratings/messages/batch',
+    },
+    REPUTATION: {
+      ME: '/api/reputation/me',
+      BY_USER: (userId: string) => `/api/reputation/${userId}`,
+    },
+    SOCKET: {
+      TICKETS: '/api/socket/tickets',
+      WS: '/api/ws',
     },
   },
 

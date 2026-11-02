@@ -8,6 +8,7 @@ import React, {
 } from 'react';
 import { Friendship } from '../types';
 import { useAuth } from './AuthContext';
+import { useRealtime } from './RealtimeContext';
 import { networkService } from '../services/network/networkService';
 import { validateRecipientId } from '../utils/validators';
 import { API_CONFIG } from '../config/api.config';
@@ -36,6 +37,7 @@ const NetworkContext = createContext<NetworkContextType | undefined>(undefined);
 
 export const NetworkProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
+  const { onEvent, onReconnected } = useRealtime();
 
   const [friends, setFriends] = useState<Friendship[]>([]);
   const [incomingRequests, setIncomingRequests] = useState<Friendship[]>([]);
@@ -75,6 +77,27 @@ export const NetworkProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     fetchNetwork();
   }, [fetchNetwork]);
+
+  // Reconciliación HTTP automática al reconectarse el WebSocket
+  useEffect(() => {
+    return onReconnected(() => {
+      fetchNetwork();
+    });
+  }, [onReconnected, fetchNetwork]);
+
+  // Actualización en tiempo real ante actividad de amistad o notificaciones
+  useEffect(() => {
+    const unsubActivity = onEvent('activity.created.v1', () => {
+      fetchNetwork();
+    });
+    const unsubNotification = onEvent('notification.requested.v1', () => {
+      fetchNetwork();
+    });
+    return () => {
+      unsubActivity();
+      unsubNotification();
+    };
+  }, [onEvent, fetchNetwork]);
 
   const isFriend = useCallback(
     (userId: string): boolean => {

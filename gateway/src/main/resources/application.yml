@@ -63,6 +63,46 @@ spring:
                 - StripPrefix=1
                 - JwtAuth
 
+            # Servicio de calificaciones (likes/dislikes sobre mensajes).
+            # /api/ratings/** -> /ratings/**. Exige JWT.
+            - id: rating-service
+              uri: ${RATING_SERVICE_URL:http://localhost:8102}
+              predicates:
+                - Path=/api/ratings/**
+              filters:
+                - StripPrefix=1
+                - JwtAuth
+
+            # Servicio de reputacion y niveles de explorador.
+            # /api/reputation/** -> /reputation/**. Exige JWT.
+            - id: reputation-service
+              uri: ${REPUTATION_SERVICE_URL:http://localhost:8600}
+              predicates:
+                - Path=/api/reputation/**
+              filters:
+                - StripPrefix=1
+                - JwtAuth
+
+            # Emision de tickets efimeros para autenticar el WebSocket.
+            # POST /api/socket/tickets -> POST /tickets. Exige JWT.
+            - id: socket-tickets
+              uri: ${SOCKET_GATEWAY_HTTP_URL:http://localhost:8700}
+              predicates:
+                - Path=/api/socket/tickets
+              filters:
+                - StripPrefix=2
+                - JwtAuth
+
+            # Handshake y conexion WebSocket (/api/ws -> /ws).
+            # No lleva JwtAuth porque el navegador no envia Authorization en el handshake;
+            # socket-gateway valida el ticket efimero de un solo uso (?ticket=...).
+            - id: socket-ws
+              uri: ${SOCKET_GATEWAY_WS_URL:ws://localhost:8700}
+              predicates:
+                - Path=/api/ws, /api/ws/**
+              filters:
+                - StripPrefix=1
+
           # El frontend envia el JWT en el header Authorization (no usa cookies),
           # por eso no se habilita allowCredentials.
           globalcors:

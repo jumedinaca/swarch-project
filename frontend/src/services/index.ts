@@ -3,3 +3,4 @@ export * from './api/apiClient';
 export * from './auth/authService';
 export * from './messages/messagesService';
 export * from './network/networkService';
+export * from './realtime/socketService';

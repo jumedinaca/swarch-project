@@ -100,8 +100,13 @@ services:
       # El servicio valida el JWT por su cuenta; el gateway reenvía Authorization.
       JWT_SECRET: *jwt-secret
       JWT_ISSUER: ${JWT_ISSUER:-geopicto-auth}
+      RABBITMQ_URL: *rabbitmq-url
+      MODERATION_TIMEOUT_SECONDS: "1"
+      PENDING_SWEEP_INTERVAL_SECONDS: "1"
     depends_on:
       messages-db:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     healthcheck:
       # El servicio no tiene endpoint de salud propio; una busqueda vacia
@@ -135,6 +140,7 @@ services:
       # El servicio valida el JWT por su cuenta; el gateway reenvía Authorization.
       JWT_SECRET: *jwt-secret
       JWT_ISSUER: ${JWT_ISSUER:-geopicto-auth}
+      RABBITMQ_URL: *rabbitmq-url
       MONGO_HOST: network-db:27017
       MONGO_DB: network_db
       MONGO_ROOT_USERNAME: network_admin
@@ -143,6 +149,8 @@ services:
       CORS_ORIGINS: ""
     depends_on:
       network-db:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/')"]
@@ -214,6 +222,109 @@ services:
       start_period: 30s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  rating-db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: rating
+    volumes:
+      - rating_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d rating"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  rating:
+    build: ./services/rating
+    environment:
+      PORT: "8080"
+      DATABASE_URL: postgres://postgres:postgres@rating-db:5432/rating?sslmode=disable
+      RABBITMQ_URL: *rabbitmq-url
+      RABBITMQ_EXCHANGE: geopicto.events
+    depends_on:
+      rating-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- 'http://localhost:8080/health' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      start_period: 20s
+      retries: 5
+
+  reputation-db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: reputation
+    volumes:
+      - reputation_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d reputation"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  reputation:
+    build: ./services/reputation
+    environment:
+      PORT: "8080"
+      DATABASE_URL: postgres://postgres:postgres@reputation-db:5432/reputation?sslmode=disable
+      RABBITMQ_URL: *rabbitmq-url
+      RABBITMQ_EXCHANGE: geopicto.events
+    depends_on:
+      reputation-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- 'http://localhost:8080/health' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      start_period: 25s
+      retries: 5
+
+  socket-gateway:
+    build: ./services/realtime
+    networks:
+      default:
+        aliases:
+          - realtime
+          - socket-gateway
+    environment:
+      PORT: "8080"
+      REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: *rabbitmq-url
+      RABBITMQ_EXCHANGE: geopicto.events
+      RABBITMQ_QUEUE: socket.events.q
+      WS_ALLOWED_ORIGINS: ${WS_ALLOWED_ORIGINS:-http://localhost:8081,http://localhost:8080,http://127.0.0.1:8081,http://127.0.0.1:8080,http://socket-gateway:8080,http://realtime:8080,http://gateway:8080}
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-dev-internal-token}
+      APP_ENV: production
+      CORS_ORIGINS: ""
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- 'http://localhost:8080/health' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      start_period: 20s
+      retries: 5
+
   gateway:
     build: ./gateway
     environment:
@@ -222,6 +333,10 @@ services:
       AUTH_SERVICE_URL: http://auth:8080
       NETWORK_SERVICE_URL: http://network:8080
       PROFILE_SERVICE_URL: http://profile:8080
+      RATING_SERVICE_URL: http://rating:8080
+      REPUTATION_SERVICE_URL: http://reputation:8080
+      SOCKET_GATEWAY_HTTP_URL: http://socket-gateway:8080
+      SOCKET_GATEWAY_WS_URL: ws://socket-gateway:8080
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8081}
     ports:
       - "8080:8080"
@@ -233,6 +348,12 @@ services:
       network:
         condition: service_healthy
       profile:
+        condition: service_healthy
+      rating:
+        condition: service_healthy
+      reputation:
+        condition: service_healthy
+      socket-gateway:
         condition: service_healthy
 
   frontend:
@@ -254,3 +375,5 @@ volumes:
   network_data:
   profile_data:
   profile_avatars:
+  rating_data:
+  reputation_data:

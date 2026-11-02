@@ -2,9 +2,11 @@ import { API_CONFIG } from '../../config/api.config';
 import { apiClient, isNetworkError } from '../api/apiClient';
 import {
   ApiMessage,
+  BackendMessageStatus,
   GeoMessage,
-  CreateMessageDto,
   MessageStatus,
+  ModerationStatus,
+  CreateMessageDto,
   QueryMessagesParams,
 } from '../../types';
 import { BOGOTA_SEED_MESSAGES } from '../../data/bogotaMessages';
@@ -23,21 +25,20 @@ function colorFor(userId: string): string {
 }
 
 /**
- * Mapea el estado del backend al estado que usa la interfaz.
- * PENDING -> pendiente, PUBLISHED -> publicado, BLOCKED -> oculto, DELETED -> eliminado.
+ * Mapea el estado de backend (`PENDING`, `PUBLISHED`, `BLOCKED`, `DELETED`) al estado
+ * usado por la interfaz (`pendiente`, `publicado`, `oculto`, `eliminado`) conforme a P2.
  */
-function toMessageStatus(message: ApiMessage): MessageStatus {
-  switch (message.status) {
-    case 'PENDING':
-      return 'pendiente';
-    case 'BLOCKED':
-      return 'oculto';
-    case 'DELETED':
-      return 'eliminado';
-    case 'PUBLISHED':
-    default:
-      return 'publicado';
+export function mapBackendMessageStatus(
+  backendStatus?: BackendMessageStatus | string | null,
+  moderationStatus?: ModerationStatus | string | null
+): MessageStatus {
+  const normalized = (backendStatus || 'PUBLISHED').toUpperCase();
+  if (normalized === 'PENDING') return 'pendiente';
+  if (normalized === 'BLOCKED' || String(moderationStatus || '').toUpperCase() === 'BLOCK') {
+    return 'oculto';
   }
+  if (normalized === 'DELETED') return 'eliminado';
+  return 'publicado';
 }
 
 /**
@@ -48,6 +49,7 @@ function toMessageStatus(message: ApiMessage): MessageStatus {
 export function toGeoMessage(message: ApiMessage, currentUser?: Author | null): GeoMessage {
   const isMine = !!currentUser && message.sender_id === currentUser.id;
   const createdAt = new Date(message.created_at);
+  const status = mapBackendMessageStatus(message.status, message.moderation_status);
   return {
     id: message.id,
     authorId: message.sender_id,
@@ -58,8 +60,9 @@ export function toGeoMessage(message: ApiMessage, currentUser?: Author | null): 
     longitude: message.location.longitude,
     createdAt: createdAt.toISOString(),
     expiresAt: new Date(createdAt.getTime() + DEFAULT_EXPIRATION_HOURS * 3600 * 1000).toISOString(),
-    status: toMessageStatus(message),
+    status,
     moderationStatus: message.moderation_status ?? undefined,
+    moderationReason: message.moderation_reason ?? undefined,
   };
 }
 
