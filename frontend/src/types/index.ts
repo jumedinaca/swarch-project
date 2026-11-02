@@ -1,5 +1,15 @@
 export type MessageStatus = 'pendiente' | 'publicado' | 'oculto' | 'eliminado';
 
+export type BackendMessageStatus = 'PENDING' | 'PUBLISHED' | 'BLOCKED' | 'DELETED';
+
+export type ModerationStatus =
+  | 'PENDING'
+  | 'ALLOW'
+  | 'WARN'
+  | 'BLOCK'
+  | 'REVIEW'
+  | 'DEGRADED';
+
 export interface GeoMessage {
   id: string;
   authorId: string;
@@ -11,6 +21,12 @@ export interface GeoMessage {
   createdAt: string;   // ISO timestamp
   expiresAt: string;   // ISO timestamp (asignado automáticamente)
   status: MessageStatus;
+  moderationStatus?: ModerationStatus;
+  moderationReason?: string;
+  likes?: number;
+  dislikes?: number;
+  score?: number;
+  myRating?: 'LIKE' | 'DISLIKE' | null;
 }
 
 export interface User {
@@ -65,6 +81,10 @@ export interface ApiMessage {
   content: string;
   location: { latitude: number; longitude: number };
   created_at: string;
+  status?: BackendMessageStatus;
+  moderation_status?: ModerationStatus;
+  moderation_reason?: string;
+  version?: number;
 }
 
 export interface CreateMessageDto {
@@ -116,6 +136,71 @@ export interface GraphQLFriendship {
   updatedAt: string;
   otherUserId: string;
   sentByMe: boolean;
+}
+
+// ==========================================
+// Contratos y DTOs para Realtime (Socket Gateway)
+// ==========================================
+
+export interface SocketTicketResponse {
+  ticket: string;
+  expiresIn: number;
+}
+
+export type RealtimeConnectionState =
+  | 'disconnected'
+  | 'connecting'
+  | 'connected'
+  | 'reconnecting'
+  | 'error';
+
+export type RealtimeEventName =
+  | 'notification.requested.v1'
+  | 'activity.created.v1'
+  | 'reputation.changed.v1'
+  | 'moderation.completed.v1'
+  | 'rating.changed.v1'
+  | 'message.published.v1'
+  | 'message.deleted.v1'
+  | 'profile.updated.v1';
+
+export interface RealtimeEventFrame<T = any> {
+  type: 'event';
+  eventId: string;
+  event: RealtimeEventName;
+  occurredAt: string;
+  payload: T;
+}
+
+export interface RealtimeReadyFrame {
+  type: 'ready';
+  connectionId: string;
+  userId: string;
+}
+
+export interface RealtimePongFrame {
+  type: 'pong';
+  ts: number;
+}
+
+export interface RealtimeErrorFrame {
+  type: 'error';
+  code: string;
+  message: string;
+}
+
+export type RealtimeServerFrame =
+  | RealtimeReadyFrame
+  | RealtimeEventFrame
+  | RealtimePongFrame
+  | RealtimeErrorFrame;
+
+export interface RealtimeToast {
+  id: string;
+  title: string;
+  message: string;
+  variant: 'info' | 'success' | 'warning' | 'error';
+  createdAt: number;
 }
 
 

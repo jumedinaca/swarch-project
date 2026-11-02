@@ -50,9 +50,12 @@ class GatewayRoutingTests {
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
         String backendUrl = "http://localhost:" + backend.getPort();
+        String backendWsUrl = "ws://localhost:" + backend.getPort();
         registry.add("MESSAGES_SERVICE_URL", () -> backendUrl);
         registry.add("AUTH_SERVICE_URL", () -> backendUrl);
         registry.add("NETWORK_SERVICE_URL", () -> backendUrl);
+        registry.add("SOCKET_GATEWAY_HTTP_URL", () -> backendUrl);
+        registry.add("SOCKET_GATEWAY_WS_URL", () -> backendWsUrl);
         registry.add("JWT_SECRET", () -> SECRET);
         registry.add("CORS_ALLOWED_ORIGINS", () -> ALLOWED_ORIGIN);
     }
@@ -168,6 +171,28 @@ class GatewayRoutingTests {
         expectUnauthorized(client.post().uri("/api/network/graphql")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue("{\"query\":\"{ friends { id } }\"}")
+                .exchange(), "Missing or invalid Authorization header");
+    }
+
+    @Test
+    void socketTicketsIsForwardedWithUserIdAndStripsTwoPrefixes() throws InterruptedException {
+        UUID userId = UUID.randomUUID();
+
+        client.post().uri("/api/socket/tickets")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token(userId.toString(), inOneHour()))
+                .header("X-User-ID", UUID.randomUUID().toString())
+                .exchange()
+                .expectStatus().isOk();
+
+        RecordedRequest forwarded = takeForwarded();
+        assertThat(forwarded.getPath()).isEqualTo("/tickets");
+        assertThat(forwarded.getHeaders().values("X-User-ID")).containsExactly(userId.toString());
+        assertThat(forwarded.getHeader(HttpHeaders.AUTHORIZATION)).isNull();
+    }
+
+    @Test
+    void socketTicketsWithoutTokenIsRejected() {
+        expectUnauthorized(client.post().uri("/api/socket/tickets")
                 .exchange(), "Missing or invalid Authorization header");
     }
 

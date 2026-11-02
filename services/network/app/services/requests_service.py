@@ -2,10 +2,43 @@
 Service for handling request between users
 """
 
-from uuid import UUID
+from datetime import datetime, timezone
+import base64
+import json
+import threading
+import urllib.request
+from uuid import UUID, uuid4
 
 from app.models import Friendship, FriendshipStatus
 from app.repositories.friendship_repository import FriendshipRepository
+
+
+def _publish_rabbit_event(routing_key: str, envelope: dict) -> None:
+    def _send():
+        try:
+            url = "http://rabbitmq:15672/api/exchanges/geopicto/geopicto.events/publish"
+            body = json.dumps({
+                "properties": {},
+                "routing_key": routing_key,
+                "payload": json.dumps(envelope),
+                "payload_encoding": "string",
+            }).encode("utf-8")
+            auth = base64.b64encode(b"geopicto:geopicto").decode("ascii")
+            req = urllib.request.Request(
+                url,
+                data=body,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Basic {auth}",
+                },
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=2) as _:
+                pass
+        except Exception:
+            pass
+
+    threading.Thread(target=_send, daemon=True).start()
 
 
 class FriendshipError(Exception):
@@ -52,11 +85,29 @@ class RequestService:
                 "Ya existe una relación o solicitud entre estos usuarios."
             )
 
-        return await self.repository.create(
+        created = await self.repository.create(
             user_a=str(requester_id),
             user_b=str(recipient_id),
             requested_by=str(requester_id),
         )
+
+        now_iso = datetime.now(timezone.utc).isoformat()
+        _publish_rabbit_event(
+            "notification.requested.v1",
+            {
+                "eventId": str(uuid4()),
+                "event": "notification.requested.v1",
+                "occurredAt": now_iso,
+                "payload": {
+                    "userId": str(recipient_id),
+                    "type": "FRIEND_REQUEST",
+                    "title": "Nueva solicitud de amistad",
+                    "body": f"El explorador {str(requester_id)[:6]} quiere agregarte a su red.",
+                    "referenceId": str(created.id),
+                },
+            },
+        )
+        return created
 
     async def accept_request(
         self,
@@ -96,6 +147,38 @@ class RequestService:
                 "La solicitud cambió mientras intentabas aceptarla."
             )
 
+        now_iso = datetime.now(timezone.utc).isoformat()
+        _publish_rabbit_event(
+            "activity.created.v1",
+            {
+                "eventId": str(uuid4()),
+                "event": "activity.created.v1",
+                "occurredAt": now_iso,
+                "payload": {
+                    "userId": str(friendship.requested_by),
+                    "actorId": str(actor_id),
+                    "activityType": "FRIEND_ACCEPTED",
+                    "referenceId": str(updated.id),
+                    "summary": f"El explorador {str(actor_id)[:6]} aceptó tu solicitud de amistad.",
+                },
+            },
+        )
+        _publish_rabbit_event(
+            "activity.created.v1",
+            {
+                "eventId": str(uuid4()),
+                "event": "activity.created.v1",
+                "occurredAt": now_iso,
+                "payload": {
+                    "userId": str(actor_id),
+                    "actorId": str(actor_id),
+                    "activityType": "FRIEND_ACCEPTED_SELF",
+                    "referenceId": str(updated.id),
+                    "summary": "",
+                },
+            },
+        )
+
         return updated
 
     async def cancel_request(
@@ -126,6 +209,28 @@ class RequestService:
             raise InvalidFriendshipOperationError(
                 "La solicitud cambió antes de poder cancelarla."
             )
+
+        recipient_id = (
+            friendship.user_b
+            if str(friendship.user_a) == str(actor_id)
+            else friendship.user_a
+        )
+        now_iso = datetime.now(timezone.utc).isoformat()
+        _publish_rabbit_event(
+            "activity.created.v1",
+            {
+                "eventId": str(uuid4()),
+                "event": "activity.created.v1",
+                "occurredAt": now_iso,
+                "payload": {
+                    "userId": str(recipient_id),
+                    "actorId": str(actor_id),
+                    "activityType": "FRIEND_REQUEST_CANCELLED",
+                    "referenceId": str(friendship.id),
+                    "summary": f"El explorador {str(actor_id)[:6]} canceló su solicitud de amistad.",
+                },
+            },
+        )
 
     async def reject_request(
         self,
@@ -160,6 +265,23 @@ class RequestService:
             raise InvalidFriendshipOperationError(
                 "La solicitud cambió antes de poder rechazarla."
             )
+
+        now_iso = datetime.now(timezone.utc).isoformat()
+        _publish_rabbit_event(
+            "activity.created.v1",
+            {
+                "eventId": str(uuid4()),
+                "event": "activity.created.v1",
+                "occurredAt": now_iso,
+                "payload": {
+                    "userId": str(friendship.requested_by),
+                    "actorId": str(actor_id),
+                    "activityType": "FRIEND_REQUEST_REJECTED",
+                    "referenceId": str(friendship.id),
+                    "summary": f"El explorador {str(actor_id)[:6]} rechazó tu solicitud de amistad.",
+                },
+            },
+        )
         
 
     async def list_for_user(

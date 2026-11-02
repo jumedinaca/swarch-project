@@ -14,6 +14,7 @@ import * as Location from 'expo-location';
 import { useAuth } from '../context/AuthContext';
 import { useMessages } from '../context/MessagesContext';
 import { useNetwork } from '../context/NetworkContext';
+import { useRealtime } from '../context/RealtimeContext';
 import { GeoMessage, LocationCoords, MessageStatus, RangeDistance } from '../types';
 import { nintendoTheme } from '../theme/nintendoTheme';
 import { MapLibreOsmView, MapLibreOsmViewRef } from '../components/map/MapLibreOsmView';
@@ -45,10 +46,12 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
     setSearchCenter,
   } = useMessages();
   const { pendingCount } = useNetwork();
+  const { updateRadarLocation } = useRealtime();
 
   const mapViewRef = useRef<MapLibreOsmViewRef>(null);
 
   const [userLocation, setUserLocation] = useState<LocationCoords>(DEFAULT_COORDS);
+  const [radarCenter, setRadarCenter] = useState<LocationCoords>(DEFAULT_COORDS);
   const [rangeDistance, setRangeDistance] = useState<RangeDistance>(300);
   const [rangeModalVisible, setRangeModalVisible] = useState(false);
   const [networkModalVisible, setNetworkModalVisible] = useState(false);
@@ -58,26 +61,45 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
   const [bottomListExpanded, setBottomListExpanded] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
 
-  // Mensajes dentro del rango activo
+  // Mensajes dentro del rango activo alrededor del centro actual del radar
   const inRangeMessages = useMemo(() => {
     if (!visibleMessageIds) {
       return activeMessages.filter(
         (m) =>
           calculateDistanceMeters(
-            userLocation.latitude,
-            userLocation.longitude,
+            radarCenter.latitude,
+            radarCenter.longitude,
             m.latitude,
             m.longitude
           ) <= rangeDistance
       );
     }
     return activeMessages.filter((m) => visibleMessageIds.includes(m.id));
-  }, [activeMessages, visibleMessageIds, userLocation, rangeDistance]);
+  }, [activeMessages, visibleMessageIds, radarCenter, rangeDistance]);
 
-  // Los mensajes se consultan alrededor de la ubicación actual del usuario
+  // Los mensajes se consultan alrededor de la posición actual del radar a medida que el usuario se mueve
   useEffect(() => {
-    setSearchCenter(userLocation);
-  }, [userLocation, setSearchCenter]);
+    setSearchCenter(radarCenter);
+  }, [radarCenter, setSearchCenter]);
+
+  // Sincronizar la posición del radar y el rango activo con el servicio Realtime
+  // para que solo lleguen notificaciones de mensajes publicados dentro de ese radio.
+  useEffect(() => {
+    updateRadarLocation(radarCenter, rangeDistance);
+  }, [radarCenter, rangeDistance, updateRadarLocation]);
+
+  const handleMapCenterChange = useCallback((coords: LocationCoords) => {
+    setRadarCenter((prev) => {
+      // Evitar re-consultas por micro-movimientos menores a 8 metros
+      if (
+        calculateDistanceMeters(prev.latitude, prev.longitude, coords.latitude, coords.longitude) <
+        8
+      ) {
+        return prev;
+      }
+      return coords;
+    });
+  }, []);
 
   // Función robusta para solicitar y obtener la ubicación GPS real del dispositivo
   const requestCurrentLocation = useCallback(async (): Promise<LocationCoords | null> => {
@@ -132,6 +154,7 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
       const coords = await requestCurrentLocation();
       if (coords) {
         setUserLocation(coords);
+        setRadarCenter(coords);
         setTargetComposeCoords(coords);
         setSearchCenter(coords);
         mapViewRef.current?.recenter(coords);
@@ -159,6 +182,7 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
       const coords = await requestCurrentLocation();
       if (coords) {
         setUserLocation(coords);
+        setRadarCenter(coords);
         setTargetComposeCoords(coords);
         setSearchCenter(coords);
         mapViewRef.current?.recenter(coords);
@@ -281,6 +305,7 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
             rangeDistance={rangeDistance}
             onSelectMessage={handleSelectMessage}
             onVisibleMessagesChange={setVisibleMessageIds}
+            onCenterChange={handleMapCenterChange}
             onLocateUser={handleLocateUser}
             isLocating={isLocating}
           />

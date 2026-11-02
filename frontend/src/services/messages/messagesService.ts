@@ -2,7 +2,10 @@ import { API_CONFIG } from '../../config/api.config';
 import { apiClient, isNetworkError } from '../api/apiClient';
 import {
   ApiMessage,
+  BackendMessageStatus,
   GeoMessage,
+  MessageStatus,
+  ModerationStatus,
   CreateMessageDto,
   QueryMessagesParams,
 } from '../../types';
@@ -22,6 +25,23 @@ function colorFor(userId: string): string {
 }
 
 /**
+ * Mapea el estado de backend (`PENDING`, `PUBLISHED`, `BLOCKED`, `DELETED`) al estado
+ * usado por la interfaz (`pendiente`, `publicado`, `oculto`, `eliminado`) conforme a P2.
+ */
+export function mapBackendMessageStatus(
+  backendStatus?: BackendMessageStatus | string,
+  moderationStatus?: ModerationStatus | string
+): MessageStatus {
+  const normalized = (backendStatus || 'PUBLISHED').toUpperCase();
+  if (normalized === 'PENDING') return 'pendiente';
+  if (normalized === 'BLOCKED' || String(moderationStatus || '').toUpperCase() === 'BLOCK') {
+    return 'oculto';
+  }
+  if (normalized === 'DELETED') return 'eliminado';
+  return 'publicado';
+}
+
+/**
  * Convierte el mensaje del servicio de mensajes ({ sender_id, location, created_at })
  * al modelo que usa la interfaz. El servicio solo guarda el id del autor, así que el
  * nombre y color reales solo se conocen para los mensajes del usuario actual.
@@ -29,6 +49,7 @@ function colorFor(userId: string): string {
 export function toGeoMessage(message: ApiMessage, currentUser?: Author | null): GeoMessage {
   const isMine = !!currentUser && message.sender_id === currentUser.id;
   const createdAt = new Date(message.created_at);
+  const status = mapBackendMessageStatus(message.status, message.moderation_status);
   return {
     id: message.id,
     authorId: message.sender_id,
@@ -39,7 +60,9 @@ export function toGeoMessage(message: ApiMessage, currentUser?: Author | null): 
     longitude: message.location.longitude,
     createdAt: createdAt.toISOString(),
     expiresAt: new Date(createdAt.getTime() + DEFAULT_EXPIRATION_HOURS * 3600 * 1000).toISOString(),
-    status: 'publicado',
+    status,
+    moderationStatus: message.moderation_status,
+    moderationReason: message.moderation_reason,
   };
 }
 

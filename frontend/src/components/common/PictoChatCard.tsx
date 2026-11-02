@@ -26,10 +26,18 @@ export const PictoChatCard: React.FC<PictoChatCardProps> = ({
   showDeleteAction = true,
 }) => {
   const { user } = useAuth();
-  const { deleteMessage } = useMessages();
+  const { deleteMessage, rateMessage } = useMessages();
 
   const isAuthor = user?.id === message.authorId;
   const isDeleted = message.status === 'eliminado';
+
+  const handleVote = async (vote: 'LIKE' | 'DISLIKE', e?: any) => {
+    if (e && typeof e.stopPropagation === 'function') {
+      e.stopPropagation();
+    }
+    if (isAuthor || isDeleted) return;
+    await rateMessage(message.id, vote);
+  };
 
   // Formato amigable de expiración
   const formatExpiration = (isoString: string) => {
@@ -113,7 +121,15 @@ export const PictoChatCard: React.FC<PictoChatCardProps> = ({
           </View>
         </View>
 
-        <StatusBadge status={message.status} size="sm" />
+        <View style={styles.badgesColumn}>
+          <StatusBadge status={message.status} size="sm" />
+          {message.moderationStatus === 'WARN' && (
+            <View style={styles.warnBadge}>
+              <Ionicons name="warning-outline" size={10} color="#B26B00" />
+              <Text style={styles.warnBadgeText}>ADVERTENCIA</Text>
+            </View>
+          )}
+        </View>
       </View>
 
       {/* Contenido con cuadrícula técnica PictoChat */}
@@ -133,6 +149,45 @@ export const PictoChatCard: React.FC<PictoChatCardProps> = ({
           <Text style={styles.expirationText}>
             {formatExpiration(message.expiresAt)}
           </Text>
+          {!isDeleted && (
+            <View style={styles.ratingRow}>
+              <TouchableOpacity
+                style={[
+                  styles.voteChip,
+                  message.myRating === 'LIKE' && styles.voteChipLiked,
+                  isAuthor && styles.voteChipReadonly,
+                ]}
+                onPress={(e) => handleVote('LIKE', e)}
+                disabled={isAuthor}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={message.myRating === 'LIKE' ? 'thumbs-up' : 'thumbs-up-outline'}
+                  size={11}
+                  color={nintendoTheme.colors.miiverseGreen}
+                />
+                <Text style={styles.ratingText}>{message.likes ?? 0}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.voteChip,
+                  message.myRating === 'DISLIKE' && styles.voteChipDisliked,
+                  isAuthor && styles.voteChipReadonly,
+                ]}
+                onPress={(e) => handleVote('DISLIKE', e)}
+                disabled={isAuthor}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={message.myRating === 'DISLIKE' ? 'thumbs-down' : 'thumbs-down-outline'}
+                  size={11}
+                  color={nintendoTheme.colors.famicomRed}
+                />
+                <Text style={styles.ratingText}>{message.dislikes ?? 0}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         {showDeleteAction && isAuthor && !isDeleted && (
@@ -273,6 +328,62 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+  },
+  badgesColumn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  warnBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    backgroundColor: '#FFF9EB',
+    borderColor: '#F2C057',
+    borderWidth: 1,
+    borderRadius: nintendoTheme.borderRadius.xs,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+  },
+  warnBadgeText: {
+    fontSize: 8,
+    fontWeight: '800',
+    color: '#B26B00',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginLeft: 8,
+  },
+  voteChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: nintendoTheme.borderRadius.xs,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2DFD8',
+  },
+  voteChipLiked: {
+    backgroundColor: nintendoTheme.colors.miiverseGreenLight,
+    borderColor: nintendoTheme.colors.miiverseGreenBorder,
+  },
+  voteChipDisliked: {
+    backgroundColor: nintendoTheme.colors.famicomRedLight,
+    borderColor: nintendoTheme.colors.famicomRedBorder,
+  },
+  voteChipReadonly: {
+    opacity: 0.85,
+  },
+  ratingText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: nintendoTheme.colors.textSecondary,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   expirationText: {
     fontSize: 10,

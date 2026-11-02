@@ -1,0 +1,60 @@
+# Realtime (Socket Gateway) aislado: servicio Elixir + Redis + RabbitMQ.
+#
+#   docker compose up --build
+#
+# Sin gateway no hay JWT: POST /tickets recibe X-User-ID directamente.
+name: geopicto-realtime
+
+services:
+  socket-gateway:
+    build: .
+    container_name: socket-gateway
+    environment:
+      PORT: "8080"
+      REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://geopicto:geopicto@rabbitmq:5672/geopicto
+      RABBITMQ_EXCHANGE: geopicto.events
+      RABBITMQ_QUEUE: socket.events.q
+      WS_ALLOWED_ORIGINS: "http://localhost:8081,http://localhost:8080,http://localhost:8700"
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-dev-internal-token}
+      APP_ENV: development
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "8700:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      start_period: 15s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: realtime_redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: realtime_rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: geopicto
+      RABBITMQ_DEFAULT_PASS: geopicto
+      RABBITMQ_DEFAULT_VHOST: geopicto
+    ports:
+      - "5674:5672"
+      - "15674:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10

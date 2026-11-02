@@ -243,6 +243,20 @@ class ApiClient {
   public async delete<T = any>(endpoint: string, headers?: Record<string, string>): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, { method: 'DELETE', headers });
   }
+
+  /**
+   * Ejecuta una petición hacia los microservicios de Prototipo 2 que devuelven
+   * el dato directo (sin el sobre `{ success, data }`), manteniendo el manejo
+   * de autenticación JWT y renovación automática ante 401.
+   */
+  public async requestRaw<T = any>(
+    endpoint: string,
+    options: RequestInit = {},
+    allowRefresh: boolean = true
+  ): Promise<T> {
+    const response = await this.request<T>(endpoint, options, allowRefresh);
+    return response.data as T;
+  }
 }
 
 export const apiClient = new ApiClient();

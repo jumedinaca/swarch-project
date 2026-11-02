@@ -31,6 +31,7 @@ interface MapLibreOsmViewProps {
   rangeDistance: RangeDistance;
   onSelectMessage: (message: GeoMessage) => void;
   onVisibleMessagesChange?: (visibleIds: string[]) => void;
+  onCenterChange?: (coords: LocationCoords) => void;
   onLocateUser?: () => void;
   isLocating?: boolean;
 }
@@ -41,6 +42,7 @@ export const MapLibreOsmView = forwardRef<MapLibreOsmViewRef, MapLibreOsmViewPro
   rangeDistance,
   onSelectMessage,
   onVisibleMessagesChange,
+  onCenterChange,
   onLocateUser,
   isLocating = false,
 }, ref) => {
@@ -377,6 +379,18 @@ export const MapLibreOsmView = forwardRef<MapLibreOsmViewRef, MapLibreOsmViewPro
       updateVisibility();
     });
 
+    map.on('moveend', () => {
+      const c = map.getCenter();
+      currentCenter = [c.lng, c.lat];
+      updateRangeCircle();
+      updateVisibility();
+      notifyParent({
+        type: 'CENTER_CHANGED',
+        latitude: c.lat,
+        longitude: c.lng
+      });
+    });
+
     map.on('load', () => {
       isMapLoaded = true;
 
@@ -615,6 +629,17 @@ export const MapLibreOsmView = forwardRef<MapLibreOsmViewRef, MapLibreOsmViewPro
         if (onVisibleMessagesChange) {
           onVisibleMessagesChange(parsed.ids);
         }
+      } else if (
+        parsed.type === 'CENTER_CHANGED' &&
+        typeof parsed.latitude === 'number' &&
+        typeof parsed.longitude === 'number'
+      ) {
+        if (onCenterChange) {
+          onCenterChange({
+            latitude: parsed.latitude,
+            longitude: parsed.longitude,
+          });
+        }
       }
     } catch (e) {}
   };
@@ -634,7 +659,7 @@ export const MapLibreOsmView = forwardRef<MapLibreOsmViewRef, MapLibreOsmViewPro
       window.addEventListener('message', listener);
       return () => window.removeEventListener('message', listener);
     }
-  }, [onSelectMessage, onVisibleMessagesChange]);
+  }, [onSelectMessage, onVisibleMessagesChange, onCenterChange]);
 
   return (
     <View style={styles.container}>
