@@ -8,12 +8,18 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Message struct {
-	ID        uuid.UUID
-	SenderID  uuid.UUID
-	Content   string
-	Location  interface{}
-	CreatedAt time.Time
+	ID               uuid.UUID
+	SenderID         uuid.UUID
+	Content          string
+	Location         interface{}
+	Status           string
+	ModerationStatus pgtype.Text
+	ModerationReason pgtype.Text
+	Version          int32
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }

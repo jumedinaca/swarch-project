@@ -16,7 +16,10 @@ const createMessage = `-- name: CreateMessage :one
 INSERT INTO messages (
     sender_id,
     content,
-    location
+    location,
+    status,
+    moderation_status,
+    version
 )
 VALUES (
     $1,
@@ -27,7 +30,10 @@ VALUES (
             $4::double precision
         ),
         4326
-    )::geography
+    )::geography,
+    'PENDING',
+    'PENDING',
+    1
 )
 RETURNING
     id,
@@ -35,7 +41,12 @@ RETURNING
     content,
     ST_Y(location::geometry)::double precision AS latitude,
     ST_X(location::geometry)::double precision AS longitude,
-    created_at
+    status,
+    COALESCE(moderation_status, '') AS moderation_status,
+    COALESCE(moderation_reason, '') AS moderation_reason,
+    version,
+    created_at,
+    updated_at
 `
 
 type CreateMessageParams struct {
@@ -46,12 +57,17 @@ type CreateMessageParams struct {
 }
 
 type CreateMessageRow struct {
-	ID        uuid.UUID
-	SenderID  uuid.UUID
-	Content   string
-	Latitude  float64
-	Longitude float64
-	CreatedAt time.Time
+	ID               uuid.UUID
+	SenderID         uuid.UUID
+	Content          string
+	Latitude         float64
+	Longitude        float64
+	Status           string
+	ModerationStatus string
+	ModerationReason string
+	Version          int32
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
 
 func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (CreateMessageRow, error) {
@@ -68,7 +84,12 @@ func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (C
 		&i.Content,
 		&i.Latitude,
 		&i.Longitude,
+		&i.Status,
+		&i.ModerationStatus,
+		&i.ModerationReason,
+		&i.Version,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }

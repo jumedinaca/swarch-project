@@ -19,18 +19,28 @@ SELECT
     content,
     ST_Y(location::geometry)::double precision AS latitude,
     ST_X(location::geometry)::double precision AS longitude,
-    created_at
+    status,
+    COALESCE(moderation_status, '') AS moderation_status,
+    COALESCE(moderation_reason, '') AS moderation_reason,
+    version,
+    created_at,
+    updated_at
 FROM messages
 WHERE id = $1
 `
 
 type GetMessageByIDRow struct {
-	ID        uuid.UUID
-	SenderID  uuid.UUID
-	Content   string
-	Latitude  float64
-	Longitude float64
-	CreatedAt time.Time
+	ID               uuid.UUID
+	SenderID         uuid.UUID
+	Content          string
+	Latitude         float64
+	Longitude        float64
+	Status           string
+	ModerationStatus string
+	ModerationReason string
+	Version          int32
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
 
 func (q *Queries) GetMessageByID(ctx context.Context, id uuid.UUID) (GetMessageByIDRow, error) {
@@ -42,7 +52,12 @@ func (q *Queries) GetMessageByID(ctx context.Context, id uuid.UUID) (GetMessageB
 		&i.Content,
 		&i.Latitude,
 		&i.Longitude,
+		&i.Status,
+		&i.ModerationStatus,
+		&i.ModerationReason,
+		&i.Version,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }

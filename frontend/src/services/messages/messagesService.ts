@@ -4,6 +4,7 @@ import {
   ApiMessage,
   GeoMessage,
   CreateMessageDto,
+  MessageStatus,
   QueryMessagesParams,
 } from '../../types';
 import { BOGOTA_SEED_MESSAGES } from '../../data/bogotaMessages';
@@ -19,6 +20,24 @@ function colorFor(userId: string): string {
   let hash = 0;
   for (const char of userId) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
   return palette[hash % palette.length];
+}
+
+/**
+ * Mapea el estado del backend al estado que usa la interfaz.
+ * PENDING -> pendiente, PUBLISHED -> publicado, BLOCKED -> oculto, DELETED -> eliminado.
+ */
+function toMessageStatus(message: ApiMessage): MessageStatus {
+  switch (message.status) {
+    case 'PENDING':
+      return 'pendiente';
+    case 'BLOCKED':
+      return 'oculto';
+    case 'DELETED':
+      return 'eliminado';
+    case 'PUBLISHED':
+    default:
+      return 'publicado';
+  }
 }
 
 /**
@@ -39,7 +58,8 @@ export function toGeoMessage(message: ApiMessage, currentUser?: Author | null): 
     longitude: message.location.longitude,
     createdAt: createdAt.toISOString(),
     expiresAt: new Date(createdAt.getTime() + DEFAULT_EXPIRATION_HOURS * 3600 * 1000).toISOString(),
-    status: 'publicado',
+    status: toMessageStatus(message),
+    moderationStatus: message.moderation_status ?? undefined,
   };
 }
 

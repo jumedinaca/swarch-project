@@ -28,9 +28,15 @@ SELECT
     m.content,
     ST_Y(m.location::geometry)::double precision AS latitude,
     ST_X(m.location::geometry)::double precision AS longitude,
-    m.created_at
+    m.status,
+    COALESCE(m.moderation_status, '') AS moderation_status,
+    COALESCE(m.moderation_reason, '') AS moderation_reason,
+    m.version,
+    m.created_at,
+    m.updated_at
 FROM messages m, point p
-WHERE ST_DWithin(m.location, p.location, $1::double precision)
+WHERE m.status = 'PUBLISHED'
+  AND ST_DWithin(m.location, p.location, $1::double precision)
 ORDER BY ST_Distance(m.location, p.location)
 `
 
@@ -41,12 +47,17 @@ type GetNearbyMessagesParams struct {
 }
 
 type GetNearbyMessagesRow struct {
-	ID        uuid.UUID
-	SenderID  uuid.UUID
-	Content   string
-	Latitude  float64
-	Longitude float64
-	CreatedAt time.Time
+	ID               uuid.UUID
+	SenderID         uuid.UUID
+	Content          string
+	Latitude         float64
+	Longitude        float64
+	Status           string
+	ModerationStatus string
+	ModerationReason string
+	Version          int32
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
 
 func (q *Queries) GetNearbyMessages(ctx context.Context, arg GetNearbyMessagesParams) ([]GetNearbyMessagesRow, error) {
@@ -64,7 +75,12 @@ func (q *Queries) GetNearbyMessages(ctx context.Context, arg GetNearbyMessagesPa
 			&i.Content,
 			&i.Latitude,
 			&i.Longitude,
+			&i.Status,
+			&i.ModerationStatus,
+			&i.ModerationReason,
+			&i.Version,
 			&i.CreatedAt,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}

@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -26,8 +27,8 @@ func (f *fakeRepository) Update(ctx context.Context, id uuid.UUID, message *doma
 	return message, nil
 }
 
-func (f *fakeRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	return nil
+func (f *fakeRepository) Delete(ctx context.Context, id uuid.UUID) (*domain.Message, error) {
+	return nil, nil
 }
 
 func (f *fakeRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Message, error) {
@@ -39,9 +40,28 @@ func (f *fakeRepository) GetNearby(ctx context.Context, latitude float64, longit
 	return f.nearby, nil
 }
 
+func (f *fakeRepository) ApplyModerationDecision(
+	ctx context.Context,
+	id uuid.UUID,
+	version int32,
+	status domain.MessageStatus,
+	moderationStatus domain.ModerationStatus,
+	moderationReason string,
+) (*domain.Message, error) {
+	return nil, nil
+}
+
+func (f *fakeRepository) ListStalePending(ctx context.Context, cutoff time.Time) ([]*domain.Message, error) {
+	return nil, nil
+}
+
+func newTestService(repo *fakeRepository) *service.MessageService {
+	return service.NewMessageService(repo, nil, 10*time.Second, 5*time.Second, true, false)
+}
+
 func TestGetNearbyMessagesReadsQueryParameters(t *testing.T) {
 	repo := &fakeRepository{nearby: []*domain.Message{}}
-	h := NewMessageHandler(service.NewMessageService(repo))
+	h := NewMessageHandler(newTestService(repo))
 
 	req := httptest.NewRequest(http.MethodGet, "/messages/nearby?lat=4.6371&lng=-74.0834&radius=500", nil)
 	rec := httptest.NewRecorder()
@@ -59,7 +79,7 @@ func TestGetNearbyMessagesReadsQueryParameters(t *testing.T) {
 }
 
 func TestGetNearbyMessagesRejectsMissingOrInvalidParameters(t *testing.T) {
-	h := NewMessageHandler(service.NewMessageService(&fakeRepository{}))
+	h := NewMessageHandler(newTestService(&fakeRepository{}))
 
 	for _, query := range []string{
 		"",
@@ -77,7 +97,7 @@ func TestGetNearbyMessagesRejectsMissingOrInvalidParameters(t *testing.T) {
 }
 
 func TestGetNearbyMessagesValidatesRange(t *testing.T) {
-	h := NewMessageHandler(service.NewMessageService(&fakeRepository{}))
+	h := NewMessageHandler(newTestService(&fakeRepository{}))
 
 	req := httptest.NewRequest(http.MethodGet, "/messages/nearby?lat=91&lng=0&radius=500", nil)
 	rec := httptest.NewRecorder()

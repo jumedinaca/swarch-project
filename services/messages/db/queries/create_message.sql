@@ -2,7 +2,10 @@
 INSERT INTO messages (
     sender_id,
     content,
-    location
+    location,
+    status,
+    moderation_status,
+    version
 )
 VALUES (
     sqlc.arg(sender_id),
@@ -13,7 +16,10 @@ VALUES (
             sqlc.arg(latitude)::double precision
         ),
         4326
-    )::geography
+    )::geography,
+    'PENDING',
+    'PENDING',
+    1
 )
 RETURNING
     id,
@@ -21,4 +27,9 @@ RETURNING
     content,
     ST_Y(location::geometry)::double precision AS latitude,
     ST_X(location::geometry)::double precision AS longitude,
-    created_at;
+    status,
+    COALESCE(moderation_status, '') AS moderation_status,
+    COALESCE(moderation_reason, '') AS moderation_reason,
+    version,
+    created_at,
+    updated_at;

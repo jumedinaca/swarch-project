@@ -22,7 +22,9 @@ SET
             $3::double precision
         ),
         4326
-    )::geography
+    )::geography,
+    version = version + 1,
+    updated_at = now()
 WHERE id = $4
 RETURNING
     id,
@@ -30,7 +32,12 @@ RETURNING
     content,
     ST_Y(location::geometry)::double precision AS latitude,
     ST_X(location::geometry)::double precision AS longitude,
-    created_at
+    status,
+    COALESCE(moderation_status, '') AS moderation_status,
+    COALESCE(moderation_reason, '') AS moderation_reason,
+    version,
+    created_at,
+    updated_at
 `
 
 type UpdateMessageParams struct {
@@ -41,12 +48,17 @@ type UpdateMessageParams struct {
 }
 
 type UpdateMessageRow struct {
-	ID        uuid.UUID
-	SenderID  uuid.UUID
-	Content   string
-	Latitude  float64
-	Longitude float64
-	CreatedAt time.Time
+	ID               uuid.UUID
+	SenderID         uuid.UUID
+	Content          string
+	Latitude         float64
+	Longitude        float64
+	Status           string
+	ModerationStatus string
+	ModerationReason string
+	Version          int32
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
 
 func (q *Queries) UpdateMessage(ctx context.Context, arg UpdateMessageParams) (UpdateMessageRow, error) {
@@ -63,7 +75,12 @@ func (q *Queries) UpdateMessage(ctx context.Context, arg UpdateMessageParams) (U
 		&i.Content,
 		&i.Latitude,
 		&i.Longitude,
+		&i.Status,
+		&i.ModerationStatus,
+		&i.ModerationReason,
+		&i.Version,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }

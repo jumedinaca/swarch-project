@@ -113,7 +113,11 @@ export const PictoChatCard: React.FC<PictoChatCardProps> = ({
           </View>
         </View>
 
-        <StatusBadge status={message.status} size="sm" />
+        <StatusBadge
+          status={message.status}
+          moderationStatus={message.moderationStatus}
+          size="sm"
+        />
       </View>
 
       {/* Contenido con cuadrícula técnica PictoChat */}

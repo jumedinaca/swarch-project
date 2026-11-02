@@ -8,7 +8,9 @@ SET
             sqlc.arg(latitude)::double precision
         ),
         4326
-    )::geography
+    )::geography,
+    version = version + 1,
+    updated_at = now()
 WHERE id = sqlc.arg(id)
 RETURNING
     id,
@@ -16,4 +18,9 @@ RETURNING
     content,
     ST_Y(location::geometry)::double precision AS latitude,
     ST_X(location::geometry)::double precision AS longitude,
-    created_at;
+    status,
+    COALESCE(moderation_status, '') AS moderation_status,
+    COALESCE(moderation_reason, '') AS moderation_reason,
+    version,
+    created_at,
+    updated_at;

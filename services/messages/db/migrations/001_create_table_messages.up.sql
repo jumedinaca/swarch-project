@@ -9,7 +9,16 @@ CREATE TABLE messages (
 
     location GEOGRAPHY(Point, 4326) NOT NULL,
 
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    status VARCHAR(16) NOT NULL DEFAULT 'PENDING',
+    moderation_status VARCHAR(16),
+    moderation_reason TEXT,
+    version INTEGER NOT NULL DEFAULT 1,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+    CONSTRAINT chk_messages_status
+        CHECK (status IN ('PENDING','PUBLISHED','BLOCKED','DELETED'))
 );
 
 CREATE INDEX idx_messages_location
@@ -21,3 +30,6 @@ ON messages (created_at);
 
 CREATE INDEX idx_messages_sender
 ON messages (sender_id);
+
+CREATE INDEX idx_messages_status
+ON messages (status);

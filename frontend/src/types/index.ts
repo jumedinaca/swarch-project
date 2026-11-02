@@ -1,5 +1,7 @@
 export type MessageStatus = 'pendiente' | 'publicado' | 'oculto' | 'eliminado';
 
+export type ModerationStatus = 'PENDING' | 'ALLOW' | 'WARN' | 'BLOCK' | 'REVIEW' | 'DEGRADED';
+
 export interface GeoMessage {
   id: string;
   authorId: string;
@@ -11,6 +13,8 @@ export interface GeoMessage {
   createdAt: string;   // ISO timestamp
   expiresAt: string;   // ISO timestamp (asignado automáticamente)
   status: MessageStatus;
+  /** Estado de moderación del backend; WARN se muestra con badge. */
+  moderationStatus?: ModerationStatus;
 }
 
 export interface User {
@@ -65,6 +69,10 @@ export interface ApiMessage {
   content: string;
   location: { latitude: number; longitude: number };
   created_at: string;
+  status?: 'PENDING' | 'PUBLISHED' | 'BLOCKED' | 'DELETED';
+  moderation_status?: ModerationStatus | null;
+  version?: number;
+  updated_at?: string;
 }
 
 export interface CreateMessageDto {

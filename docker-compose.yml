@@ -78,6 +78,9 @@ services:
     environment:
       DATABASE_URL: postgres://postgres:postgres@messages-db:5432/messages?sslmode=disable
       PORT: "8080"
+      # El servicio valida el JWT por su cuenta; el gateway reenvía Authorization.
+      JWT_SECRET: *jwt-secret
+      JWT_ISSUER: ${JWT_ISSUER:-geopicto-auth}
     depends_on:
       messages-db:
         condition: service_healthy
@@ -109,8 +112,10 @@ services:
     environment:
       APP_NAME: network
       PORT: "8080"
-      # Cualquier valor distinto de development exige X-User-ID (lo pone el gateway)
       APP_ENV: production
+      # El servicio valida el JWT por su cuenta; el gateway reenvía Authorization.
+      JWT_SECRET: *jwt-secret
+      JWT_ISSUER: ${JWT_ISSUER:-geopicto-auth}
       MONGO_HOST: network-db:27017
       MONGO_DB: network_db
       MONGO_ROOT_USERNAME: network_admin
