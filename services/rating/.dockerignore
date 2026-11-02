@@ -1,0 +1,6 @@
+.env
+tmp/
+*.exe
+*_test.go
+docker-compose.yml
+README*.md
