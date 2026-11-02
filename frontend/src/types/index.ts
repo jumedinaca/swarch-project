@@ -21,6 +21,7 @@ export interface GeoMessage {
   createdAt: string;   // ISO timestamp
   expiresAt: string;   // ISO timestamp (asignado automáticamente)
   status: MessageStatus;
+  /** Estado de moderación del backend; WARN se muestra con badge. */
   moderationStatus?: ModerationStatus;
   moderationReason?: string;
   likes?: number;
@@ -82,9 +83,10 @@ export interface ApiMessage {
   location: { latitude: number; longitude: number };
   created_at: string;
   status?: BackendMessageStatus;
-  moderation_status?: ModerationStatus;
-  moderation_reason?: string;
+  moderation_status?: ModerationStatus | null;
+  moderation_reason?: string | null;
   version?: number;
+  updated_at?: string;
 }
 
 export interface CreateMessageDto {

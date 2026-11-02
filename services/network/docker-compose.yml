@@ -1,5 +1,5 @@
 services:
-  
+
   network:
     build: .
     container_name: network
@@ -15,11 +15,24 @@ services:
       MONGO_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
       MONGO_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
 
+      # --- Security / JWT ---
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ISSUER: ${JWT_ISSUER:-geopicto-auth}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      JWT_LEEWAY_SECONDS: ${JWT_LEEWAY_SECONDS:-10}
+
+      # --- RabbitMQ ---
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://geopicto:geopicto@rabbitmq:5672/geopicto}
+      RABBITMQ_EXCHANGE: ${RABBITMQ_EXCHANGE:-geopicto.events}
+
       # --- CORS ---
       CORS_ORIGINS: "*"
-    
+
     depends_on:
-      - network-db
+      network-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
 
   network-db:
     image: mongo
@@ -39,5 +52,24 @@ services:
       timeout: 3s
       retries: 10
 
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    container_name: network-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: geopicto
+      RABBITMQ_DEFAULT_PASS: geopicto
+      RABBITMQ_DEFAULT_VHOST: geopicto
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - network_rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
 volumes:
   network_mongo_data:
+  network_rabbitmq_data:

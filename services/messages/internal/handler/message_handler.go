@@ -8,8 +8,9 @@ import (
 	"github.com/google/uuid"
 
 	"messages/internal/domain"
-	"messages/internal/service"
+	"messages/internal/middleware"
 	"messages/internal/schema"
+	"messages/internal/service"
 )
 
 type MessageHandler struct {
@@ -24,22 +25,19 @@ func NewMessageHandler(
 	}
 }
 
-
 func (h *MessageHandler) CreateMessage(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
-	userIDHeader := r.Header.Get("X-User-ID")
-
-	userID, err := uuid.Parse(userIDHeader)
-	if err != nil {
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
 		http.Error(w, "invalid user id", http.StatusUnauthorized)
 		return
 	}
 
 	var req schema.CreateMessageRequest
 
-	err = json.NewDecoder(r.Body).Decode(&req)
+	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		http.Error(
 			w,
@@ -80,70 +78,68 @@ func (h *MessageHandler) CreateMessage(
 }
 
 func (h *MessageHandler) DeleteMessage(
-    w http.ResponseWriter,
-    r *http.Request,
+	w http.ResponseWriter,
+	r *http.Request,
 ) {
-    messageID, err := uuid.Parse(r.PathValue("id"))
-    if err != nil {
-        http.Error(w, "invalid message id", http.StatusBadRequest)
-        return
-    }
+	messageID, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "invalid message id", http.StatusBadRequest)
+		return
+	}
 
-    userID, err := uuid.Parse(r.Header.Get("X-User-ID"))
-    if err != nil {
-        http.Error(w, "invalid user id", http.StatusUnauthorized)
-        return
-    }
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "invalid user id", http.StatusUnauthorized)
+		return
+	}
 
-    err = h.service.DeleteMessage(
-        r.Context(),
-        messageID,
-        userID,
-    )
+	err = h.service.DeleteMessage(
+		r.Context(),
+		messageID,
+		userID,
+	)
 
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusNotFound)
-        return
-    }
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
 
-    w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusOK)
 }
 
 func (h *MessageHandler) GetMessageById(
-    w http.ResponseWriter,
-    r *http.Request,
+	w http.ResponseWriter,
+	r *http.Request,
 ) {
-    messageID, err := uuid.Parse(r.PathValue("id"))
-    if err != nil {
-        http.Error(w, "invalid message id", http.StatusBadRequest)
-        return
-    }
+	messageID, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "invalid message id", http.StatusBadRequest)
+		return
+	}
 
-    userID, err := uuid.Parse(r.Header.Get("X-User-ID"))
-    if err != nil {
-        http.Error(w, "invalid user id", http.StatusUnauthorized)
-        return
-    }
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "invalid user id", http.StatusUnauthorized)
+		return
+	}
 
-    message, err := h.service.GetMessageById(
-        r.Context(),
-        messageID,
-        userID,
-    )
+	message, err := h.service.GetMessageById(
+		r.Context(),
+		messageID,
+		userID,
+	)
 
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusNotFound)
-        return
-    }
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(message)
 }
 
-
-
-func (h *MessageHandler) GetNearbyMessages (
+func (h *MessageHandler) GetNearbyMessages(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {

@@ -1,12 +1,15 @@
 #!/usr/bin/env node
 // Prueba de integracion de punta a punta contra el sistema levantado con
-// `docker compose up`: recorre frontend -> gateway -> auth / messages (REST) y
-// network (GraphQL) con dos usuarios nuevos, igual que lo haria la aplicacion.
+// `docker compose up`: recorre frontend -> gateway -> auth / messages / profile
+// (REST) y network (GraphQL) con dos usuarios nuevos, igual que lo haria la
+// aplicacion.
 //
 // Uso:
 //   node scripts/smoke-test.mjs [--gateway http://localhost:8080] [--frontend http://localhost:8081]
 //
 // Termina con codigo 1 si alguna verificacion falla.
+
+import { crc32, deflateSync } from 'node:zlib';
 
 const args = process.argv.slice(2);
 const option = (name, fallback) => {
@@ -44,6 +47,29 @@ async function call(method, path, { token, body, headers = {} } = {}) {
     data = text;
   }
   return { status: response.status, data, headers: response.headers };
+}
+
+// PNG de un solo color, para subir un avatar sin depender de archivos externos.
+function solidPng(width, height) {
+  const chunk = (type, data) => {
+    const body = Buffer.concat([Buffer.from(type), data]);
+    const length = Buffer.alloc(4);
+    length.writeUInt32BE(data.length);
+    const crc = Buffer.alloc(4);
+    crc.writeUInt32BE(crc32(body));
+    return Buffer.concat([length, body, crc]);
+  };
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(width, 0);
+  header.writeUInt32BE(height, 4);
+  header.set([8, 2, 0, 0, 0], 8); // 8 bits, RGB
+  const row = Buffer.concat([Buffer.from([0]), Buffer.alloc(width * 3, Buffer.from([42, 199, 105]))]);
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk('IHDR', header),
+    chunk('IDAT', deflateSync(Buffer.concat(Array(height).fill(row)))),
+    chunk('IEND', Buffer.alloc(0)),
+  ]);
 }
 
 async function register(prefix) {
@@ -114,14 +140,17 @@ async function main() {
   });
   check('X-User-ID falsificado sin token -> 401', forged.status === 401);
 
-  const nearby = await call(
-    'GET',
-    `/api/messages/nearby?lat=${here.latitude}&lng=${here.longitude}&radius=500`
-  );
-  check(
-    'buscar mensajes cercanos',
-    nearby.status === 200 && Array.isArray(nearby.data) && nearby.data.some((m) => m.id === created.data?.id)
-  );
+  // Los mensajes nacen PENDING y solo aparecen al publicarse. Sin servicio de
+  // moderacion, messages los publica en modo degradado tras
+  // MODERATION_TIMEOUT_SECONDS (10 s) mas un barrido (cada 5 s).
+  const isListed = (res) =>
+    res.status === 200 && Array.isArray(res.data) && res.data.some((m) => m.id === created.data?.id);
+  let nearby;
+  for (let attempt = 0; attempt < 25 && !(nearby && isListed(nearby)); attempt++) {
+    if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 1000));
+    nearby = await call('GET', `/api/messages/nearby?lat=${here.latitude}&lng=${here.longitude}&radius=500`);
+  }
+  check('buscar mensajes cercanos (tras publicarse)', isListed(nearby), `status ${nearby.status}`);
 
   const notMine = await call('DELETE', `/api/messages/${created.data?.id}`, { token: bob.token });
   check('otro usuario no puede borrar el mensaje', notMine.status !== 200);
@@ -210,12 +239,67 @@ async function main() {
   const gqlUnauth = await graphql('{ friends { id } }', {});
   check('GraphQL sin token -> 401', gqlUnauth.status === 401);
 
+  // --- Perfiles ---
+  // Se consulta el perfil de bob con el token de alice (y no /me, que lo crea de
+  // forma perezosa) para comprobar que llego por el evento user.registered.v1.
+  let bobProfile;
+  for (let attempt = 0; attempt < 10 && bobProfile?.status !== 200; attempt++) {
+    if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 500));
+    bobProfile = await call('GET', `/api/profiles/${bob.user.id}`, { token: aliceToken });
+  }
+  check(
+    'perfil creado por el evento de registro',
+    bobProfile.status === 200 && bobProfile.data?.username === bob.user.username && /^#[0-9A-F]{6}$/.test(bobProfile.data?.color),
+    JSON.stringify(bobProfile.data)
+  );
+
+  const edited = await call('PATCH', '/api/profiles/me', {
+    token: aliceToken,
+    body: { displayName: 'Alice Geo', about: 'Prueba de humo', color: '#1EA4E8' },
+  });
+  check(
+    'editar perfil propio',
+    edited.status === 200 && edited.data?.displayName === 'Alice Geo' && edited.data?.color === '#1EA4E8',
+    JSON.stringify(edited.data)
+  );
+
+  const form = new FormData();
+  form.append('file', new Blob([solidPng(96, 64)], { type: 'image/png' }), 'avatar.png');
+  const uploaded = await fetch(`${GATEWAY}/api/profiles/me/avatar`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${aliceToken}`, Origin: ORIGIN },
+    body: form,
+  });
+  const avatarUrl = (await uploaded.json().catch(() => null))?.avatarUrl;
+  check('subir avatar', uploaded.status === 200 && !!avatarUrl, `status ${uploaded.status}`);
+
+  if (avatarUrl) {
+    // Publica: sin token, como la pide una etiqueta <img>
+    const avatar = await fetch(avatarUrl);
+    check(
+      'avatar publico en WebP',
+      avatar.status === 200 && avatar.headers.get('content-type') === 'image/webp',
+      `status ${avatar.status} ${avatar.headers.get('content-type')}`
+    );
+  }
+
+  const batch = await call('GET', `/api/profiles/batch?ids=${alice.user.id},${bob.user.id}`, { token: bob.token });
+  check(
+    'resolver perfiles en lote',
+    batch.status === 200 && batch.data?.length === 2 && batch.data[0]?.avatarUrl === avatarUrl,
+    JSON.stringify(batch.data)
+  );
+
+  const profileUnauth = await call('GET', '/api/profiles/me');
+  check('perfil sin token -> 401', profileUnauth.status === 401);
+
   // --- CORS (lo que hace el navegador antes de cada peticion) ---
   for (const [path, method] of [
     ['/api/auth/login', 'POST'],
     ['/api/auth/profile', 'PATCH'],
     ['/api/messages', 'POST'],
     ['/api/network/graphql', 'POST'],
+    ['/api/profiles/me', 'PATCH'],
   ]) {
     const preflight = await call('OPTIONS', path, {
       headers: {

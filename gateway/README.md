@@ -2,13 +2,13 @@
 
 ## Propósito y estado
 
-Este componente es el punto único de entrada para el frontend: enruta las peticiones hacia los microservicios internos de autenticación (`/api/auth/*`), mensajes (`/api/messages/*`) y red social (`/api/network/graphql`), valida los JWT emitidos por el servicio de autenticación y los traduce al header `X-User-ID` que esperan los servicios de mensajes y de red social. Está escrito en Java 21 con Spring Boot 4 y Spring Cloud Gateway (reactivo, sobre WebFlux). El formato de los tokens está en [`docs/jwt-contract.md`](../docs/jwt-contract.md).
+Este componente es el punto único de entrada para el frontend: enruta las peticiones hacia los microservicios internos de autenticación (`/api/auth/*`), mensajes (`/api/messages/*`) y red social (`/api/network/graphql`), valida los JWT emitidos por el servicio de autenticación, agrega el header `X-User-ID` y conserva `Authorization` para que los servicios de mensajes y red social también verifiquen el token. Está escrito en Java 21 con Spring Boot 4 y Spring Cloud Gateway (reactivo, sobre WebFlux). El formato de los tokens está en [`docs/jwt-contract.md`](../docs/jwt-contract.md).
 
 El código se organiza así:
 
 - `GatewayApplication`: arranque de la aplicación Spring Boot.
 - `src/main/resources/application.yml`: definición declarativa de rutas, CORS, el secreto JWT y el endpoint de salud.
-- `filter/JwtAuthGatewayFilterFactory`: filtro de ruta `JwtAuth` que exige `Authorization: Bearer <token>`, lo valida y lo reemplaza por `X-User-ID: <sub>` antes de reenviar la petición. Sus errores se responden como JSON `{"message": "..."}`.
+- `filter/JwtAuthGatewayFilterFactory`: filtro de ruta `JwtAuth` que exige `Authorization: Bearer <token>`, lo valida, agrega `X-User-ID: <sub>` y conserva `Authorization` para que `messages`, `network` y `profile` vuelvan a verificar el JWT. Sus errores se responden como JSON `{"message": "..."}`.
 - `filter/StripUserIdGlobalFilter`: elimina en todas las rutas cualquier `X-User-ID` enviado por el cliente, para que solo `JwtAuth` pueda ponerlo.
 - `security/JwtService`: verificación de firma HS256 y de los claims `exp`, `iss` (debe ser `JWT_ISSUER`) y `sub` (que debe ser un UUID). Si `JWT_SECRET` falta o tiene menos de 32 bytes, la aplicación no arranca.
 
@@ -20,8 +20,10 @@ El código se organiza así:
 | `GET /api/messages/nearby` | `MESSAGES_SERVICE_URL` | `StripPrefix=1` (pública, sin JWT) |
 | `/api/messages/**` (resto) | `MESSAGES_SERVICE_URL` | `StripPrefix=1`, `JwtAuth` |
 | `/api/network/graphql` | `NETWORK_SERVICE_URL` | `StripPrefix=2`, `JwtAuth` (→ `/graphql`; el servicio de red social solo expone GraphQL) |
+| `GET /api/profiles/avatars/**` | `PROFILE_SERVICE_URL` | `StripPrefix=1` (pública: las etiquetas `<img>` no envían el JWT) |
+| `/api/profiles/**` (resto) | `PROFILE_SERVICE_URL` | `StripPrefix=1`, `JwtAuth` |
 
-Las rutas se evalúan en orden: por eso la regla específica de `nearby` está antes que la regla general de mensajes, que exige JWT.
+Las rutas se evalúan en orden: por eso las reglas específicas de `nearby` y de avatares están antes que las reglas generales de mensajes y perfiles, que exigen JWT.
 
 Además, `GET /actuator/health` expone el estado del gateway (lo usa el healthcheck de Docker).
 
@@ -36,6 +38,7 @@ Copia `.example.env` a `.env` y ajusta:
 | `AUTH_SERVICE_URL` | No | `http://localhost:8101` | URL interna del microservicio de autenticación. |
 | `MESSAGES_SERVICE_URL` | No | `http://localhost:8100` | URL interna del microservicio de mensajes. |
 | `NETWORK_SERVICE_URL` | No | `http://localhost:8001` | URL interna del microservicio de red social. |
+| `PROFILE_SERVICE_URL` | No | `http://localhost:8300` | URL interna del microservicio de perfiles. |
 | `CORS_ALLOWED_ORIGINS` | No | `http://localhost:8081` | Orígenes del frontend autorizados, separados por comas. |
 
 ## Ejecución local

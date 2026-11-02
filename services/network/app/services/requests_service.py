@@ -236,7 +236,7 @@ class RequestService:
         self,
         friendship_id: str,
         actor_id: UUID,
-    ) -> None:
+    ) -> Friendship:
         friendship = await self.repository.get_by_id(friendship_id)
 
         if friendship is None:
@@ -282,7 +282,8 @@ class RequestService:
                 },
             },
         )
-        
+
+        return friendship
 
     async def list_for_user(
         self,

@@ -29,8 +29,8 @@ function colorFor(userId: string): string {
  * usado por la interfaz (`pendiente`, `publicado`, `oculto`, `eliminado`) conforme a P2.
  */
 export function mapBackendMessageStatus(
-  backendStatus?: BackendMessageStatus | string,
-  moderationStatus?: ModerationStatus | string
+  backendStatus?: BackendMessageStatus | string | null,
+  moderationStatus?: ModerationStatus | string | null
 ): MessageStatus {
   const normalized = (backendStatus || 'PUBLISHED').toUpperCase();
   if (normalized === 'PENDING') return 'pendiente';
@@ -61,8 +61,8 @@ export function toGeoMessage(message: ApiMessage, currentUser?: Author | null): 
     createdAt: createdAt.toISOString(),
     expiresAt: new Date(createdAt.getTime() + DEFAULT_EXPIRATION_HOURS * 3600 * 1000).toISOString(),
     status,
-    moderationStatus: message.moderation_status,
-    moderationReason: message.moderation_reason,
+    moderationStatus: message.moderation_status ?? undefined,
+    moderationReason: message.moderation_reason ?? undefined,
   };
 }
 

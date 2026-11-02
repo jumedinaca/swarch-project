@@ -470,3 +470,5 @@ Temporary Items
 .apdisk
 
 # End of https://www.toptal.com/developers/gitignore/api/python,go,reactnative,java
+# Build temporal de air en messages
+/services/messages/tmp/

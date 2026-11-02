@@ -54,6 +54,9 @@ class GatewayRoutingTests {
         registry.add("MESSAGES_SERVICE_URL", () -> backendUrl);
         registry.add("AUTH_SERVICE_URL", () -> backendUrl);
         registry.add("NETWORK_SERVICE_URL", () -> backendUrl);
+        registry.add("PROFILE_SERVICE_URL", () -> backendUrl);
+        registry.add("RATING_SERVICE_URL", () -> backendUrl);
+        registry.add("REPUTATION_SERVICE_URL", () -> backendUrl);
         registry.add("SOCKET_GATEWAY_HTTP_URL", () -> backendUrl);
         registry.add("SOCKET_GATEWAY_WS_URL", () -> backendWsUrl);
         registry.add("JWT_SECRET", () -> SECRET);
@@ -119,11 +122,12 @@ class GatewayRoutingTests {
     // --- Rutas protegidas ---
 
     @Test
-    void validTokenIsReplacedByUserIdHeader() throws InterruptedException {
+    void validTokenAddsUserIdAndForwardsAuthorization() throws InterruptedException {
         UUID userId = UUID.randomUUID();
+        String bearer = "Bearer " + token(userId.toString(), inOneHour());
 
         client.post().uri("/api/messages")
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token(userId.toString(), inOneHour()))
+                .header(HttpHeaders.AUTHORIZATION, bearer)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue("{\"content\":\"hola\",\"latitude\":4.6,\"longitude\":-74.08}")
                 .exchange()
@@ -132,7 +136,8 @@ class GatewayRoutingTests {
         RecordedRequest forwarded = takeForwarded();
         assertThat(forwarded.getPath()).isEqualTo("/messages");
         assertThat(forwarded.getHeader("X-User-ID")).isEqualTo(userId.toString());
-        assertThat(forwarded.getHeader(HttpHeaders.AUTHORIZATION)).isNull();
+        // Los servicios internos vuelven a validar el JWT.
+        assertThat(forwarded.getHeader(HttpHeaders.AUTHORIZATION)).isEqualTo(bearer);
         assertThat(forwarded.getBody().readString(StandardCharsets.UTF_8)).contains("\"content\":\"hola\"");
     }
 
@@ -177,9 +182,10 @@ class GatewayRoutingTests {
     @Test
     void socketTicketsIsForwardedWithUserIdAndStripsTwoPrefixes() throws InterruptedException {
         UUID userId = UUID.randomUUID();
+        String bearer = "Bearer " + token(userId.toString(), inOneHour());
 
         client.post().uri("/api/socket/tickets")
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token(userId.toString(), inOneHour()))
+                .header(HttpHeaders.AUTHORIZATION, bearer)
                 .header("X-User-ID", UUID.randomUUID().toString())
                 .exchange()
                 .expectStatus().isOk();
@@ -187,7 +193,7 @@ class GatewayRoutingTests {
         RecordedRequest forwarded = takeForwarded();
         assertThat(forwarded.getPath()).isEqualTo("/tickets");
         assertThat(forwarded.getHeaders().values("X-User-ID")).containsExactly(userId.toString());
-        assertThat(forwarded.getHeader(HttpHeaders.AUTHORIZATION)).isNull();
+        assertThat(forwarded.getHeader(HttpHeaders.AUTHORIZATION)).isEqualTo(bearer);
     }
 
     @Test
@@ -206,6 +212,52 @@ class GatewayRoutingTests {
                 .expectStatus().isNotFound();
 
         assertThat(backend.getRequestCount()).isEqualTo(before);
+    }
+
+    @Test
+    void profileAvatarsArePublicAndDropClientSuppliedUserId() throws InterruptedException {
+        String key = "avatars/" + UUID.randomUUID() + "/0192f3a4.webp";
+
+        client.get().uri("/api/profiles/avatars/" + key)
+                .header("X-User-ID", UUID.randomUUID().toString())
+                .exchange()
+                .expectStatus().isOk();
+
+        RecordedRequest forwarded = takeForwarded();
+        assertThat(forwarded.getPath()).isEqualTo("/profiles/avatars/" + key);
+        assertThat(forwarded.getHeader("X-User-ID")).isNull();
+    }
+
+    @Test
+    void profilesAreForwardedWithUserId() throws InterruptedException {
+        UUID userId = UUID.randomUUID();
+        String bearer = "Bearer " + token(userId.toString(), inOneHour());
+
+        client.patch().uri("/api/profiles/me")
+                .header(HttpHeaders.AUTHORIZATION, bearer)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("{\"displayName\":\"Explorador\"}")
+                .exchange()
+                .expectStatus().isOk();
+
+        RecordedRequest forwarded = takeForwarded();
+        assertThat(forwarded.getMethod()).isEqualTo("PATCH");
+        assertThat(forwarded.getPath()).isEqualTo("/profiles/me");
+        assertThat(forwarded.getHeader("X-User-ID")).isEqualTo(userId.toString());
+        assertThat(forwarded.getHeader(HttpHeaders.AUTHORIZATION)).isEqualTo(bearer);
+    }
+
+    @Test
+    void profilesWithoutTokenAreRejected() {
+        expectUnauthorized(client.get().uri("/api/profiles/me").exchange(),
+                "Missing or invalid Authorization header");
+    }
+
+    @Test
+    void onlyReadingAvatarsIsPublic() {
+        // Cualquier otro metodo bajo /avatars cae en la ruta protegida.
+        expectUnauthorized(client.delete().uri("/api/profiles/avatars/avatars/x/y.webp").exchange(),
+                "Missing or invalid Authorization header");
     }
 
     @Test

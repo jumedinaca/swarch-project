@@ -11,6 +11,9 @@ Aplicación para publicar mensajes asociados a una ubicación y consultar los qu
 | [`services/messages/`](services/messages/README.md) | Mensajes geolocalizados y búsqueda por proximidad | Go, PostgreSQL + PostGIS |
 | [`services/auth/`](services/auth/README.md) | Registro, login, sesiones y emisión de JWT | Python (FastAPI), PostgreSQL |
 | [`services/network/`](services/network/README.md) | Solicitudes de amistad y lista de amigos (API GraphQL) | Python (FastAPI, Strawberry), MongoDB |
+| [`services/profile/`](services/profile/README.md) | Nombre visible, descripción, avatar y color de autor | Python (FastAPI), PostgreSQL, MinIO |
+
+Los servicios se comunican por eventos a través de RabbitMQ: por ejemplo, `auth` publica `user.registered.v1` y `profile` crea el perfil del nuevo usuario.
 
 El formato de los tokens y el enrutamiento están en [`docs/jwt-contract.md`](docs/jwt-contract.md).
 
@@ -32,7 +35,7 @@ El secreto con el que se firman los JWT (`JWT_SECRET`) tiene un valor por defect
 | API Gateway | http://localhost:8080 |
 | Salud del gateway | http://localhost:8080/actuator/health |
 
-Los servicios de autenticación, mensajes y red social, y sus bases de datos, no se publican al host: solo se accede a ellos a través del gateway.
+Los servicios de autenticación, mensajes, red social y perfiles, sus bases de datos, RabbitMQ y MinIO no se publican al host: solo se accede a ellos a través del gateway.
 
 El frontend usa el backend real (`EXPO_PUBLIC_USE_MOCK_DATA=false`). Con `true` usa datos simulados en el navegador, útil para trabajar solo en la interfaz. Como la variable se incrusta al compilar, después de cambiarla hay que reconstruir el frontend con `docker compose up --build frontend`.
 
@@ -77,6 +80,14 @@ Red social (GraphQL): enviar una solicitud de amistad a otro usuario (su UUID) y
 ```bash
 curl -X POST localhost:8080/api/network/graphql -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"query":"mutation($id: UUID!) { sendFriendRequest(recipientId: $id) { id status } }","variables":{"id":"<uuid-del-otro-usuario>"}}'
 curl -X POST localhost:8080/api/network/graphql -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"query":"{ friends { otherUserId } incomingRequests { id otherUserId } }"}'
+```
+
+Perfil: consultar el propio, editarlo y subir una foto (JPEG, PNG o WebP de hasta 5 MB):
+
+```bash
+curl localhost:8080/api/profiles/me -H "Authorization: Bearer $TOKEN"
+curl -X PATCH localhost:8080/api/profiles/me -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"displayName":"Explorador","about":"Cazando pictos por Bogotá."}'
+curl -X POST localhost:8080/api/profiles/me/avatar -H "Authorization: Bearer $TOKEN" -F "file=@foto.jpg"
 ```
 
 ## Trabajar en un solo componente

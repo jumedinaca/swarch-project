@@ -1,0 +1,87 @@
+# Levanta profile de forma aislada, con su base de datos, MinIO y RabbitMQ.
+#
+#   cp .example.env .env   # y define JWT_SECRET
+#   docker compose up --build
+#
+# API en http://localhost:8300, consola de MinIO en http://localhost:9001 y de
+# RabbitMQ en http://localhost:15672. Al no pasar por el gateway, avatarUrl
+# apunta directo a este servicio (AVATAR_PUBLIC_BASE_URL del .env).
+name: geopicto-profile
+
+services:
+  profile:
+    build: .
+    container_name: profile
+    env_file:
+      - .env
+    depends_on:
+      profile-db:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "8300:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  profile-db:
+    image: postgres:18-alpine
+    container_name: profile_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: profile
+    ports:
+      - "5434:5432"
+    volumes:
+      - profile_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d profile"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    # MinIO dejo de publicar la imagen minio/minio en Docker Hub; Chainguard
+    # compila el mismo servidor desde el codigo fuente y la mantiene al dia.
+    image: cgr.dev/chainguard/minio:latest
+    container_name: profile_minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: geopicto
+      MINIO_ROOT_PASSWORD: geopicto-minio-secret
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - profile_avatars:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: profile_rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: geopicto
+      RABBITMQ_DEFAULT_PASS: geopicto
+      RABBITMQ_DEFAULT_VHOST: geopicto
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  profile_data:
+  profile_avatars:

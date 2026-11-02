@@ -121,15 +121,11 @@ export const PictoChatCard: React.FC<PictoChatCardProps> = ({
           </View>
         </View>
 
-        <View style={styles.badgesColumn}>
-          <StatusBadge status={message.status} size="sm" />
-          {message.moderationStatus === 'WARN' && (
-            <View style={styles.warnBadge}>
-              <Ionicons name="warning-outline" size={10} color="#B26B00" />
-              <Text style={styles.warnBadgeText}>ADVERTENCIA</Text>
-            </View>
-          )}
-        </View>
+        <StatusBadge
+          status={message.status}
+          moderationStatus={message.moderationStatus}
+          size="sm"
+        />
       </View>
 
       {/* Contenido con cuadrícula técnica PictoChat */}

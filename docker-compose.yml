@@ -1,6 +1,7 @@
 # Entorno completo de GeoPicto: frontend web, API Gateway y los servicios de
-# autenticacion, mensajes y red social con sus bases de datos, todos en la
-# misma red.
+# autenticacion, mensajes, red social y perfiles con sus bases de datos, el
+# broker de eventos (RabbitMQ) y el almacenamiento de avatares (MinIO), todos
+# en la misma red.
 #
 #   docker compose up --build
 #
@@ -23,7 +24,22 @@ name: geopicto
 # definir JWT_SECRET en .env (minimo 32 bytes).
 x-jwt-secret: &jwt-secret ${JWT_SECRET:-geopicto-prototipo-secreto-local-no-usar-en-produccion}
 
+# Broker compartido: auth publica user.registered.v1 y profile lo consume.
+x-rabbitmq-url: &rabbitmq-url amqp://geopicto:geopicto@rabbitmq:5672/geopicto
+
 services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    environment:
+      RABBITMQ_DEFAULT_USER: geopicto
+      RABBITMQ_DEFAULT_PASS: geopicto
+      RABBITMQ_DEFAULT_VHOST: geopicto
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   auth-db:
     image: postgres:18-alpine
     environment:
@@ -49,8 +65,11 @@ services:
       # Vacio a proposito: el gateway agrega las cabeceras CORS. Si ambos las
       # pusieran, el navegador rechazaria las respuestas.
       CORS_ORIGINS: ""
+      RABBITMQ_URL: *rabbitmq-url
     depends_on:
       auth-db:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
@@ -78,8 +97,16 @@ services:
     environment:
       DATABASE_URL: postgres://postgres:postgres@messages-db:5432/messages?sslmode=disable
       PORT: "8080"
+      # El servicio valida el JWT por su cuenta; el gateway reenvía Authorization.
+      JWT_SECRET: *jwt-secret
+      JWT_ISSUER: ${JWT_ISSUER:-geopicto-auth}
+      RABBITMQ_URL: *rabbitmq-url
+      MODERATION_TIMEOUT_SECONDS: "1"
+      PENDING_SWEEP_INTERVAL_SECONDS: "1"
     depends_on:
       messages-db:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     healthcheck:
       # El servicio no tiene endpoint de salud propio; una busqueda vacia
@@ -109,8 +136,11 @@ services:
     environment:
       APP_NAME: network
       PORT: "8080"
-      # Cualquier valor distinto de development exige X-User-ID (lo pone el gateway)
       APP_ENV: production
+      # El servicio valida el JWT por su cuenta; el gateway reenvía Authorization.
+      JWT_SECRET: *jwt-secret
+      JWT_ISSUER: ${JWT_ISSUER:-geopicto-auth}
+      RABBITMQ_URL: *rabbitmq-url
       MONGO_HOST: network-db:27017
       MONGO_DB: network_db
       MONGO_ROOT_USERNAME: network_admin
@@ -120,8 +150,73 @@ services:
     depends_on:
       network-db:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/')"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+
+  profile-db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: profile
+    volumes:
+      - profile_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d profile"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Almacenamiento S3 compatible de los avatares. El bucket es privado: los
+  # avatares se sirven a traves de profile (GET /api/profiles/avatars/...).
+  minio:
+    # MinIO dejo de publicar la imagen minio/minio en Docker Hub; Chainguard
+    # compila el mismo servidor desde el codigo fuente y la mantiene al dia.
+    image: cgr.dev/chainguard/minio:latest
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: geopicto
+      MINIO_ROOT_PASSWORD: geopicto-minio-secret
+    volumes:
+      - profile_avatars:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  profile:
+    build: ./services/profile
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@profile-db:5432/profile
+      PORT: "8080"
+      # El servicio valida el JWT por su cuenta; el gateway reenvía Authorization.
+      JWT_SECRET: *jwt-secret
+      JWT_ISSUER: ${JWT_ISSUER:-geopicto-auth}
+      RABBITMQ_URL: *rabbitmq-url
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: geopicto
+      MINIO_SECRET_KEY: geopicto-minio-secret
+      MINIO_BUCKET: geopicto-avatars
+      # avatarUrl apunta al gateway, que es lo unico que ve el navegador.
+      AVATAR_PUBLIC_BASE_URL: ${EXPO_PUBLIC_API_GATEWAY_URL:-http://localhost:8080}/api/profiles/avatars
+      # Vacio a proposito: el gateway agrega las cabeceras CORS.
+      CORS_ORIGINS: ""
+    depends_on:
+      profile-db:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
       interval: 10s
       timeout: 5s
       start_period: 30s
@@ -133,18 +228,6 @@ services:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
-      retries: 10
-
-  rabbitmq:
-    image: rabbitmq:3-management
-    environment:
-      RABBITMQ_DEFAULT_USER: geopicto
-      RABBITMQ_DEFAULT_PASS: geopicto
-      RABBITMQ_DEFAULT_VHOST: geopicto
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 10s
-      timeout: 5s
       retries: 10
 
   rating-db:
@@ -166,7 +249,7 @@ services:
     environment:
       PORT: "8080"
       DATABASE_URL: postgres://postgres:postgres@rating-db:5432/rating?sslmode=disable
-      RABBITMQ_URL: amqp://geopicto:geopicto@rabbitmq:5672/geopicto
+      RABBITMQ_URL: *rabbitmq-url
       RABBITMQ_EXCHANGE: geopicto.events
     depends_on:
       rating-db:
@@ -199,7 +282,7 @@ services:
     environment:
       PORT: "8080"
       DATABASE_URL: postgres://postgres:postgres@reputation-db:5432/reputation?sslmode=disable
-      RABBITMQ_URL: amqp://geopicto:geopicto@rabbitmq:5672/geopicto
+      RABBITMQ_URL: *rabbitmq-url
       RABBITMQ_EXCHANGE: geopicto.events
     depends_on:
       reputation-db:
@@ -223,7 +306,7 @@ services:
     environment:
       PORT: "8080"
       REDIS_URL: redis://redis:6379/0
-      RABBITMQ_URL: amqp://geopicto:geopicto@rabbitmq:5672/geopicto
+      RABBITMQ_URL: *rabbitmq-url
       RABBITMQ_EXCHANGE: geopicto.events
       RABBITMQ_QUEUE: socket.events.q
       WS_ALLOWED_ORIGINS: ${WS_ALLOWED_ORIGINS:-http://localhost:8081,http://localhost:8080,http://127.0.0.1:8081,http://127.0.0.1:8080,http://socket-gateway:8080,http://realtime:8080,http://gateway:8080}
@@ -249,6 +332,7 @@ services:
       MESSAGES_SERVICE_URL: http://messages:8080
       AUTH_SERVICE_URL: http://auth:8080
       NETWORK_SERVICE_URL: http://network:8080
+      PROFILE_SERVICE_URL: http://profile:8080
       RATING_SERVICE_URL: http://rating:8080
       REPUTATION_SERVICE_URL: http://reputation:8080
       SOCKET_GATEWAY_HTTP_URL: http://socket-gateway:8080
@@ -262,6 +346,8 @@ services:
       messages:
         condition: service_healthy
       network:
+        condition: service_healthy
+      profile:
         condition: service_healthy
       rating:
         condition: service_healthy
@@ -287,5 +373,7 @@ volumes:
   auth_data:
   messages_data:
   network_data:
+  profile_data:
+  profile_avatars:
   rating_data:
   reputation_data:
