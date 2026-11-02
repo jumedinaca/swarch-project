@@ -16,7 +16,7 @@ class Settings(BaseSettings):
 
     # --- JWT ---
     # Debe coincidir con el secreto del servicio de auth y del API Gateway.
-    JWT_SECRET: str = Field(min_length=32)
+    JWT_SECRET: str = Field(min_length=32,default="-geopicto-prototipo-secreto-local-no-usar-en-produccion")
     JWT_ALGORITHM: str = "HS256"
     JWT_ISSUER: str = "geopicto-auth"
     JWT_LEEWAY_SECONDS: int = 10
