@@ -140,14 +140,17 @@ async function main() {
   });
   check('X-User-ID falsificado sin token -> 401', forged.status === 401);
 
-  const nearby = await call(
-    'GET',
-    `/api/messages/nearby?lat=${here.latitude}&lng=${here.longitude}&radius=500`
-  );
-  check(
-    'buscar mensajes cercanos',
-    nearby.status === 200 && Array.isArray(nearby.data) && nearby.data.some((m) => m.id === created.data?.id)
-  );
+  // Los mensajes nacen PENDING y solo aparecen al publicarse. Sin servicio de
+  // moderacion, messages los publica en modo degradado tras
+  // MODERATION_TIMEOUT_SECONDS (10 s) mas un barrido (cada 5 s).
+  const isListed = (res) =>
+    res.status === 200 && Array.isArray(res.data) && res.data.some((m) => m.id === created.data?.id);
+  let nearby;
+  for (let attempt = 0; attempt < 25 && !(nearby && isListed(nearby)); attempt++) {
+    if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 1000));
+    nearby = await call('GET', `/api/messages/nearby?lat=${here.latitude}&lng=${here.longitude}&radius=500`);
+  }
+  check('buscar mensajes cercanos (tras publicarse)', isListed(nearby), `status ${nearby.status}`);
 
   const notMine = await call('DELETE', `/api/messages/${created.data?.id}`, { token: bob.token });
   check('otro usuario no puede borrar el mensaje', notMine.status !== 200);
