@@ -36,7 +36,7 @@ Ejemplo de payload:
 1. El cliente obtiene el token con `POST /api/auth/login` o `POST /api/auth/register`.
 2. En cada petición envía `Authorization: Bearer <token>` al gateway.
 3. En las rutas protegidas, el gateway valida el token por su cuenta (sin llamar al servicio de autenticación), conserva el header `Authorization` y agrega `X-User-ID: <sub>`.
-4. `messages` y `network` vuelven a validar el JWT por su cuenta (defensa en profundidad) y usan el `sub` como identidad; no confían en `X-User-ID`. Por eso el gateway elimina cualquier `X-User-ID` que envíe el cliente, en todas las rutas.
+4. `messages`, `network` y `profile` vuelven a validar el JWT por su cuenta (defensa en profundidad) y usan el `sub` como identidad; no confían en `X-User-ID`. Por eso el gateway elimina cualquier `X-User-ID` que envíe el cliente, en todas las rutas.
 
 ## Logout y expiración
 
@@ -50,6 +50,8 @@ Como el gateway no consulta las sesiones, un access token sigue sirviendo en las
 | `GET /api/messages/nearby?lat=&lng=&radius=` | Pública | `messages:/messages/nearby` |
 | `/api/messages/**` (resto) | JWT | `messages:/messages/…` |
 | `POST /api/network/graphql` | JWT | `network:/graphql` |
+| `GET /api/profiles/avatars/**` | Pública | `profile:/profiles/avatars/…` |
+| `/api/profiles/**` (resto) | JWT | `profile:/profiles/…` |
 
 ## Token de desarrollo
 

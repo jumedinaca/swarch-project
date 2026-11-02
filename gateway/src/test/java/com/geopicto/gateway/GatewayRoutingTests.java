@@ -53,6 +53,7 @@ class GatewayRoutingTests {
         registry.add("MESSAGES_SERVICE_URL", () -> backendUrl);
         registry.add("AUTH_SERVICE_URL", () -> backendUrl);
         registry.add("NETWORK_SERVICE_URL", () -> backendUrl);
+        registry.add("PROFILE_SERVICE_URL", () -> backendUrl);
         registry.add("JWT_SECRET", () -> SECRET);
         registry.add("CORS_ALLOWED_ORIGINS", () -> ALLOWED_ORIGIN);
     }
@@ -183,6 +184,52 @@ class GatewayRoutingTests {
                 .expectStatus().isNotFound();
 
         assertThat(backend.getRequestCount()).isEqualTo(before);
+    }
+
+    @Test
+    void profileAvatarsArePublicAndDropClientSuppliedUserId() throws InterruptedException {
+        String key = "avatars/" + UUID.randomUUID() + "/0192f3a4.webp";
+
+        client.get().uri("/api/profiles/avatars/" + key)
+                .header("X-User-ID", UUID.randomUUID().toString())
+                .exchange()
+                .expectStatus().isOk();
+
+        RecordedRequest forwarded = takeForwarded();
+        assertThat(forwarded.getPath()).isEqualTo("/profiles/avatars/" + key);
+        assertThat(forwarded.getHeader("X-User-ID")).isNull();
+    }
+
+    @Test
+    void profilesAreForwardedWithUserId() throws InterruptedException {
+        UUID userId = UUID.randomUUID();
+        String bearer = "Bearer " + token(userId.toString(), inOneHour());
+
+        client.patch().uri("/api/profiles/me")
+                .header(HttpHeaders.AUTHORIZATION, bearer)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("{\"displayName\":\"Explorador\"}")
+                .exchange()
+                .expectStatus().isOk();
+
+        RecordedRequest forwarded = takeForwarded();
+        assertThat(forwarded.getMethod()).isEqualTo("PATCH");
+        assertThat(forwarded.getPath()).isEqualTo("/profiles/me");
+        assertThat(forwarded.getHeader("X-User-ID")).isEqualTo(userId.toString());
+        assertThat(forwarded.getHeader(HttpHeaders.AUTHORIZATION)).isEqualTo(bearer);
+    }
+
+    @Test
+    void profilesWithoutTokenAreRejected() {
+        expectUnauthorized(client.get().uri("/api/profiles/me").exchange(),
+                "Missing or invalid Authorization header");
+    }
+
+    @Test
+    void onlyReadingAvatarsIsPublic() {
+        // Cualquier otro metodo bajo /avatars cae en la ruta protegida.
+        expectUnauthorized(client.delete().uri("/api/profiles/avatars/avatars/x/y.webp").exchange(),
+                "Missing or invalid Authorization header");
     }
 
     @Test

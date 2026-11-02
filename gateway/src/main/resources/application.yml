@@ -45,13 +45,31 @@ spring:
                 - StripPrefix=2
                 - JwtAuth
 
+            # Avatares: publicos porque las etiquetas <img> no envian el JWT.
+            # Va antes de "profiles-protected", que matchea el resto de /api/profiles/**.
+            - id: profiles-avatars
+              uri: ${PROFILE_SERVICE_URL:http://localhost:8300}
+              predicates:
+                - Path=/api/profiles/avatars/**
+                - Method=GET
+              filters:
+                - StripPrefix=1
+
+            - id: profiles-protected
+              uri: ${PROFILE_SERVICE_URL:http://localhost:8300}
+              predicates:
+                - Path=/api/profiles/**
+              filters:
+                - StripPrefix=1
+                - JwtAuth
+
           # El frontend envia el JWT en el header Authorization (no usa cookies),
           # por eso no se habilita allowCredentials.
           globalcors:
             cors-configurations:
               "[/**]":
                 allowedOriginPatterns: ${CORS_ALLOWED_ORIGINS:http://localhost:8081}
-                # PATCH lo usa PATCH /api/auth/profile
+                # PATCH lo usa PATCH /api/profiles/me
                 allowedMethods: GET,POST,PUT,PATCH,DELETE,OPTIONS
                 allowedHeaders: "*"
 
