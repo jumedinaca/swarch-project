@@ -15,8 +15,8 @@ import io.jsonwebtoken.JwtException;
 
 /**
  * Filtro de ruta "JwtAuth": exige un header "Authorization: Bearer <token>"
- * valido, y si lo es, lo reemplaza por un header "X-User-ID" con el claim
- * "sub" del token antes de reenviar la peticion al microservicio interno.
+ * valido, agrega un header "X-User-ID" con el claim "sub" y reenvia tambien
+ * el Authorization al microservicio interno, que vuelve a verificar el JWT.
  * Se usa agregando "- JwtAuth" a los filters de una ruta en application.yml.
  */
 @Component
@@ -50,11 +50,11 @@ public class JwtAuthGatewayFilterFactory extends AbstractGatewayFilterFactory<Ob
                 return ErrorResponses.write(exchange, HttpStatus.UNAUTHORIZED, "Invalid or expired token");
             }
 
+            // Se conserva Authorization: los servicios internos validan el JWT
+            // por su cuenta (defensa en profundidad) y ademas reciben X-User-ID.
             ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
-                    .headers(headers -> {
-                        headers.remove(HttpHeaders.AUTHORIZATION);
-                        headers.set(StripUserIdGlobalFilter.USER_ID_HEADER, userId.toString());
-                    })
+                    .headers(headers -> headers.set(
+                            StripUserIdGlobalFilter.USER_ID_HEADER, userId.toString()))
                     .build();
 
             return chain.filter(exchange.mutate().request(mutatedRequest).build());

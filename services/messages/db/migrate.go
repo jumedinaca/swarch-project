@@ -12,6 +12,7 @@ import (
 )
 
 // Embeber todo el contenido del directorio de migraciones en el binario
+//
 //go:embed migrations/*.sql
 var migrationFiles embed.FS
 

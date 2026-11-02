@@ -1,33 +1,30 @@
 from uuid import UUID
 
-from fastapi import Depends, Header, HTTPException, Request
+from fastapi import Depends, HTTPException, Request
 from pymongo.asynchronous.database import AsyncDatabase
 
-from app.core.config import get_settings, isDev
+from app.messaging.publisher import ActivityEventPublisher
 from app.repositories.friendship_repository import FriendshipRepository
 from app.services import FriendsService, RequestService
 
 
-def get_current_user(
-    x_user_id: str | None = Header(default=None, alias="X-User-ID"),
-) -> UUID:
+def get_current_user(request: Request) -> UUID:
     """
-    El API Gateway valida el JWT y reenvía el id del usuario en X-User-ID
-    (igual que con el servicio de mensajes). Este servicio confía en ese header.
-    En desarrollo, sin gateway, se puede usar DEV_USER_ID como respaldo.
+    El middleware JWTAuth valida el token y deja el UUID del claim sub en
+    request.state.user_id. Este servicio no confía en X-User-ID.
     """
-    value = x_user_id
-    if not value and isDev():
-        value = get_settings().DEV_USER_ID
-
-    try:
-        return UUID(value)
-    except (TypeError, ValueError):
-        raise HTTPException(status_code=401, detail="Falta un X-User-ID válido.")
+    user_id = getattr(request.state, "user_id", None)
+    if not isinstance(user_id, UUID):
+        raise HTTPException(status_code=401, detail="Token de autenticación requerido.")
+    return user_id
 
 
 def get_database(request: Request) -> AsyncDatabase:
     return request.app.state.mongodb
+
+
+def get_activity_publisher(request: Request) -> ActivityEventPublisher | None:
+    return getattr(request.app.state, "activity_publisher", None)
 
 
 def get_request_service_service(

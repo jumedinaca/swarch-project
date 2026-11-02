@@ -1,16 +1,22 @@
 import React from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { MessageStatus } from '../../types';
+import { MessageStatus, ModerationStatus } from '../../types';
 import { nintendoTheme } from '../../theme/nintendoTheme';
 
 interface StatusBadgeProps {
   status: MessageStatus;
+  moderationStatus?: ModerationStatus;
   size?: 'sm' | 'md';
 }
 
-export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, size = 'md' }) => {
+export const StatusBadge: React.FC<StatusBadgeProps> = ({
+  status,
+  moderationStatus,
+  size = 'md',
+}) => {
   const config = nintendoTheme.colors.status[status] || nintendoTheme.colors.status.publicado;
+  const isWarn = moderationStatus === 'WARN';
 
   const getIcon = () => {
     switch (status) {
@@ -56,6 +62,28 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, size = 'md' })
       >
         {config.label.toUpperCase()}
       </Text>
+      {isWarn && (
+        <>
+          <Ionicons
+            name="warning-outline"
+            size={isSmall ? 10 : 12}
+            color="#8A5A00"
+            style={{ marginLeft: 4 }}
+          />
+          <Text
+            style={[
+              styles.badgeLabel,
+              {
+                color: '#8A5A00',
+                fontSize: isSmall ? 9 : 11,
+                marginLeft: 2,
+              },
+            ]}
+          >
+            ADVERTENCIA
+          </Text>
+        </>
+      )}
     </View>
   );
 };

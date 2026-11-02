@@ -1,6 +1,8 @@
 services:
   messages:
-    build: .
+    build:
+      context: .
+      target: development
     container_name: messages
 
     env_file:
@@ -8,6 +10,8 @@ services:
 
     depends_on:
       messages-db:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
     ports:
@@ -48,5 +52,24 @@ services:
       timeout: 5s
       retries: 10
 
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    container_name: messages_rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: geopicto
+      RABBITMQ_DEFAULT_PASS: geopicto
+      RABBITMQ_DEFAULT_VHOST: geopicto
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - messages_rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
 volumes:
   messages_data:
+  messages_rabbitmq_data:

@@ -5,10 +5,11 @@ Los resolvers delegan en los servicios de negocio (app/services). Se eligió
 GraphQL porque la pantalla de amigos pide en una sola petición exactamente lo
 que necesita (por ejemplo amigos + solicitudes recibidas + enviadas).
 """
+import logging
 from collections.abc import Awaitable
 from datetime import datetime
 from typing import TypeVar
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import strawberry
 from fastapi import Depends
@@ -17,7 +18,14 @@ from pymongo.errors import DuplicateKeyError
 from strawberry.fastapi import BaseContext, GraphQLRouter
 from strawberry.types import Info
 
-from app.core.depends import get_current_user, get_friends_service, get_request_service_service
+from app.core.depends import (
+    get_activity_publisher,
+    get_current_user,
+    get_friends_service,
+    get_request_service_service,
+)
+from app.messaging.events import ActivityCreatedEvent, ActivityCreatedPayload
+from app.messaging.publisher import ActivityEventPublisher
 from app.models import Friendship as FriendshipModel
 from app.models import FriendshipStatus as FriendshipStatusModel
 from app.services import FriendsService, RequestService
@@ -31,26 +39,35 @@ from app.services.requests_service import (
 T = TypeVar("T")
 
 MAX_PAGE_SIZE = 100
+logger = logging.getLogger(__name__)
 
 
 # ==========================================
-# Contexto: usuario actual (X-User-ID del gateway) y servicios
+# Contexto: usuario actual (validado por el middleware JWT) y servicios
 # ==========================================
 
 class NetworkContext(BaseContext):
-    def __init__(self, user_id: UUID, requests: RequestService, friends: FriendsService):
+    def __init__(
+        self,
+        user_id: UUID,
+        requests: RequestService,
+        friends: FriendsService,
+        publisher: ActivityEventPublisher | None,
+    ):
         super().__init__()
         self.user_id = user_id
         self.requests = requests
         self.friends = friends
+        self.publisher = publisher
 
 
 async def get_context(
     user_id: UUID = Depends(get_current_user),
     requests: RequestService = Depends(get_request_service_service),
     friends: FriendsService = Depends(get_friends_service),
+    publisher: ActivityEventPublisher | None = Depends(get_activity_publisher),
 ) -> NetworkContext:
-    return NetworkContext(user_id, requests, friends)
+    return NetworkContext(user_id, requests, friends, publisher)
 
 
 # ==========================================
@@ -81,6 +98,39 @@ def check_limit(limit: int) -> None:
     if not 1 <= limit <= MAX_PAGE_SIZE:
         raise GraphQLError(
             f"limit debe estar entre 1 y {MAX_PAGE_SIZE}.", extensions={"code": "BAD_REQUEST"}
+        )
+
+
+async def publish_activity(
+    publisher: ActivityEventPublisher | None,
+    *,
+    user_id: UUID,
+    actor_id: UUID,
+    activity_type: str,
+    entity_id: str,
+    summary: str,
+) -> None:
+    """Publica después de persistir. Un fallo del broker no rompe la mutación."""
+    if publisher is None:
+        return
+
+    try:
+        await publisher.publish(
+            ActivityCreatedEvent(
+                payload=ActivityCreatedPayload(
+                    activity_id=uuid4(),
+                    user_id=user_id,
+                    actor_id=actor_id,
+                    type=activity_type,
+                    entity_id=entity_id,
+                    summary=summary,
+                )
+            )
+        )
+    except Exception:
+        logger.exception(
+            "No se pudo publicar activity.created.v1",
+            extra={"activityType": activity_type, "entityId": entity_id},
         )
 
 
@@ -197,19 +247,51 @@ class Mutation:
         self, info: Info[NetworkContext, None], recipient_id: UUID
     ) -> Friendship:
         ctx = info.context
-        return Friendship.from_model(
-            await run(ctx.requests.create_request(requester_id=ctx.user_id, recipient_id=recipient_id))
+        friendship = await run(
+            ctx.requests.create_request(requester_id=ctx.user_id, recipient_id=recipient_id)
         )
+
+        await publish_activity(
+            ctx.publisher,
+            user_id=recipient_id,
+            actor_id=ctx.user_id,
+            activity_type="FRIEND_REQUEST_SENT",
+            entity_id=friendship.id,
+            summary="Recibiste una solicitud de amistad",
+        )
+
+        return Friendship.from_model(friendship)
 
     @strawberry.mutation(description="Acepta una solicitud recibida.")
     async def accept_friend_request(self, info: Info[NetworkContext, None], id: strawberry.ID) -> Friendship:
         ctx = info.context
-        return Friendship.from_model(await run(ctx.requests.accept_request(str(id), ctx.user_id)))
+        friendship = await run(ctx.requests.accept_request(str(id), ctx.user_id))
+
+        await publish_activity(
+            ctx.publisher,
+            user_id=UUID(friendship.requested_by),
+            actor_id=ctx.user_id,
+            activity_type="FRIEND_REQUEST_ACCEPTED",
+            entity_id=friendship.id,
+            summary="Aceptó tu solicitud de amistad",
+        )
+
+        return Friendship.from_model(friendship)
 
     @strawberry.mutation(description="Rechaza una solicitud recibida.")
     async def reject_friend_request(self, info: Info[NetworkContext, None], id: strawberry.ID) -> bool:
         ctx = info.context
-        await run(ctx.requests.reject_request(str(id), ctx.user_id))
+        friendship = await run(ctx.requests.reject_request(str(id), ctx.user_id))
+
+        await publish_activity(
+            ctx.publisher,
+            user_id=UUID(friendship.requested_by),
+            actor_id=ctx.user_id,
+            activity_type="FRIEND_REQUEST_REJECTED",
+            entity_id=friendship.id,
+            summary="Rechazó tu solicitud de amistad",
+        )
+
         return True
 
     @strawberry.mutation(description="Cancela una solicitud enviada.")

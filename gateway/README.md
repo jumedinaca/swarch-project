@@ -2,13 +2,13 @@
 
 ## Propósito y estado
 
-Este componente es el punto único de entrada para el frontend: enruta las peticiones hacia los microservicios internos de autenticación (`/api/auth/*`), mensajes (`/api/messages/*`) y red social (`/api/network/graphql`), valida los JWT emitidos por el servicio de autenticación y los traduce al header `X-User-ID` que esperan los servicios de mensajes y de red social. Está escrito en Java 21 con Spring Boot 4 y Spring Cloud Gateway (reactivo, sobre WebFlux). El formato de los tokens está en [`docs/jwt-contract.md`](../docs/jwt-contract.md).
+Este componente es el punto único de entrada para el frontend: enruta las peticiones hacia los microservicios internos de autenticación (`/api/auth/*`), mensajes (`/api/messages/*`) y red social (`/api/network/graphql`), valida los JWT emitidos por el servicio de autenticación, agrega el header `X-User-ID` y conserva `Authorization` para que los servicios de mensajes y red social también verifiquen el token. Está escrito en Java 21 con Spring Boot 4 y Spring Cloud Gateway (reactivo, sobre WebFlux). El formato de los tokens está en [`docs/jwt-contract.md`](../docs/jwt-contract.md).
 
 El código se organiza así:
 
 - `GatewayApplication`: arranque de la aplicación Spring Boot.
 - `src/main/resources/application.yml`: definición declarativa de rutas, CORS, el secreto JWT y el endpoint de salud.
-- `filter/JwtAuthGatewayFilterFactory`: filtro de ruta `JwtAuth` que exige `Authorization: Bearer <token>`, lo valida y lo reemplaza por `X-User-ID: <sub>` antes de reenviar la petición. Sus errores se responden como JSON `{"message": "..."}`.
+- `filter/JwtAuthGatewayFilterFactory`: filtro de ruta `JwtAuth` que exige `Authorization: Bearer <token>`, lo valida, agrega `X-User-ID: <sub>` y conserva `Authorization` para que `messages` y `network` vuelvan a verificar el JWT. Sus errores se responden como JSON `{"message": "..."}`.
 - `filter/StripUserIdGlobalFilter`: elimina en todas las rutas cualquier `X-User-ID` enviado por el cliente, para que solo `JwtAuth` pueda ponerlo.
 - `security/JwtService`: verificación de firma HS256 y de los claims `exp`, `iss` (debe ser `JWT_ISSUER`) y `sub` (que debe ser un UUID). Si `JWT_SECRET` falta o tiene menos de 32 bytes, la aplicación no arranca.
 

@@ -116,11 +116,12 @@ class GatewayRoutingTests {
     // --- Rutas protegidas ---
 
     @Test
-    void validTokenIsReplacedByUserIdHeader() throws InterruptedException {
+    void validTokenAddsUserIdAndForwardsAuthorization() throws InterruptedException {
         UUID userId = UUID.randomUUID();
+        String bearer = "Bearer " + token(userId.toString(), inOneHour());
 
         client.post().uri("/api/messages")
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token(userId.toString(), inOneHour()))
+                .header(HttpHeaders.AUTHORIZATION, bearer)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue("{\"content\":\"hola\",\"latitude\":4.6,\"longitude\":-74.08}")
                 .exchange()
@@ -129,7 +130,8 @@ class GatewayRoutingTests {
         RecordedRequest forwarded = takeForwarded();
         assertThat(forwarded.getPath()).isEqualTo("/messages");
         assertThat(forwarded.getHeader("X-User-ID")).isEqualTo(userId.toString());
-        assertThat(forwarded.getHeader(HttpHeaders.AUTHORIZATION)).isNull();
+        // Los servicios internos vuelven a validar el JWT.
+        assertThat(forwarded.getHeader(HttpHeaders.AUTHORIZATION)).isEqualTo(bearer);
         assertThat(forwarded.getBody().readString(StandardCharsets.UTF_8)).contains("\"content\":\"hola\"");
     }
 
