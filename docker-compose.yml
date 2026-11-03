@@ -325,6 +325,61 @@ services:
       start_period: 20s
       retries: 5
 
+  email-db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: email
+    volumes:
+      - email_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d email"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Servidor SMTP local de desarrollo. Solo se publica la interfaz web (:8025)
+  # para inspeccionar los correos de bienvenida y transaccionales sin envio real.
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "8025:8025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  email:
+    build: ./services/email
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@email-db:5432/email
+      PORT: "8080"
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-dev-internal-token}
+      RABBITMQ_URL: *rabbitmq-url
+      RABBITMQ_EXCHANGE: geopicto.events
+      PUBLISH_STATUS_EVENTS: "true"
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      SMTP_USE_TLS: "false"
+      SMTP_STARTTLS: "false"
+      SMTP_FROM: "GeoPicto <no-reply@geopicto.org>"
+      DEFAULT_REPLY_TO: no-reply@geopicto.org
+    depends_on:
+      email-db:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+
   gateway:
     build: ./gateway
     environment:
@@ -371,6 +426,7 @@ services:
 
 volumes:
   auth_data:
+  email_data:
   messages_data:
   network_data:
   profile_data:
