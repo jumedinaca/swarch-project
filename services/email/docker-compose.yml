@@ -23,6 +23,8 @@ services:
       PUBLISH_STATUS_EVENTS: ${PUBLISH_STATUS_EVENTS:-true}
       SMTP_HOST: ${SMTP_HOST:-mailpit}
       SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_USE_TLS: ${SMTP_USE_TLS:-false}
       SMTP_STARTTLS: ${SMTP_STARTTLS:-false}
       SMTP_FROM: ${SMTP_FROM:-GeoPicto <no-reply@geopicto.org>}

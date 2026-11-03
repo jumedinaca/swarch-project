@@ -360,12 +360,14 @@ services:
       RABBITMQ_URL: *rabbitmq-url
       RABBITMQ_EXCHANGE: geopicto.events
       PUBLISH_STATUS_EVENTS: "true"
-      SMTP_HOST: mailpit
-      SMTP_PORT: "1025"
-      SMTP_USE_TLS: "false"
-      SMTP_STARTTLS: "false"
-      SMTP_FROM: "GeoPicto <no-reply@geopicto.org>"
-      DEFAULT_REPLY_TO: no-reply@geopicto.org
+      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-false}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-false}
+      SMTP_FROM: ${SMTP_FROM:-GeoPicto <no-reply@geopicto.org>}
+      DEFAULT_REPLY_TO: ${DEFAULT_REPLY_TO:-no-reply@geopicto.org}
     depends_on:
       email-db:
         condition: service_healthy

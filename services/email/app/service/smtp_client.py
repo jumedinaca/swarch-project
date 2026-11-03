@@ -107,18 +107,16 @@ class SmtpClient:
             raise TransientSmtpError(f"Fallo de conexión SMTP: {exc}") from exc
 
     async def ping(self) -> bool:
-        """Verifica conectividad con el servidor SMTP (EHLO + NOOP) sin enviar ningún correo."""
+        """Verifica conectividad con el servidor SMTP (EHLO/STARTTLS + NOOP) sin enviar correo."""
         client = aiosmtplib.SMTP(
             hostname=self.host,
             port=self.port,
             use_tls=self.use_tls,
             start_tls=self.start_tls,
-            timeout=min(self.timeout, 3.0),
+            timeout=min(self.timeout, 5.0),
         )
         try:
             await client.connect()
-            if self.username:
-                await client.login(self.username, self.password)
             code, _ = await client.noop()
             await client.quit()
             return 200 <= code < 300

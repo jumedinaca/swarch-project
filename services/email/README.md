@@ -74,6 +74,23 @@ curl -X POST http://localhost:8400/internal/emails \
   -d '{"to":"explorador@geochat.org","template":"generic","subject":"Novedades en GeoPicto","variables":{"title":"Hola","body":"Hay actividad nueva cerca de ti.","ctaUrl":"http://localhost:8081","ctaLabel":"Abrir mapa"}}'
 ```
 
+## Envío Real por Internet desde Local (Gmail / SMTP Externo)
+
+Sin configuración extra, el servicio entrega en **Mailpit** (`mailpit:1025`). Si deseas que desde tu entorno local envíe correos reales a bandejas de internet (Gmail, Outlook, etc.), define un relay SMTP autenticado en `.env` (en la raíz para el sistema completo o en `services/email/.env` para ejecución aislada), por ejemplo con una **Contraseña de aplicación** de Gmail:
+
+```env
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=tu.correo@gmail.com
+SMTP_PASSWORD=xxxx xxxx xxxx xxxx
+SMTP_USE_TLS=false
+SMTP_STARTTLS=true
+SMTP_FROM=GeoPicto <tu.correo@gmail.com>
+DEFAULT_REPLY_TO=tu.correo@gmail.com
+```
+
+Luego recrea el contenedor con `docker compose up -d --build email`.
+
 ## Pruebas
 
 ```powershell
