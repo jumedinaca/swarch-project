@@ -101,7 +101,9 @@ services:
       JWT_SECRET: *jwt-secret
       JWT_ISSUER: ${JWT_ISSUER:-geopicto-auth}
       RABBITMQ_URL: *rabbitmq-url
-      MODERATION_TIMEOUT_SECONDS: "1"
+      # Margen para que moderation responda (incluye la llamada a OpenAI);
+      # pasado este tiempo messages aplica FAIL_OPEN y publica en modo degradado.
+      MODERATION_TIMEOUT_SECONDS: "5"
       PENDING_SWEEP_INTERVAL_SECONDS: "1"
     depends_on:
       messages-db:
@@ -115,6 +117,44 @@ services:
       interval: 10s
       timeout: 3s
       start_period: 60s
+      retries: 5
+
+  moderation-db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: moderation
+    volumes:
+      - moderation_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d moderation"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Consume message.submitted.v1 y responde moderation.completed.v1. No se
+  # expone en el gateway: solo habla por el broker y por /internal/*.
+  moderation:
+    build: ./services/moderation
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@moderation-db:5432/moderation
+      PORT: "8080"
+      RABBITMQ_URL: *rabbitmq-url
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-dev-internal-token}
+      # Sin clave se modera solo con reglas (degraded = true). Con clave, el
+      # contenido de los mensajes se envia a OpenAI.
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    depends_on:
+      moderation-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
       retries: 5
 
   network-db:
@@ -430,6 +470,7 @@ volumes:
   auth_data:
   email_data:
   messages_data:
+  moderation_data:
   network_data:
   profile_data:
   profile_avatars:
