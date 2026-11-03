@@ -90,6 +90,23 @@ jobs:
       - run: uv sync --locked --group dev
       - run: uv run --locked pytest
 
+  moderation:
+    name: Moderation (Python)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/moderation
+    steps:
+      - uses: actions/checkout@v7
+      # setup-uv no publica tags de versión mayor (v10), por eso va la versión exacta.
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: services/moderation/uv.lock
+      - run: uv python install 3.13
+      - run: uv sync --locked --group dev
+      - run: uv run --locked pytest
+
   network:
     name: Network (Python)
     runs-on: ubuntu-latest

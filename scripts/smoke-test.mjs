@@ -140,9 +140,9 @@ async function main() {
   });
   check('X-User-ID falsificado sin token -> 401', forged.status === 401);
 
-  // Los mensajes nacen PENDING y solo aparecen al publicarse. Sin servicio de
-  // moderacion, messages los publica en modo degradado tras
-  // MODERATION_TIMEOUT_SECONDS (10 s) mas un barrido (cada 5 s).
+  // Los mensajes nacen PENDING y solo aparecen al publicarse, cuando el
+  // servicio de moderacion responde. Si no responde, messages los publica en
+  // modo degradado tras MODERATION_TIMEOUT_SECONDS (5 s) mas un barrido.
   const isListed = (res) =>
     res.status === 200 && Array.isArray(res.data) && res.data.some((m) => m.id === created.data?.id);
   let nearby;
