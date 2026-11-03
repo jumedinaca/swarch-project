@@ -28,7 +28,7 @@
 
 - [ ] Eliminar la ruta `PATCH /auth/profile` (hoy solo cambia color).
 - [ ] Eliminar su handler, schema y tests.
-- [ ] Actualizar `frontend/src/config/api.config.ts` y `authService` para no llamarla.
+- [ ] Actualizar `frontend/mobile/src/config/api.config.ts` y `authService` para no llamarla.
 - [ ] La edición de perfil pasa a `PATCH /api/profiles/me`.
 
 `GET /auth/profile` puede quedarse, pero devuelve solo identidad (auth conserva su sobre actual):

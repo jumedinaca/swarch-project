@@ -14,7 +14,7 @@ import { createRequire } from 'node:module';
 const WSImpl =
   typeof WebSocket !== 'undefined'
     ? WebSocket
-    : createRequire(import.meta.url)('../frontend/node_modules/ws');
+    : createRequire(import.meta.url)('../frontend/mobile/node_modules/ws');
 
 const args = process.argv.slice(2);
 const option = (name, fallback) => {

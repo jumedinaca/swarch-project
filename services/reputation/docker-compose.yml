@@ -5,7 +5,8 @@ services:
     build: .
     container_name: reputation
     env_file:
-      - .env
+      - path: .env
+        required: false
     environment:
       PORT: "8080"
       DATABASE_URL: postgres://postgres:postgres@reputation-db:5432/reputation?sslmode=disable
@@ -40,7 +41,7 @@ services:
       retries: 10
 
   rabbitmq:
-    image: rabbitmq:3-management
+    image: rabbitmq:4-management-alpine
     container_name: reputation_rabbitmq
     environment:
       RABBITMQ_DEFAULT_USER: geopicto

@@ -1,0 +1,5 @@
+-- No-op intencional.
+--
+-- La migración 001 actual ya incluye estas columnas. Revertir 002 en una base
+-- nueva eliminaría columnas que pertenecen a 001; en una base antigua dejaría el
+-- esquema en el estado que necesita el servicio. Por eso no se elimina nada.

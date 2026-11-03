@@ -26,22 +26,35 @@ function fail(message) {
   process.exit(1);
 }
 
-function readSecret() {
-  if (process.env.JWT_SECRET) {
-    return process.env.JWT_SECRET;
-  }
-
+function readRootEnv() {
   const envPath = join(dirname(fileURLToPath(import.meta.url)), '..', '.env');
   let contents = '';
   try {
     contents = readFileSync(envPath, 'utf8');
   } catch {
-    // Sin .env, docker compose usa el secreto por defecto
+    // Sin .env, docker compose usa los valores por defecto
   }
 
-  const line = contents.split(/\r?\n/).find((l) => l.startsWith('JWT_SECRET='));
-  const value = line?.slice('JWT_SECRET='.length).trim().replace(/^["']|["']$/g, '');
-  return value || DEFAULT_SECRET;
+  const values = new Map();
+  for (const line of contents.split(/\r?\n/)) {
+    if (!line || line.trimStart().startsWith('#')) continue;
+    const separator = line.indexOf('=');
+    if (separator < 1) continue;
+    const key = line.slice(0, separator).trim();
+    const value = line.slice(separator + 1).trim().replace(/^["']|["']$/g, '');
+    values.set(key, value);
+  }
+  return values;
+}
+
+const rootEnv = readRootEnv();
+
+function readSecret() {
+  return process.env.JWT_SECRET || rootEnv.get('JWT_SECRET') || DEFAULT_SECRET;
+}
+
+function readIssuer() {
+  return process.env.JWT_ISSUER || rootEnv.get('JWT_ISSUER') || 'geopicto-auth';
 }
 
 function parseArgs(argv) {
@@ -82,7 +95,7 @@ const { userId, hours } = parseArgs(process.argv.slice(2));
 const now = Math.floor(Date.now() / 1000);
 
 const header = base64url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
-const issuer = process.env.JWT_ISSUER || 'geopicto-auth';
+const issuer = readIssuer();
 const payload = base64url(
   JSON.stringify({ sub: userId, iss: issuer, iat: now, exp: now + Math.round(hours * 3600) })
 );

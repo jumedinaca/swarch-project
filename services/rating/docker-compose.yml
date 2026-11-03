@@ -38,7 +38,7 @@ services:
       retries: 10
 
   rabbitmq:
-    image: rabbitmq:3-management
+    image: rabbitmq:4-management-alpine
     environment:
       RABBITMQ_DEFAULT_USER: geopicto
       RABBITMQ_DEFAULT_PASS: geopicto
