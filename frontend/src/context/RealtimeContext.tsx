@@ -284,6 +284,16 @@ export const RealtimeProvider = ({ children }: { children: ReactNode }) => {
           }
           break;
         }
+        case 'profile.updated.v1': {
+          if (user && payload.userId === user.id) {
+            pushToast(
+              'Perfil sincronizado',
+              'Los cambios de tu perfil ya son visibles en el mapa.',
+              'success'
+            );
+          }
+          break;
+        }
         default:
           break;
       }

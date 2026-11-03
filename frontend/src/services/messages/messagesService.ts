@@ -12,7 +12,13 @@ import {
 import { BOGOTA_SEED_MESSAGES } from '../../data/bogotaMessages';
 import { nintendoTheme } from '../../theme/nintendoTheme';
 
-type Author = { id: string; username: string; color: string };
+type Author = {
+  id: string;
+  username: string;
+  color?: string;
+  displayName?: string | null;
+  avatarUrl?: string | null;
+};
 
 // El servicio de mensajes no guarda expiración; se asume la vigencia por defecto de la app
 const DEFAULT_EXPIRATION_HOURS = 24;
@@ -53,8 +59,11 @@ export function toGeoMessage(message: ApiMessage, currentUser?: Author | null): 
   return {
     id: message.id,
     authorId: message.sender_id,
-    authorName: isMine ? currentUser!.username : `Explorador ${message.sender_id.slice(0, 4)}`,
-    authorColor: isMine ? currentUser!.color : colorFor(message.sender_id),
+    authorName: isMine
+      ? currentUser!.displayName || currentUser!.username
+      : `Explorador ${message.sender_id.slice(0, 4)}`,
+    authorColor: isMine && currentUser?.color ? currentUser.color : colorFor(message.sender_id),
+    authorAvatarUrl: isMine ? currentUser?.avatarUrl ?? null : null,
     content: message.content,
     latitude: message.location.latitude,
     longitude: message.location.longitude,
@@ -134,7 +143,7 @@ class MessagesService {
    */
   public async createMessage(
     dto: CreateMessageDto,
-    author: { id: string; username: string; color: string }
+    author: Author
   ): Promise<{ success: boolean; data?: GeoMessage; error?: string }> {
     if (API_CONFIG.USE_MOCKS) {
       return this.mockCreateMessage(dto, author);
@@ -229,7 +238,7 @@ class MessagesService {
 
   private mockCreateMessage(
     dto: CreateMessageDto,
-    author: { id: string; username: string; color: string }
+    author: Author
   ): { success: boolean; data: GeoMessage } {
     const now = new Date();
     const expHours = dto.expirationHours || 24;
@@ -238,8 +247,9 @@ class MessagesService {
     const newMessage: GeoMessage = {
       id: `msg-${Date.now()}`,
       authorId: author.id,
-      authorName: author.username,
-      authorColor: author.color,
+      authorName: author.displayName || author.username,
+      authorColor: author.color || colorFor(author.id),
+      authorAvatarUrl: author.avatarUrl ?? null,
       content: dto.content,
       latitude: dto.latitude,
       longitude: dto.longitude,

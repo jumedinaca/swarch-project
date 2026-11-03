@@ -3,4 +3,7 @@ export * from './api/apiClient';
 export * from './auth/authService';
 export * from './messages/messagesService';
 export * from './network/networkService';
+export * from './profile/profileService';
+export * from './rating/ratingService';
+export * from './reputation/reputationService';
 export * from './realtime/socketService';

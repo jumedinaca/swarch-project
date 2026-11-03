@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LocationCoords } from '../../types';
 import { useAuth } from '../../context/AuthContext';
+import { useProfile } from '../../context/ProfileContext';
 import { useMessages } from '../../context/MessagesContext';
 import { nintendoTheme } from '../../theme/nintendoTheme';
 import { WiiButton } from '../common/WiiButton';
@@ -29,6 +30,7 @@ export const CreateMessageModal: React.FC<CreateMessageModalProps> = ({
   targetCoords,
 }) => {
   const { user } = useAuth();
+  const { myProfile } = useProfile();
   const { createMessage } = useMessages();
 
   const [content, setContent] = useState('');
@@ -97,7 +99,7 @@ export const CreateMessageModal: React.FC<CreateMessageModalProps> = ({
           {/* Cabecera estilo libreta Nintendo PictoChat */}
           <View style={styles.modalHeader}>
             <View style={styles.headerTitleRow}>
-              <View style={[styles.stylusIconCircle, { backgroundColor: user?.color || nintendoTheme.colors.retroDpad }]}>
+              <View style={[styles.stylusIconCircle, { backgroundColor: myProfile?.color || user?.color || nintendoTheme.colors.retroDpad }]}>
                 <Ionicons name="pencil" size={13} color="#FFFFFF" />
               </View>
               <Text style={styles.modalTitle}>PICTOCHAT // NUEVA NOTA</Text>

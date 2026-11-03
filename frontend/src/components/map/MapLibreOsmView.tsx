@@ -335,7 +335,13 @@ export const MapLibreOsmView = forwardRef<MapLibreOsmViewRef, MapLibreOsmViewPro
 
           markersMap.set(msg.id, { marker, msg, isVisible: false });
         } else {
-          markersMap.get(msg.id).msg = msg;
+          const existingEntry = markersMap.get(msg.id);
+          existingEntry.msg = msg;
+          const markerEl = existingEntry.marker.getElement();
+          const avatarDot = markerEl && markerEl.querySelector('.billboard-avatar');
+          if (avatarDot && msg.authorColor) {
+            avatarDot.style.background = msg.authorColor;
+          }
         }
       });
 

@@ -19,12 +19,14 @@ interface MessageDetailModalProps {
   message: GeoMessage | null;
   visible: boolean;
   onClose: () => void;
+  onOpenAuthorProfile?: (authorId: string) => void;
 }
 
 export const MessageDetailModal: React.FC<MessageDetailModalProps> = ({
   message,
   visible,
   onClose,
+  onOpenAuthorProfile,
 }) => {
   const { user } = useAuth();
   const {
@@ -35,7 +37,10 @@ export const MessageDetailModal: React.FC<MessageDetailModalProps> = ({
   } = useNetwork();
 
   const [isSending, setIsSending] = useState(false);
-  const [networkFeedback, setNetworkFeedback] = useState<{ text: string; isError: boolean } | null>(null);
+  const [networkFeedback, setNetworkFeedback] = useState<{
+    text: string;
+    isError: boolean;
+  } | null>(null);
 
   if (!message) return null;
 
@@ -50,7 +55,10 @@ export const MessageDetailModal: React.FC<MessageDetailModalProps> = ({
       if (res.success) {
         setNetworkFeedback({ text: '¡Solicitud de amistad enviada!', isError: false });
       } else {
-        setNetworkFeedback({ text: res.error || 'No se pudo enviar la solicitud.', isError: true });
+        setNetworkFeedback({
+          text: res.error || 'No se pudo enviar la solicitud.',
+          isError: true,
+        });
       }
     } finally {
       setIsSending(false);
@@ -59,7 +67,8 @@ export const MessageDetailModal: React.FC<MessageDetailModalProps> = ({
 
   const handleAcceptIncoming = async () => {
     const incomingReq = incomingRequests.find(
-      (r) => r.requested_by === message.authorId || r.other_user_id === message.authorId
+      (r) =>
+        r.requested_by === message.authorId || r.other_user_id === message.authorId
     );
     if (!incomingReq) return;
 
@@ -77,6 +86,12 @@ export const MessageDetailModal: React.FC<MessageDetailModalProps> = ({
   const handleClose = () => {
     setNetworkFeedback(null);
     onClose();
+  };
+
+  const handleInspectAuthor = (authorId: string) => {
+    if (!onOpenAuthorProfile) return;
+    handleClose();
+    onOpenAuthorProfile(authorId);
   };
 
   return (
@@ -99,39 +114,90 @@ export const MessageDetailModal: React.FC<MessageDetailModalProps> = ({
           {/* Cabecera del diálogo */}
           <View style={styles.modalHeader}>
             <View style={styles.headerLeft}>
-              <Ionicons name="chatbubble-outline" size={15} color={nintendoTheme.colors.textPrimary} />
+              <Ionicons
+                name="chatbubble-outline"
+                size={15}
+                color={nintendoTheme.colors.textPrimary}
+              />
               <Text style={styles.headerTitle}>NOTA // DETALLE</Text>
             </View>
             <TouchableOpacity onPress={handleClose} style={styles.closeBtn}>
-              <Ionicons name="close" size={18} color={nintendoTheme.colors.textSecondary} />
+              <Ionicons
+                name="close"
+                size={18}
+                color={nintendoTheme.colors.textSecondary}
+              />
             </TouchableOpacity>
           </View>
 
           {/* Tarjeta PictoChat completa */}
-          <PictoChatCard message={message} showDeleteAction={true} />
+          <PictoChatCard
+            message={message}
+            showDeleteAction={true}
+            onPressAuthor={handleInspectAuthor}
+          />
+
+          {/* Botón para ver el Perfil y Reputación del autor */}
+          {onOpenAuthorProfile && (
+            <TouchableOpacity
+              style={styles.inspectProfileBtn}
+              onPress={() => handleInspectAuthor(message.authorId)}
+              activeOpacity={0.75}
+            >
+              <Ionicons
+                name="id-card-outline"
+                size={14}
+                color={nintendoTheme.colors.wiiBlue}
+              />
+              <Text style={styles.inspectProfileText}>
+                {isAuthor
+                  ? 'VER MI PERFIL Y NIVEL DE REPUTACIÓN'
+                  : `VER PERFIL Y REPUTACIÓN DE ${message.authorName.toUpperCase()}`}
+              </Text>
+              <Ionicons
+                name="chevron-forward"
+                size={13}
+                color={nintendoTheme.colors.wiiBlue}
+              />
+            </TouchableOpacity>
+          )}
 
           {/* Estado de red social con el autor */}
           {!isAuthor && (
             <View style={styles.networkActionSection}>
               {relationship === 'friend' && (
                 <View style={styles.friendBadgeBox}>
-                  <Ionicons name="checkmark-circle-outline" size={14} color="#275E33" />
-                  <Text style={styles.friendBadgeText}>AMIGO EN TU RED SOCIAL</Text>
+                  <Ionicons
+                    name="checkmark-circle-outline"
+                    size={14}
+                    color="#275E33"
+                  />
+                  <Text style={styles.friendBadgeText}>
+                    AMIGO EN TU RED SOCIAL
+                  </Text>
                 </View>
               )}
 
               {relationship === 'outgoing' && (
                 <View style={styles.pendingBadgeBox}>
                   <Ionicons name="time-outline" size={14} color="#8A5A00" />
-                  <Text style={styles.pendingBadgeText}>SOLICITUD ENVIADA (PENDIENTE)</Text>
+                  <Text style={styles.pendingBadgeText}>
+                    SOLICITUD ENVIADA (PENDIENTE)
+                  </Text>
                 </View>
               )}
 
               {relationship === 'incoming' && (
                 <View style={styles.incomingActionBox}>
                   <View style={styles.incomingTextRow}>
-                    <Ionicons name="mail-unread-outline" size={14} color={nintendoTheme.colors.wiiBlue} />
-                    <Text style={styles.incomingText}>¡TE HA ENVIADO UNA SOLICITUD!</Text>
+                    <Ionicons
+                      name="mail-unread-outline"
+                      size={14}
+                      color={nintendoTheme.colors.wiiBlue}
+                    />
+                    <Text style={styles.incomingText}>
+                      ¡TE HA ENVIADO UNA SOLICITUD!
+                    </Text>
                   </View>
                   <WiiButton
                     title="ACEPTAR AMISTAD"
@@ -149,7 +215,13 @@ export const MessageDetailModal: React.FC<MessageDetailModalProps> = ({
                     title={isSending ? 'CONECTANDO...' : 'CONECTAR COMO AMIGO'}
                     variant="mint"
                     size="sm"
-                    icon={<Ionicons name="person-add-outline" size={13} color="#FFFFFF" />}
+                    icon={
+                      <Ionicons
+                        name="person-add-outline"
+                        size={13}
+                        color="#FFFFFF"
+                      />
+                    }
                     onPress={handleSendFriendRequest}
                     disabled={isSending}
                     style={{ width: '100%' }}
@@ -161,7 +233,9 @@ export const MessageDetailModal: React.FC<MessageDetailModalProps> = ({
                 <Text
                   style={[
                     styles.feedbackText,
-                    networkFeedback.isError ? styles.feedbackError : styles.feedbackSuccess,
+                    networkFeedback.isError
+                      ? styles.feedbackError
+                      : styles.feedbackSuccess,
                   ]}
                 >
                   {networkFeedback.text}
@@ -172,9 +246,14 @@ export const MessageDetailModal: React.FC<MessageDetailModalProps> = ({
 
           {/* Información contextual geoespacial */}
           <View style={styles.geoInfoBox}>
-            <Ionicons name="location-outline" size={13} color={nintendoTheme.colors.textSecondary} />
+            <Ionicons
+              name="location-outline"
+              size={13}
+              color={nintendoTheme.colors.textSecondary}
+            />
             <Text style={styles.geoCoordsText}>
-              COORDS // LAT {message.latitude.toFixed(5)}, LNG {message.longitude.toFixed(5)}
+              COORDS // LAT {message.latitude.toFixed(5)}, LNG{' '}
+              {message.longitude.toFixed(5)}
             </Text>
           </View>
 
@@ -240,6 +319,26 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAF9F6',
     borderWidth: 1,
     borderColor: '#E2DFD8',
+  },
+  inspectProfileBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    borderRadius: nintendoTheme.borderRadius.xs,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    marginTop: 6,
+  },
+  inspectProfileText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: nintendoTheme.colors.wiiBlue,
+    flex: 1,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   geoInfoBox: {
     flexDirection: 'row',

@@ -15,6 +15,7 @@ export interface GeoMessage {
   authorId: string;
   authorName: string;
   authorColor: string; // Color distintivo del autor
+  authorAvatarUrl?: string | null;
   content: string;     // Máximo 140 caracteres
   latitude: number;
   longitude: number;
@@ -34,7 +35,8 @@ export interface User {
   id: string;
   username: string;
   email: string;
-  color: string;
+  /** En P2 el color proviene de `profile`; opcional en `User` de auth */
+  color?: string;
   token?: string;      // Token JWT emitido por el microservicio de autenticación
 }
 
@@ -103,7 +105,91 @@ export interface QueryMessagesParams {
   radiusMeters?: number;
   status?: MessageStatus | 'todos';
   /** Para mostrar el nombre y color reales en los mensajes propios */
-  currentUser?: { id: string; username: string; color: string } | null;
+  currentUser?: {
+    id: string;
+    username: string;
+    color?: string;
+    displayName?: string | null;
+    avatarUrl?: string | null;
+  } | null;
+}
+
+// ==========================================
+// Contratos y DTOs para el Servicio de Perfiles (Profile)
+// ==========================================
+
+export interface UserProfile {
+  userId: string;
+  username: string;
+  displayName: string | null;
+  about: string | null;
+  avatarUrl: string | null;
+  color: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpdateProfileDto {
+  displayName?: string | null;
+  about?: string | null;
+  color?: string | null;
+}
+
+// ==========================================
+// Contratos y DTOs para el Servicio de Calificaciones (Rating)
+// ==========================================
+
+export interface RatingSummary {
+  messageId: string;
+  likes: number;
+  dislikes: number;
+  score: number;
+  myRating: 'LIKE' | 'DISLIKE' | null;
+}
+
+// ==========================================
+// Contratos y DTOs para el Servicio de Reputación (Reputation)
+// ==========================================
+
+export type ReputationLevelName =
+  | 'Novato'
+  | 'Miembro'
+  | 'Confiable'
+  | 'Experto'
+  | 'Leyenda';
+
+export interface UserReputation {
+  userId: string;
+  score: number;
+  level: ReputationLevelName | string;
+  levelIndex: number;
+  nextLevelAt: number | null;
+  progress: number;
+  likesReceived: number;
+  dislikesReceived: number;
+  messagesBlocked: number;
+  messagesWarned: number;
+  updatedAt: string;
+}
+
+export type ReputationLedgerReason =
+  | 'LIKE_RECEIVED'
+  | 'DISLIKE_RECEIVED'
+  | 'MESSAGE_ALLOWED'
+  | 'MESSAGE_WARNED'
+  | 'MESSAGE_BLOCKED'
+  | string;
+
+export interface ReputationLedgerEntry {
+  id: string;
+  userId: string;
+  delta: number;
+  appliedDelta: number;
+  reason: ReputationLedgerReason;
+  sourceEventId: string;
+  dedupeKey: string;
+  scoreAfter: number;
+  createdAt: string;
 }
 
 // ==========================================
