@@ -1,0 +1,93 @@
+# Levanta email de forma aislada con PostgreSQL, Mailpit y RabbitMQ.
+#
+#   cp .env.example .env
+#   docker compose up --build
+#
+# API interna en http://localhost:8400, bandeja web de Mailpit en
+# http://localhost:8025 y consola de RabbitMQ en http://localhost:15672.
+name: geopicto-email
+
+services:
+  email:
+    build: .
+    container_name: email
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@email-db:5432/email}
+      PORT: "8000"
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-dev-internal-token}
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://geopicto:geopicto@rabbitmq:5672/geopicto}
+      RABBITMQ_EXCHANGE: ${RABBITMQ_EXCHANGE:-geopicto.events}
+      PUBLISH_STATUS_EVENTS: ${PUBLISH_STATUS_EVENTS:-true}
+      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-false}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-false}
+      SMTP_FROM: ${SMTP_FROM:-GeoPicto <no-reply@geopicto.org>}
+      DEFAULT_REPLY_TO: ${DEFAULT_REPLY_TO:-no-reply@geopicto.org}
+    depends_on:
+      email-db:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "8400:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  email-db:
+    image: postgres:18-alpine
+    container_name: email_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: email
+    ports:
+      - "5435:5432"
+    volumes:
+      - email_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d email"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: email_mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: email_rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: geopicto
+      RABBITMQ_DEFAULT_PASS: geopicto
+      RABBITMQ_DEFAULT_VHOST: geopicto
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  email_data:
