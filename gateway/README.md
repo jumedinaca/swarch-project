@@ -2,7 +2,7 @@
 
 ## Propósito y estado
 
-Este componente es el punto único de entrada para el frontend: enruta las peticiones hacia los microservicios internos de autenticación (`/api/auth/*`), mensajes (`/api/messages/*`) y red social (`/api/network/graphql`), valida los JWT emitidos por el servicio de autenticación, agrega el header `X-User-ID` y conserva `Authorization` para que los servicios de mensajes y red social también verifiquen el token. Está escrito en Java 21 con Spring Boot 4 y Spring Cloud Gateway (reactivo, sobre WebFlux). El formato de los tokens está en [`docs/jwt-contract.md`](../docs/jwt-contract.md).
+Este componente es el punto único de entrada para el frontend: enruta las peticiones hacia los microservicios internos de autenticación (`/api/auth/*`), mensajes (`/api/messages/*`), red social (`/api/network/graphql`), perfiles (`/api/profiles/*`), calificaciones (`/api/ratings/*`), reputación (`/api/reputation/*`) y tiempo real (`/api/socket/tickets` y `/api/ws`). Valida los JWT emitidos por el servicio de autenticación, agrega el header `X-User-ID` y conserva `Authorization` para que `messages`, `network` y `profile` también verifiquen el token. `rating` y `reputation` confían en el `X-User-ID` que agrega el gateway, y `socket-gateway` autentica el WebSocket con un ticket efímero. Está escrito en Java 21 con Spring Boot 4 y Spring Cloud Gateway (reactivo, sobre WebFlux). El formato de los tokens está en [`docs/jwt-contract.md`](../docs/jwt-contract.md).
 
 El código se organiza así:
 
@@ -22,8 +22,12 @@ El código se organiza así:
 | `/api/network/graphql` | `NETWORK_SERVICE_URL` | `StripPrefix=2`, `JwtAuth` (→ `/graphql`; el servicio de red social solo expone GraphQL) |
 | `GET /api/profiles/avatars/**` | `PROFILE_SERVICE_URL` | `StripPrefix=1` (pública: las etiquetas `<img>` no envían el JWT) |
 | `/api/profiles/**` (resto) | `PROFILE_SERVICE_URL` | `StripPrefix=1`, `JwtAuth` |
+| `/api/ratings/**` | `RATING_SERVICE_URL` | `StripPrefix=1`, `JwtAuth` (→ `/ratings/**`) |
+| `/api/reputation/**` | `REPUTATION_SERVICE_URL` | `StripPrefix=1`, `JwtAuth` (→ `/reputation/**`) |
+| `POST /api/socket/tickets` | `SOCKET_GATEWAY_HTTP_URL` | `StripPrefix=2`, `JwtAuth` (→ `/tickets`) |
+| `GET /api/ws` y `/api/ws/**` | `SOCKET_GATEWAY_WS_URL` | `StripPrefix=1` (sin JWT: el ticket viaja en `?ticket=...`) |
 
-Las rutas se evalúan en orden: por eso las reglas específicas de `nearby` y de avatares están antes que las reglas generales de mensajes y perfiles, que exigen JWT.
+Las rutas se evalúan en orden: por eso las reglas específicas de `nearby`, avatares y tickets están antes que las reglas generales que exigen JWT.
 
 Además, `GET /actuator/health` expone el estado del gateway (lo usa el healthcheck de Docker).
 
@@ -39,7 +43,11 @@ Copia `.example.env` a `.env` y ajusta:
 | `MESSAGES_SERVICE_URL` | No | `http://localhost:8100` | URL interna del microservicio de mensajes. |
 | `NETWORK_SERVICE_URL` | No | `http://localhost:8001` | URL interna del microservicio de red social. |
 | `PROFILE_SERVICE_URL` | No | `http://localhost:8300` | URL interna del microservicio de perfiles. |
-| `CORS_ALLOWED_ORIGINS` | No | `http://localhost:8081` | Orígenes del frontend autorizados, separados por comas. |
+| `RATING_SERVICE_URL` | No | `http://localhost:8102` | URL interna del microservicio de calificaciones. |
+| `REPUTATION_SERVICE_URL` | No | `http://localhost:8600` | URL interna del microservicio de reputación. |
+| `SOCKET_GATEWAY_HTTP_URL` | No | `http://localhost:8700` | URL interna para emitir tickets de WebSocket. |
+| `SOCKET_GATEWAY_WS_URL` | No | `ws://localhost:8700` | URL interna del WebSocket. |
+| `CORS_ALLOWED_ORIGINS` | No | `http://localhost:8081,http://localhost:8082` | Orígenes del frontend autorizados, separados por comas. |
 
 ## Ejecución local
 
@@ -71,4 +79,4 @@ docker compose up --build
 ## Pendientes conocidos
 
 - El gateway valida los tokens sin consultar al servicio de autenticación, así que un token sigue sirviendo hasta que expira (15 minutos) aunque el usuario cierre sesión. Ver [`docs/jwt-contract.md`](../docs/jwt-contract.md).
-- El contrato documentado en `frontend/API_GATEWAY_INTEGRATION.md` no coincide del todo con lo que implementa hoy `services/messages` (payload de creación de mensaje, filtros de `status`, endpoint de cambio de estado). Este gateway solo enruta y traduce autenticación; no intenta resolver esas discrepancias de contrato.
+- El contrato documentado en `frontend/mobile/API_GATEWAY_INTEGRATION.md` no coincide del todo con lo que implementa hoy `services/messages` (payload de creación de mensaje, filtros de `status`, endpoint de cambio de estado). Este gateway solo enruta y traduce autenticación; no intenta resolver esas discrepancias de contrato.

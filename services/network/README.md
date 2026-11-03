@@ -21,7 +21,7 @@ Cada documento de `friendships` guarda la pareja de usuarios (`user_a`, `user_b`
 
 Las rutas protegidas exigen `Authorization: Bearer <token>`. El middleware del servicio valida el JWT por su cuenta (firma HS256, `iss`, `exp` y `sub` UUID) y deja el usuario en `request.state.user_id`; no confía en `X-User-ID`. El gateway reenvía `Authorization` y además agrega `X-User-ID` para los servicios que aún lo usan.
 
-`GET /` (salud) y el preflight CORS son públicos. GraphiQL (`GET /graphql` con `Accept: text/html`) es público para cargar la interfaz, pero las consultas y mutaciones GraphQL exigen JWT. Desde el frontend se accede por `/api/network/graphql`, y el gateway lo reenvía a `/graphql`.
+`GET /` (o `GET /health`) y el preflight CORS son públicos. GraphiQL (`GET /graphql` con `Accept: text/html`) es público para cargar la interfaz, pero las consultas y mutaciones GraphQL exigen JWT. Desde el frontend se accede por `/api/network/graphql`, y el gateway lo reenvía a `/graphql`.
 
 ## API GraphQL
 
@@ -29,7 +29,7 @@ Las rutas protegidas exigen `Authorization: Bearer <token>`. El middleware del s
 | --- | --- |
 | `POST /graphql` | Consultas y mutaciones. En el gateway: `POST /api/network/graphql` con `Authorization: Bearer <token>`. |
 | `GET /graphql` | GraphiQL: editor en el navegador con autocompletado y la documentación del esquema. Úsalo directamente contra el servicio (`http://localhost:8001/graphql` al correrlo solo). |
-| `GET /` | Salud del servicio. |
+| `GET /` o `GET /health` | Salud del servicio. |
 
 ```graphql
 type Query {

@@ -15,7 +15,7 @@ services:
       RABBITMQ_URL: amqp://geopicto:geopicto@rabbitmq:5672/geopicto
       RABBITMQ_EXCHANGE: geopicto.events
       RABBITMQ_QUEUE: socket.events.q
-      WS_ALLOWED_ORIGINS: "http://localhost:8081,http://localhost:8080,http://localhost:8700"
+      WS_ALLOWED_ORIGINS: "http://localhost:8081,http://localhost:8082,http://localhost:8080,http://127.0.0.1:8081,http://127.0.0.1:8082,http://127.0.0.1:8080,http://localhost:8700"
       INTERNAL_TOKEN: ${INTERNAL_TOKEN:-dev-internal-token}
       APP_ENV: development
     depends_on:
@@ -44,7 +44,7 @@ services:
       retries: 10
 
   rabbitmq:
-    image: rabbitmq:3-management
+    image: rabbitmq:4-management-alpine
     container_name: realtime_rabbitmq
     environment:
       RABBITMQ_DEFAULT_USER: geopicto

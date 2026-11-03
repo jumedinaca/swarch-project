@@ -80,6 +80,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def health_check():
         return {"status": "ok", "service": settings.APP_NAME}
 
+    # Alias usado por el healthcheck de Docker Compose; el resto de servicios
+    # expone su salud en /health.
+    @app.get("/health", tags=["Health"])
+    def health_check_alias():
+        return health_check()
+
     # La API del servicio es GraphQL: un único endpoint en /graphql
     app.include_router(create_graphql_router(), prefix="/graphql", tags=["GraphQL"])
 

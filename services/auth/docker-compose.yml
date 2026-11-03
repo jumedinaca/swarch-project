@@ -60,7 +60,7 @@ services:
       retries: 10
 
   rabbitmq:
-    image: rabbitmq:3-management
+    image: rabbitmq:4-management-alpine
     container_name: auth_rabbitmq
 
     environment:
