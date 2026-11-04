@@ -49,6 +49,7 @@ export const DEFAULT_LOCATION = {
 
 export const PROFILE_TABS = [
   { id: "profile", label: "PERFIL" },
+  { id: "explore", label: "EXPLORAR" },
   { id: "messages", label: "MENSAJES" },
   { id: "reputation", label: "REPUTACIÓN" },
   { id: "network", label: "RED" },
