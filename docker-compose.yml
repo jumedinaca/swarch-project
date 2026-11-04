@@ -1,35 +1,46 @@
-# Entorno completo de GeoPicto: frontend web, API Gateway y los servicios de
-# autenticacion, mensajes, red social y perfiles con sus bases de datos, el
-# broker de eventos (RabbitMQ) y el almacenamiento de avatares (MinIO), todos
-# en la misma red.
+# Entorno completo de GeoPicto: frontends, API Gateway y los servicios de
+# autenticacion, mensajes, moderacion, red social, perfiles, calificaciones,
+# reputacion, correo y tiempo real, con sus bases de datos, RabbitMQ, Redis,
+# MinIO y Mailpit en la misma red.
 #
-#   docker compose up --build
+#   docker compose up --build --wait
 #
 # No requiere configuracion previa: JWT_SECRET tiene un valor por defecto para
 # el prototipo (ver x-jwt-secret abajo). Para usar uno propio, define
 # JWT_SECRET en un archivo .env (ver .env.example).
 #
-# Solo se publican al host el gateway (:8080) y el frontend (:8081). Los
-# servicios internos se alcanzan unicamente a traves del gateway, que es quien
-# valida el JWT y agrega X-User-ID.
-#
-# Cada componente conserva su propio docker-compose.yml para trabajar de forma
-# aislada; este archivo es el que levanta el sistema completo.
+# Se publican al host el gateway (:8080), el frontend Expo (:8081), el panel
+# SSR (:8082) y la bandeja de Mailpit (:8025). El resto de servicios se
+# alcanzan unicamente por la red interna de Compose.
 
 name: geopicto
 
-# Secreto HS256 compartido: auth firma los JWT y el gateway los verifica, asi
-# que ambos deben recibir el mismo valor. El valor por defecto es solo para
-# ejecutar el prototipo en local; en cualquier entorno compartido se debe
-# definir JWT_SECRET en .env (minimo 32 bytes).
+# Secreto HS256 compartido por auth (firma), gateway y los servicios que
+# validan el JWT por su cuenta (messages, network y profile). El valor por
+# defecto es solo para ejecutar el prototipo en local; en cualquier entorno
+# compartido se debe definir JWT_SECRET en .env (minimo 32 bytes).
 x-jwt-secret: &jwt-secret ${JWT_SECRET:-geopicto-prototipo-secreto-local-no-usar-en-produccion}
 
-# Broker compartido: auth publica user.registered.v1 y profile lo consume.
+# Emisor del claim "iss". Todos los servicios que validan tokens deben usar el
+# mismo valor que auth; de lo contrario rechazan los JWT validos.
+x-jwt-issuer: &jwt-issuer ${JWT_ISSUER:-geopicto-auth}
+
+# Broker y exchange compartidos por los servicios que publican o consumen
+# eventos de dominio.
 x-rabbitmq-url: &rabbitmq-url amqp://geopicto:geopicto@rabbitmq:5672/geopicto
+x-rabbitmq-exchange: &rabbitmq-exchange ${RABBITMQ_EXCHANGE:-geopicto.events}
+
+# Token compartido para los endpoints /internal/* de moderation, email y
+# socket-gateway. No se publica al host.
+x-internal-token: &internal-token ${INTERNAL_TOKEN:-dev-internal-token}
 
 services:
+  # ---------------------------------------------------------------------------
+  # Infraestructura compartida
+  # ---------------------------------------------------------------------------
+
   rabbitmq:
-    image: rabbitmq:3-management
+    image: rabbitmq:4-management-alpine
     environment:
       RABBITMQ_DEFAULT_USER: geopicto
       RABBITMQ_DEFAULT_PASS: geopicto
@@ -39,139 +50,16 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+    restart: unless-stopped
 
-  auth-db:
-    image: postgres:18-alpine
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: auth
-    volumes:
-      - auth_data:/var/lib/postgresql
+  redis:
+    image: redis:7-alpine
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d auth"]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
-      timeout: 5s
-      retries: 10
-
-  auth:
-    build: ./services/auth
-    environment:
-      DATABASE_URL: postgresql://postgres:postgres@auth-db:5432/auth
-      PORT: "8080"
-      # Mismo secreto que el gateway: el gateway verifica con el los tokens que
-      # firma este servicio.
-      JWT_SECRET: *jwt-secret
-      # Vacio a proposito: el gateway agrega las cabeceras CORS. Si ambos las
-      # pusieran, el navegador rechazaria las respuestas.
-      CORS_ORIGINS: ""
-      RABBITMQ_URL: *rabbitmq-url
-    depends_on:
-      auth-db:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
-      interval: 10s
-      timeout: 5s
-      start_period: 30s
-      retries: 5
-
-  messages-db:
-    image: postgis/postgis:18-3.6
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: messages
-    volumes:
-      - messages_data:/var/lib/postgresql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d messages"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
-  messages:
-    build: ./services/messages
-    environment:
-      DATABASE_URL: postgres://postgres:postgres@messages-db:5432/messages?sslmode=disable
-      PORT: "8080"
-      # El servicio valida el JWT por su cuenta; el gateway reenvía Authorization.
-      JWT_SECRET: *jwt-secret
-      JWT_ISSUER: ${JWT_ISSUER:-geopicto-auth}
-      RABBITMQ_URL: *rabbitmq-url
-      MODERATION_TIMEOUT_SECONDS: "1"
-      PENDING_SWEEP_INTERVAL_SECONDS: "1"
-    depends_on:
-      messages-db:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    healthcheck:
-      # El servicio no tiene endpoint de salud propio; una busqueda vacia
-      # comprueba a la vez que la API responde y que la base de datos esta lista.
-      test: ["CMD-SHELL", "wget -qO- 'http://localhost:8080/messages/nearby?lat=0&lng=0&radius=1' || exit 1"]
-      interval: 10s
       timeout: 3s
-      start_period: 60s
-      retries: 5
-
-  network-db:
-    image: mongo:8
-    environment:
-      MONGO_INITDB_DATABASE: network_db
-      MONGO_INITDB_ROOT_USERNAME: network_admin
-      MONGO_INITDB_ROOT_PASSWORD: network_admin
-    volumes:
-      - network_data:/data/db
-    healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
-      interval: 5s
-      timeout: 5s
       retries: 10
-
-  network:
-    build: ./services/network
-    environment:
-      APP_NAME: network
-      PORT: "8080"
-      APP_ENV: production
-      # El servicio valida el JWT por su cuenta; el gateway reenvía Authorization.
-      JWT_SECRET: *jwt-secret
-      JWT_ISSUER: ${JWT_ISSUER:-geopicto-auth}
-      RABBITMQ_URL: *rabbitmq-url
-      MONGO_HOST: network-db:27017
-      MONGO_DB: network_db
-      MONGO_ROOT_USERNAME: network_admin
-      MONGO_ROOT_PASSWORD: network_admin
-      # Vacio a proposito: el gateway agrega las cabeceras CORS.
-      CORS_ORIGINS: ""
-    depends_on:
-      network-db:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/')"]
-      interval: 10s
-      timeout: 5s
-      start_period: 30s
-      retries: 5
-
-  profile-db:
-    image: postgres:18-alpine
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: profile
-    volumes:
-      - profile_data:/var/lib/postgresql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d profile"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
+    restart: unless-stopped
 
   # Almacenamiento S3 compatible de los avatares. El bucket es privado: los
   # avatares se sirven a traves de profile (GET /api/profiles/avatars/...).
@@ -190,21 +78,277 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    restart: unless-stopped
+
+  # Servidor SMTP local de desarrollo. Solo se publica la interfaz web (:8025)
+  # para inspeccionar los correos de bienvenida y transaccionales sin envio real.
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "8025:8025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Bases de datos
+  # ---------------------------------------------------------------------------
+
+  auth-db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: auth
+    volumes:
+      - auth_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d auth"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  messages-db:
+    image: postgis/postgis:18-3.6
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: messages
+    volumes:
+      - messages_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d messages"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  moderation-db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: moderation
+    volumes:
+      - moderation_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d moderation"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  network-db:
+    image: mongo:8
+    environment:
+      MONGO_INITDB_DATABASE: network_db
+      MONGO_INITDB_ROOT_USERNAME: network_admin
+      MONGO_INITDB_ROOT_PASSWORD: network_admin
+    volumes:
+      - network_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  profile-db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: profile
+    volumes:
+      - profile_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d profile"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  rating-db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: rating
+    volumes:
+      - rating_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d rating"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  reputation-db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: reputation
+    volumes:
+      - reputation_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d reputation"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  email-db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: email
+    volumes:
+      - email_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d email"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Servicios de dominio
+  # ---------------------------------------------------------------------------
+
+  auth:
+    build: ./services/auth
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@auth-db:5432/auth
+      PORT: "8080"
+      # Mismo secreto y emisor que el gateway: auth firma los tokens que el
+      # gateway y los demas servicios verifican.
+      JWT_SECRET: *jwt-secret
+      JWT_ISSUER: *jwt-issuer
+      # Vacio a proposito: el gateway agrega las cabeceras CORS. Si ambos las
+      # pusieran, el navegador rechazaria las respuestas.
+      CORS_ORIGINS: ""
+      RABBITMQ_URL: *rabbitmq-url
+      RABBITMQ_EXCHANGE: *rabbitmq-exchange
+    depends_on:
+      auth-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+    restart: unless-stopped
+
+  messages:
+    build: ./services/messages
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@messages-db:5432/messages?sslmode=disable
+      PORT: "8080"
+      # El servicio valida el JWT por su cuenta; el gateway reenvia Authorization.
+      JWT_SECRET: *jwt-secret
+      JWT_ISSUER: *jwt-issuer
+      RABBITMQ_URL: *rabbitmq-url
+      RABBITMQ_EXCHANGE: *rabbitmq-exchange
+      # Margen para que moderation responda (incluye la llamada a OpenAI);
+      # pasado este tiempo messages aplica FAIL_OPEN y publica en modo degradado.
+      MODERATION_TIMEOUT_SECONDS: "5"
+      PENDING_SWEEP_INTERVAL_SECONDS: "1"
+    depends_on:
+      messages-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      # /health comprueba la base de datos y reporta el estado del broker.
+      test: ["CMD-SHELL", "wget -qO- 'http://localhost:8080/health' || exit 1"]
+      interval: 10s
+      timeout: 3s
+      start_period: 60s
+      retries: 5
+    restart: unless-stopped
+
+  # Consume message.submitted.v1 y responde moderation.completed.v1. No se
+  # expone en el gateway: solo habla por el broker y por /internal/*.
+  moderation:
+    build: ./services/moderation
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@moderation-db:5432/moderation
+      PORT: "8080"
+      RABBITMQ_URL: *rabbitmq-url
+      RABBITMQ_EXCHANGE: *rabbitmq-exchange
+      INTERNAL_TOKEN: *internal-token
+      # Sin clave se modera solo con reglas (degraded = true). Con clave, el
+      # contenido de los mensajes se envia a OpenAI.
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    depends_on:
+      moderation-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+    restart: unless-stopped
+
+  network:
+    build: ./services/network
+    environment:
+      APP_NAME: network
+      PORT: "8080"
+      APP_ENV: production
+      # El servicio valida el JWT por su cuenta; el gateway reenvia Authorization.
+      JWT_SECRET: *jwt-secret
+      JWT_ISSUER: *jwt-issuer
+      RABBITMQ_URL: *rabbitmq-url
+      RABBITMQ_EXCHANGE: *rabbitmq-exchange
+      MONGO_HOST: network-db:27017
+      MONGO_DB: network_db
+      MONGO_ROOT_USERNAME: network_admin
+      MONGO_ROOT_PASSWORD: network_admin
+      # Vacio a proposito: el gateway agrega las cabeceras CORS.
+      CORS_ORIGINS: ""
+    depends_on:
+      network-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+    restart: unless-stopped
 
   profile:
     build: ./services/profile
     environment:
       DATABASE_URL: postgresql://postgres:postgres@profile-db:5432/profile
       PORT: "8080"
-      # El servicio valida el JWT por su cuenta; el gateway reenvía Authorization.
+      # El servicio valida el JWT por su cuenta; el gateway reenvia Authorization.
       JWT_SECRET: *jwt-secret
-      JWT_ISSUER: ${JWT_ISSUER:-geopicto-auth}
+      JWT_ISSUER: *jwt-issuer
       RABBITMQ_URL: *rabbitmq-url
+      RABBITMQ_EXCHANGE: *rabbitmq-exchange
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: geopicto
       MINIO_SECRET_KEY: geopicto-minio-secret
       MINIO_BUCKET: geopicto-avatars
       # avatarUrl apunta al gateway, que es lo unico que ve el navegador.
+      # EXPO_PUBLIC_API_GATEWAY_URL tambien se usa para el build del frontend,
+      # asi que al cambiar de host ambas cosas quedan alineadas.
       AVATAR_PUBLIC_BASE_URL: ${EXPO_PUBLIC_API_GATEWAY_URL:-http://localhost:8080}/api/profiles/avatars
       # Vacio a proposito: el gateway agrega las cabeceras CORS.
       CORS_ORIGINS: ""
@@ -221,28 +365,7 @@ services:
       timeout: 5s
       start_period: 30s
       retries: 5
-
-  redis:
-    image: redis:7-alpine
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-
-  rating-db:
-    image: postgres:18-alpine
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: rating
-    volumes:
-      - rating_data:/var/lib/postgresql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d rating"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
+    restart: unless-stopped
 
   rating:
     build: ./services/rating
@@ -250,7 +373,7 @@ services:
       PORT: "8080"
       DATABASE_URL: postgres://postgres:postgres@rating-db:5432/rating?sslmode=disable
       RABBITMQ_URL: *rabbitmq-url
-      RABBITMQ_EXCHANGE: geopicto.events
+      RABBITMQ_EXCHANGE: *rabbitmq-exchange
     depends_on:
       rating-db:
         condition: service_healthy
@@ -262,20 +385,7 @@ services:
       timeout: 5s
       start_period: 20s
       retries: 5
-
-  reputation-db:
-    image: postgres:18-alpine
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: reputation
-    volumes:
-      - reputation_data:/var/lib/postgresql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d reputation"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
+    restart: unless-stopped
 
   reputation:
     build: ./services/reputation
@@ -283,7 +393,7 @@ services:
       PORT: "8080"
       DATABASE_URL: postgres://postgres:postgres@reputation-db:5432/reputation?sslmode=disable
       RABBITMQ_URL: *rabbitmq-url
-      RABBITMQ_EXCHANGE: geopicto.events
+      RABBITMQ_EXCHANGE: *rabbitmq-exchange
     depends_on:
       reputation-db:
         condition: service_healthy
@@ -295,6 +405,7 @@ services:
       timeout: 5s
       start_period: 25s
       retries: 5
+    restart: unless-stopped
 
   socket-gateway:
     build: ./services/realtime
@@ -307,10 +418,10 @@ services:
       PORT: "8080"
       REDIS_URL: redis://redis:6379/0
       RABBITMQ_URL: *rabbitmq-url
-      RABBITMQ_EXCHANGE: geopicto.events
+      RABBITMQ_EXCHANGE: *rabbitmq-exchange
       RABBITMQ_QUEUE: socket.events.q
-      WS_ALLOWED_ORIGINS: ${WS_ALLOWED_ORIGINS:-http://localhost:8081,http://localhost:8080,http://127.0.0.1:8081,http://127.0.0.1:8080,http://socket-gateway:8080,http://realtime:8080,http://gateway:8080}
-      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-dev-internal-token}
+      WS_ALLOWED_ORIGINS: ${WS_ALLOWED_ORIGINS:-http://localhost:8081,http://localhost:8082,http://localhost:8080,http://127.0.0.1:8081,http://127.0.0.1:8082,http://127.0.0.1:8080,http://socket-gateway:8080,http://realtime:8080,http://gateway:8080}
+      INTERNAL_TOKEN: *internal-token
       APP_ENV: production
       CORS_ORIGINS: ""
     depends_on:
@@ -324,41 +435,16 @@ services:
       timeout: 5s
       start_period: 20s
       retries: 5
-
-  email-db:
-    image: postgres:18-alpine
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: email
-    volumes:
-      - email_data:/var/lib/postgresql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d email"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
-  # Servidor SMTP local de desarrollo. Solo se publica la interfaz web (:8025)
-  # para inspeccionar los correos de bienvenida y transaccionales sin envio real.
-  mailpit:
-    image: axllent/mailpit:latest
-    ports:
-      - "8025:8025"
-    healthcheck:
-      test: ["CMD", "/mailpit", "readyz"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
+    restart: unless-stopped
 
   email:
     build: ./services/email
     environment:
       DATABASE_URL: postgresql://postgres:postgres@email-db:5432/email
       PORT: "8080"
-      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-dev-internal-token}
+      INTERNAL_TOKEN: *internal-token
       RABBITMQ_URL: *rabbitmq-url
-      RABBITMQ_EXCHANGE: geopicto.events
+      RABBITMQ_EXCHANGE: *rabbitmq-exchange
       PUBLISH_STATUS_EVENTS: "true"
       SMTP_HOST: ${SMTP_HOST:-mailpit}
       SMTP_PORT: ${SMTP_PORT:-1025}
@@ -381,11 +467,17 @@ services:
       timeout: 5s
       start_period: 30s
       retries: 5
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Punto de entrada HTTP
+  # ---------------------------------------------------------------------------
 
   gateway:
     build: ./gateway
     environment:
       JWT_SECRET: *jwt-secret
+      JWT_ISSUER: *jwt-issuer
       MESSAGES_SERVICE_URL: http://messages:8080
       AUTH_SERVICE_URL: http://auth:8080
       NETWORK_SERVICE_URL: http://network:8080
@@ -394,7 +486,7 @@ services:
       REPUTATION_SERVICE_URL: http://reputation:8080
       SOCKET_GATEWAY_HTTP_URL: http://socket-gateway:8080
       SOCKET_GATEWAY_WS_URL: ws://socket-gateway:8080
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8081}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8081,http://localhost:8082,http://127.0.0.1:8081,http://127.0.0.1:8082}
     ports:
       - "8080:8080"
     depends_on:
@@ -412,10 +504,21 @@ services:
         condition: service_healthy
       socket-gateway:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      start_period: 40s
+      retries: 10
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Frontends
+  # ---------------------------------------------------------------------------
 
   frontend:
     build:
-      context: ./frontend
+      context: ./frontend/mobile
       args:
         # Expo incrusta las variables EXPO_PUBLIC_* al compilar, por eso van
         # como argumentos de build y no como variables de entorno del contenedor.
@@ -424,12 +527,42 @@ services:
     ports:
       - "8081:80"
     depends_on:
-      - gateway
+      gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # Panel SSR de cuenta (Next.js): perfil, mensajes, reputacion y red de amigos.
+  # El servidor de Next habla con el gateway por la red interna de Compose.
+  profile-web:
+    build:
+      context: ./frontend/profile-web
+    ports:
+      - "8082:3000"
+    environment:
+      API_GATEWAY_URL: http://gateway:8080
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+    depends_on:
+      gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/login > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    restart: unless-stopped
 
 volumes:
   auth_data:
   email_data:
   messages_data:
+  moderation_data:
   network_data:
   profile_data:
   profile_avatars:

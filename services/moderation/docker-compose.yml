@@ -1,0 +1,62 @@
+# Levanta moderation de forma aislada, con su base de datos y RabbitMQ.
+#
+#   cp .example.env .env   # y define OPENAI_API_KEY si quieres el clasificador
+#   docker compose up --build
+#
+# API en http://localhost:8400 y consola de RabbitMQ en http://localhost:15672.
+name: geopicto-moderation
+
+services:
+  moderation:
+    build: .
+    container_name: moderation
+    env_file:
+      - .env
+    depends_on:
+      moderation-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "8400:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  moderation-db:
+    image: postgres:18-alpine
+    container_name: moderation_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: moderation
+    ports:
+      - "5435:5432"
+    volumes:
+      - moderation_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d moderation"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    container_name: moderation_rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: geopicto
+      RABBITMQ_DEFAULT_PASS: geopicto
+      RABBITMQ_DEFAULT_VHOST: geopicto
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  moderation_data:

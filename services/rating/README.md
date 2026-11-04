@@ -19,7 +19,7 @@ internal/handler/      HTTP, mapeo de errores, rate limit por usuario
 
 ## API
 
-Rutas internas, pensadas para publicarse en el gateway bajo `/api/ratings/**` con `JwtAuth`, que agrega `X-User-ID` (la ruta aún no está configurada en el gateway). Las respuestas exitosas devuelven el dato directo, sin `{ success, data }`.
+Rutas internas que el API Gateway publica bajo `/api/ratings/**` con `JwtAuth`; el gateway agrega `X-User-ID` y el servicio confía en esa cabecera. Las respuestas exitosas devuelven el dato directo, sin `{ success, data }`.
 
 | Método y ruta | Respuesta |
 | --- | --- |

@@ -1,0 +1,49 @@
+# Reglas deterministicas de moderacion (README_P2 §3). Se cargan una vez al
+# arrancar; cambia `version` cada vez que edites este archivo, porque queda
+# guardada en cada decision (ruleVersion) para poder reproducirla.
+#
+# Los patrones son expresiones regulares de Python que se evaluan con limites
+# de palabra sobre el texto normalizado:
+#   - `folded`: minusculas, sin tildes, sin caracteres de ancho cero y con el
+#     leetspeak basico traducido (p3rr0 -> perro).
+#   - `plain`: igual pero sin traducir leetspeak, para no romper numeros de
+#     telefono ni direcciones.
+version: "2026-11-02.1"
+
+block:
+  THREAT:
+    target: folded
+    patterns:
+      - 'te (voy|vamos) a (matar|pegar|chuzar|apunalar|disparar|quemar|partir)'
+      - '(voy|vamos) a (matarte|pegarte|chuzarte|apunalarte|dispararte|quemarte)'
+      - 'te (mato|quemo|chuzo|apunalo)'
+      - '(se|sabemos|ya se) donde (vives|estudias|trabajas)'
+      - 'te (voy|vamos) a (buscar|encontrar) (y|para)'
+  DOXXING:
+    target: plain
+    patterns:
+      # Celular colombiano (3xx xxx xxxx), con o sin +57 y separadores.
+      - '(\+?57[\s.-]?)?3\d{2}[\s.-]?\d{3}[\s.-]?\d{4}'
+      # Correo electronico.
+      - '[\w.+-]+@[\w-]+\.[\w.]+'
+      # Direccion: "calle 45 # 12-30", "cra 7 n 32-16", "kr 50a 23 45".
+      - '(calle|cll|cl|carrera|cra|kr|cr|avenida|av|diagonal|dg|transversal|tv)\.? ?\d+\s?[a-z]?\s?(#|no\.?|n)?\s?\d+\s?[a-z]?\s?-?\s?\d+'
+  # Terminos de severidad alta. La lista queda vacia a proposito (README_P2
+  # §8: no versionar listas de insultos); el clasificador externo cubre los
+  # insultos. Se pueden agregar patrones locales en un despliegue concreto.
+  PROFANITY_HIGH:
+    target: folded
+    patterns: []
+
+warn:
+  SPAM_LINKS:
+    # Mas de `max_links` enlaces en un mismo mensaje.
+    max_links: 2
+  REPEATED_CONTENT:
+    # Un caracter repetido N veces seguidas, o una palabra N veces seguidas.
+    max_char_run: 10
+    max_word_run: 5
+  EXCESSIVE_CAPS:
+    # Solo aplica a mensajes con al menos `min_letters` letras.
+    min_letters: 20
+    max_ratio: 0.7
