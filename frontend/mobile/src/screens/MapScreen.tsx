@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Image,
   Platform,
   Alert,
 } from 'react-native';
@@ -12,16 +13,20 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { useAuth } from '../context/AuthContext';
+import { useProfile } from '../context/ProfileContext';
 import { useMessages } from '../context/MessagesContext';
 import { useNetwork } from '../context/NetworkContext';
 import { useRealtime } from '../context/RealtimeContext';
 import { GeoMessage, LocationCoords, MessageStatus, RangeDistance } from '../types';
 import { nintendoTheme } from '../theme/nintendoTheme';
+import { colorForUserId } from '../services/profile/profileService';
 import { MapLibreOsmView, MapLibreOsmViewRef } from '../components/map/MapLibreOsmView';
 import { RangeConfigModal } from '../components/map/RangeConfigModal';
 import { CreateMessageModal } from '../components/messages/CreateMessageModal';
 import { MessageDetailModal } from '../components/messages/MessageDetailModal';
 import { NetworkModal } from '../components/network/NetworkModal';
+import { ProfileModal } from '../components/profile/ProfileModal';
+import { ReputationModal } from '../components/reputation/ReputationModal';
 import { PictoChatCard } from '../components/common/PictoChatCard';
 import { calculateDistanceMeters } from '../utils/geoUtils';
 
@@ -37,6 +42,7 @@ const DEFAULT_COORDS: LocationCoords = {
 
 export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
   const { user } = useAuth();
+  const { myProfile, myReputation } = useProfile();
   const {
     activeMessages,
     selectedMessage,
@@ -46,7 +52,7 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
     setSearchCenter,
   } = useMessages();
   const { pendingCount } = useNetwork();
-  const { updateRadarLocation } = useRealtime();
+  const { connectionState, updateRadarLocation } = useRealtime();
 
   const mapViewRef = useRef<MapLibreOsmViewRef>(null);
 
@@ -55,11 +61,29 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
   const [rangeDistance, setRangeDistance] = useState<RangeDistance>(300);
   const [rangeModalVisible, setRangeModalVisible] = useState(false);
   const [networkModalVisible, setNetworkModalVisible] = useState(false);
+  const [profileModalVisible, setProfileModalVisible] = useState(false);
+  const [inspectedUserId, setInspectedUserId] = useState<string | null>(null);
+  const [reputationModalVisible, setReputationModalVisible] = useState(false);
   const [visibleMessageIds, setVisibleMessageIds] = useState<string[] | null>(null);
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [targetComposeCoords, setTargetComposeCoords] = useState<LocationCoords>(DEFAULT_COORDS);
   const [bottomListExpanded, setBottomListExpanded] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
+
+  const userColor =
+    myProfile?.color ||
+    user?.color ||
+    (user?.id ? colorForUserId(user.id) : nintendoTheme.colors.wiiBlue);
+  const userDisplayName =
+    myProfile?.displayName ||
+    (user?.username
+      ? user.username.startsWith('@')
+        ? user.username
+        : `@${user.username}`
+      : '@invitado');
+  const userAvatarUrl = myProfile?.avatarUrl || null;
+  const repLevel = myReputation?.level || 'Novato';
+  const repScore = myReputation?.score ?? 0;
 
   // Mensajes dentro del rango activo alrededor del centro actual del radar
   const inRangeMessages = useMemo(() => {
@@ -90,7 +114,6 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
 
   const handleMapCenterChange = useCallback((coords: LocationCoords) => {
     setRadarCenter((prev) => {
-      // Evitar re-consultas por micro-movimientos menores a 8 metros
       if (
         calculateDistanceMeters(prev.latitude, prev.longitude, coords.latitude, coords.longitude) <
         8
@@ -103,7 +126,6 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
 
   // Función robusta para solicitar y obtener la ubicación GPS real del dispositivo
   const requestCurrentLocation = useCallback(async (): Promise<LocationCoords | null> => {
-    // 1. En entorno Web, usar la API nativa de geolocalización del navegador
     if (Platform.OS === 'web') {
       if (typeof navigator === 'undefined' || !navigator.geolocation) return null;
       const getWebPosition = (options: PositionOptions) =>
@@ -117,14 +139,12 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
             options
           );
         });
-      // Primero rápida (red/WiFi, admite caché), luego alta precisión como respaldo
       return (
         (await getWebPosition({ enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 })) ||
         (await getWebPosition({ enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }))
       );
     }
 
-    // 2. En entorno nativo móvil con expo-location
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') return null;
@@ -134,7 +154,6 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
         });
         return { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
       } catch {
-        // Respaldo: última posición conocida del dispositivo
         const last = await Location.getLastKnownPositionAsync();
         if (last) return { latitude: last.coords.latitude, longitude: last.coords.longitude };
       }
@@ -147,7 +166,6 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
 
   // Manejador del botón GPS para ubicar y recentrar al usuario
   const handleLocateUser = async () => {
-    // Respuesta inmediata: volver a la última ubicación conocida mientras llega el GPS
     mapViewRef.current?.recenter(userLocation);
     setIsLocating(true);
     try {
@@ -199,31 +217,93 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
     setSelectedMessage(msg);
   };
 
+  const handleOpenMyProfile = () => {
+    setInspectedUserId(null);
+    setProfileModalVisible(true);
+  };
+
+  const handleOpenUserProfile = (targetId: string) => {
+    setInspectedUserId(targetId);
+    setProfileModalVisible(true);
+  };
+
   const filters: (MessageStatus | 'todos')[] = ['todos', 'publicado', 'pendiente', 'oculto'];
+
+  const wsStatusColor =
+    connectionState === 'connected'
+      ? '#2AC769'
+      : connectionState === 'connecting' || connectionState === 'reconnecting'
+      ? '#F59E0B'
+      : '#9CA3AF';
+  const wsStatusLabel =
+    connectionState === 'connected'
+      ? 'LIVE'
+      : connectionState === 'connecting' || connectionState === 'reconnecting'
+      ? 'SYNC'
+      : 'OFF';
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         {/* Barra superior estilo HUD Nintendo */}
         <View style={styles.topBar}>
-          {/* Perfil del explorador activo (sin etiqueta ONLINE) */}
-          <View style={styles.userProfileSection}>
-            <View style={[styles.userAvatar, { borderColor: user?.color || nintendoTheme.colors.wiiBlue }]}>
-              <View style={[styles.userAvatarInner, { backgroundColor: user?.color || nintendoTheme.colors.wiiBlue }]}>
-                <Text style={styles.userAvatarLetter}>
-                  {user?.username.charAt(0).toUpperCase() || 'M'}
+          {/* Perfil del explorador activo (clicable para abrir ProfileModal) */}
+          <TouchableOpacity
+            style={styles.userProfileSection}
+            onPress={handleOpenMyProfile}
+            activeOpacity={0.75}
+            accessibilityLabel="Mi Perfil de Explorador"
+          >
+            <View style={[styles.userAvatar, { borderColor: userColor }]}>
+              {userAvatarUrl ? (
+                <Image source={{ uri: userAvatarUrl }} style={styles.userAvatarImage} />
+              ) : (
+                <View style={[styles.userAvatarInner, { backgroundColor: userColor }]}>
+                  <Text style={styles.userAvatarLetter}>
+                    {(myProfile?.displayName || user?.username || 'M')
+                      .charAt(0)
+                      .toUpperCase()}
+                  </Text>
+                </View>
+              )}
+            </View>
+            <View style={styles.userMetaCol}>
+              <Text style={styles.userNameText} numberOfLines={1}>
+                {userDisplayName}
+              </Text>
+              <View style={styles.userReputationInline}>
+                <Ionicons name="star" size={9} color="#8A5A00" />
+                <Text style={styles.userReputationText} numberOfLines={1}>
+                  {repLevel.toUpperCase()} · {repScore} PTS
                 </Text>
               </View>
             </View>
-            <View>
-              <Text style={styles.userNameText} numberOfLines={1}>
-                {user?.username ? (user.username.startsWith('@') ? user.username : `@${user.username}`) : '@invitado'}
-              </Text>
-            </View>
-          </View>
+          </TouchableOpacity>
 
-          {/* Grupo de acciones del HUD: Red, Radar y Salir */}
+          {/* Grupo de acciones del HUD: WS Live, Ranking, Red, Radar y Salir */}
           <View style={styles.topBarActions}>
+            {/* Indicador Realtime WebSocket */}
+            <TouchableOpacity
+              style={styles.wsStatusPill}
+              onPress={() => setReputationModalVisible(true)}
+              activeOpacity={0.75}
+              accessibilityLabel="Estado de conexión en tiempo real"
+            >
+              <View style={[styles.wsDot, { backgroundColor: wsStatusColor }]} />
+              <Text style={styles.wsStatusText}>{wsStatusLabel}</Text>
+            </TouchableOpacity>
+
+            {/* Botón de Reputación / Leaderboard */}
+            <TouchableOpacity
+              style={[styles.actionPill, styles.repActionPill]}
+              onPress={() => setReputationModalVisible(true)}
+              activeOpacity={0.7}
+              accessibilityLabel="Reputación y Leaderboard"
+            >
+              <Ionicons name="trophy-outline" size={13} color="#8A5A00" />
+              <Text style={[styles.actionPillText, { color: '#8A5A00' }]}>RANK</Text>
+            </TouchableOpacity>
+
             {/* Botón de Red Social / Amigos */}
             <TouchableOpacity
               style={styles.actionPill}
@@ -340,7 +420,11 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
             <View style={styles.sheetHandleBar} />
             <View style={styles.sheetHeaderRow}>
               <View style={styles.sheetTitleGroup}>
-                <Ionicons name="chatbubbles-outline" size={15} color={nintendoTheme.colors.textPrimary} />
+                <Ionicons
+                  name="chatbubbles-outline"
+                  size={15}
+                  color={nintendoTheme.colors.textPrimary}
+                />
                 <Text style={styles.sheetTitle}>
                   NOTAS EN EL ÁREA [{inRangeMessages.length}]
                 </Text>
@@ -376,6 +460,7 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
                     key={msg.id}
                     message={msg}
                     onPress={() => handleSelectMessage(msg)}
+                    onPressAuthor={handleOpenUserProfile}
                     showDeleteAction={true}
                   />
                 ))
@@ -395,6 +480,7 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
           message={selectedMessage}
           visible={!!selectedMessage}
           onClose={() => setSelectedMessage(null)}
+          onOpenAuthorProfile={handleOpenUserProfile}
         />
 
         <RangeConfigModal
@@ -407,6 +493,20 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
         <NetworkModal
           visible={networkModalVisible}
           onClose={() => setNetworkModalVisible(false)}
+          onSelectUserProfile={handleOpenUserProfile}
+        />
+
+        <ProfileModal
+          visible={profileModalVisible}
+          onClose={() => setProfileModalVisible(false)}
+          targetUserId={inspectedUserId}
+          onOpenReputationModal={() => setReputationModalVisible(true)}
+        />
+
+        <ReputationModal
+          visible={reputationModalVisible}
+          onClose={() => setReputationModalVisible(false)}
+          onSelectUserProfile={handleOpenUserProfile}
         />
       </View>
     </SafeAreaView>
@@ -426,8 +526,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
     backgroundColor: '#FAF9F6',
     borderBottomWidth: 1,
     borderBottomColor: nintendoTheme.colors.borderMedium,
@@ -436,16 +536,23 @@ const styles = StyleSheet.create({
   userProfileSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 7,
+    flexShrink: 1,
+    marginRight: 6,
   },
   userAvatar: {
-    width: 28,
-    height: 28,
+    width: 30,
+    height: 30,
     borderRadius: nintendoTheme.borderRadius.xs,
     borderWidth: 1.5,
     padding: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  userAvatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 2,
   },
   userAvatarInner: {
     width: '100%',
@@ -460,16 +567,54 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
+  userMetaCol: {
+    flexShrink: 1,
+  },
   userNameText: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 11,
+    fontWeight: '800',
     color: nintendoTheme.colors.textPrimary,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    maxWidth: 115,
+  },
+  userReputationInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    marginTop: 1,
+  },
+  userReputationText: {
+    fontSize: 8,
+    fontWeight: '800',
+    color: '#8A5A00',
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   topBarActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
+  },
+  wsStatusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: nintendoTheme.colors.borderMedium,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    borderRadius: nintendoTheme.borderRadius.xs,
+  },
+  wsDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  wsStatusText: {
+    fontSize: 8,
+    fontWeight: '800',
+    color: nintendoTheme.colors.textSecondary,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   actionPill: {
     flexDirection: 'row',
@@ -478,13 +623,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: nintendoTheme.colors.borderMedium,
     paddingVertical: 4,
-    paddingHorizontal: 7,
+    paddingHorizontal: 6,
     borderRadius: nintendoTheme.borderRadius.xs,
-    gap: 4,
+    gap: 3,
     position: 'relative',
   },
+  repActionPill: {
+    backgroundColor: '#FDF6E4',
+    borderColor: '#F4E2B2',
+  },
   actionPillText: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '800',
     color: nintendoTheme.colors.textPrimary,
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
@@ -513,8 +662,8 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   iconActionBtn: {
-    width: 28,
-    height: 28,
+    width: 26,
+    height: 26,
     borderRadius: nintendoTheme.borderRadius.xs,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,

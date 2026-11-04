@@ -109,8 +109,11 @@ class ApiClient {
   ): Promise<ApiResponse<T>> {
     const fullUrl = `${this.baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
 
+    const isFormData =
+      typeof FormData !== 'undefined' && options.body instanceof FormData;
+
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       Accept: 'application/json',
       ...((options.headers as Record<string, string>) || {}),
     };

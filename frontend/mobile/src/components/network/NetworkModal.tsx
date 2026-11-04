@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,34 +7,37 @@ import {
   TouchableOpacity,
   ScrollView,
   TextInput,
+  Image,
   Alert,
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { UserProfile } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { useNetwork } from '../../context/NetworkContext';
+import { useProfile } from '../../context/ProfileContext';
+import { profileService, colorForUserId } from '../../services/profile/profileService';
 import { nintendoTheme } from '../../theme/nintendoTheme';
 import { WiiButton } from '../common/WiiButton';
-import { profileService } from '../../services/profile/profileService';
-import { UserProfile } from '../../types';
+import { validateRecipientId } from '../../utils/validators';
+import { API_CONFIG } from '../../config/api.config';
 
 interface NetworkModalProps {
   visible: boolean;
   onClose: () => void;
+  initialRecipientId?: string;
+  onSelectUserProfile?: (userId: string) => void;
 }
 
 type TabType = 'friends' | 'requests' | 'add';
 type RequestSubTab = 'incoming' | 'outgoing';
 
-function profileName(profile?: UserProfile | null): string {
-  return profile?.displayName || profile?.username || 'Explorador';
-}
-
-function profileHandle(profile?: UserProfile | null): string {
-  return profile?.username ? `@${profile.username}` : '';
-}
-
-export const NetworkModal: React.FC<NetworkModalProps> = ({ visible, onClose }) => {
+export const NetworkModal: React.FC<NetworkModalProps> = ({
+  visible,
+  onClose,
+  initialRecipientId = '',
+  onSelectUserProfile,
+}) => {
   const { user } = useAuth();
   const {
     friends,
@@ -50,70 +53,95 @@ export const NetworkModal: React.FC<NetworkModalProps> = ({ visible, onClose }) 
     getRelationshipStatus,
     isLoading,
   } = useNetwork();
+  const { resolveProfiles, getProfileDisplay } = useProfile();
 
   const [activeTab, setActiveTab] = useState<TabType>('friends');
   const [requestSubTab, setRequestSubTab] = useState<RequestSubTab>('incoming');
 
-  // Estado de búsqueda y envío de solicitudes
+  // Estado del formulario de agregar amigo
+  const [targetIdInput, setTargetIdInput] = useState(initialRecipientId);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
-  const [hasSearched, setHasSearched] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copiedNotification, setCopiedNotification] = useState(false);
 
-  // Copiar nombre de usuario al portapapeles
-  const handleCopyUsername = (usernameToCopy: string) => {
-    try {
-      if (typeof navigator !== 'undefined' && navigator.clipboard) {
-        navigator.clipboard.writeText(`@${usernameToCopy}`);
-      }
-      setCopiedNotification(true);
-      setTimeout(() => setCopiedNotification(false), 2500);
-    } catch {
-      Alert.alert('Usuario copiado', `@${usernameToCopy}`);
+  // Resolver perfiles en lote de amigos y solicitudes al abrir el modal
+  useEffect(() => {
+    if (!visible) return;
+    const ids: string[] = [];
+    friends.forEach((f) => {
+      const other = f.other_user_id || (f.user_a === user?.id ? f.user_b : f.user_a);
+      if (other) ids.push(other);
+    });
+    incomingRequests.forEach((r) => {
+      if (r.requested_by) ids.push(r.requested_by);
+    });
+    outgoingRequests.forEach((r) => {
+      const recipient = r.other_user_id || (r.user_a === user?.id ? r.user_b : r.user_a);
+      if (recipient) ids.push(recipient);
+    });
+    if (ids.length > 0) {
+      resolveProfiles(ids);
     }
-  };
+  }, [visible, friends, incomingRequests, outgoingRequests, user?.id, resolveProfiles]);
 
-  const handleSearch = async () => {
+  // Búsqueda de perfiles por nombre o username (`GET /api/profiles/search`)
+  const handleSearchProfiles = async (text: string) => {
+    setSearchQuery(text);
     setFormError(null);
     setFormSuccess(null);
-    const query = searchQuery.trim();
-    if (query.length < 2) {
-      setFormError('Escribe al menos 2 caracteres del nombre de usuario.');
+
+    const trimmed = text.trim();
+    if (!trimmed) {
+      setSearchResults([]);
       return;
     }
 
     setIsSearching(true);
-    setHasSearched(true);
     try {
-      const res = await profileService.search(query, 10);
-      if (!res.success || !res.data) {
-        setSearchResults([]);
-        setFormError(res.error || 'No se pudo buscar exploradores.');
-        return;
-      }
-      setSearchResults(res.data.filter((profile) => profile.userId !== user?.id));
+      const results = await profileService.search(trimmed, 15);
+      setSearchResults(results.filter((p) => p.userId !== user?.id));
+    } catch {
+      setSearchResults([]);
     } finally {
       setIsSearching(false);
     }
   };
 
-  // Manejo de envío de solicitud a un perfil encontrado
-  const handleSendRequest = async (profile: UserProfile) => {
+  // Copiar ID al portapapeles
+  const handleCopyId = (idToCopy: string) => {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        navigator.clipboard.writeText(idToCopy);
+      }
+      setCopiedNotification(true);
+      setTimeout(() => setCopiedNotification(false), 2500);
+    } catch {
+      Alert.alert('ID Copiado', idToCopy);
+    }
+  };
+
+  // Manejo de envío de solicitud por ID o desde resultados de búsqueda
+  const handleSendRequestToId = async (recipientId: string) => {
     setFormError(null);
     setFormSuccess(null);
 
+    const validation = validateRecipientId(recipientId, user?.id, API_CONFIG.USE_MOCKS);
+    if (!validation.isValid) {
+      setFormError(validation.error || 'ID inválido.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const res = await sendFriendRequest(profile.userId);
+      const res = await sendFriendRequest(recipientId.trim());
       if (res.success) {
-        setFormSuccess(`¡Solicitud enviada a ${profileHandle(profile)}!`);
-        setSearchResults((prev) => prev.filter((item) => item.userId !== profile.userId));
-        setSearchQuery('');
-        setHasSearched(false);
+        setFormSuccess('¡Solicitud de amistad enviada con éxito!');
+        setTargetIdInput('');
       } else {
         setFormError(res.error || 'No se pudo enviar la solicitud.');
       }
@@ -122,12 +150,8 @@ export const NetworkModal: React.FC<NetworkModalProps> = ({ visible, onClose }) 
     }
   };
 
-  const relationshipLabel = (profile: UserProfile): string | null => {
-    const relationship = getRelationshipStatus(profile.userId);
-    if (relationship === 'friend') return 'AMIGO';
-    if (relationship === 'incoming') return 'RECIBIDA';
-    if (relationship === 'outgoing') return 'ENVIADA';
-    return null;
+  const handleSendRequest = async () => {
+    await handleSendRequestToId(targetIdInput);
   };
 
   // Confirmación y eliminación de amigo
@@ -152,24 +176,25 @@ export const NetworkModal: React.FC<NetworkModalProps> = ({ visible, onClose }) 
     }
   };
 
-  // Generador determinista de color para avatares
-  const getColorForId = (id: string): string => {
-    const palette = nintendoTheme.colors.avatarColors;
-    let hash = 0;
-    for (let i = 0; i < id.length; i++) {
-      hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
-    }
-    return palette[hash % palette.length];
-  };
-
   // Formato de fecha
   const formatDate = (isoString: string) => {
     try {
       const d = new Date(isoString);
-      return d.toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      return d.toLocaleDateString([], {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
     } catch {
       return '';
     }
+  };
+
+  const handleInspectProfile = (userId: string) => {
+    if (!onSelectUserProfile) return;
+    onClose();
+    onSelectUserProfile(userId);
   };
 
   return (
@@ -265,29 +290,52 @@ export const NetworkModal: React.FC<NetworkModalProps> = ({ visible, onClose }) 
                 </View>
               ) : (
                 friends.map((item) => {
-                  const friendId = item.other_user_id || (item.user_a === user?.id ? item.user_b : item.user_a);
-                  const avatarColor = item.profile?.color || getColorForId(friendId);
-                  const name = profileName(item.profile);
-                  const handle = profileHandle(item.profile);
+                  const friendId =
+                    item.other_user_id ||
+                    (item.user_a === user?.id ? item.user_b : item.user_a);
+                  const display = getProfileDisplay(friendId);
                   return (
-                    <View key={item.id} style={styles.friendCard}>
-                      <View style={[styles.avatarBox, { borderColor: avatarColor }]}>
-                        <View style={[styles.avatarInner, { backgroundColor: avatarColor }]}>
-                          <Text style={styles.avatarLetter}>
-                            {name.charAt(0).toUpperCase()}
-                          </Text>
-                        </View>
+                    <TouchableOpacity
+                      key={item.id}
+                      style={styles.friendCard}
+                      activeOpacity={0.8}
+                      onPress={() => handleInspectProfile(friendId)}
+                    >
+                      <View style={[styles.avatarBox, { borderColor: display.color }]}>
+                        {display.avatarUrl ? (
+                          <Image
+                            source={{ uri: display.avatarUrl }}
+                            style={styles.avatarImage}
+                          />
+                        ) : (
+                          <View style={[styles.avatarInner, { backgroundColor: display.color }]}>
+                            <Text style={styles.avatarLetter}>
+                              {display.displayName.charAt(0).toUpperCase()}
+                            </Text>
+                          </View>
+                        )}
                       </View>
 
                       <View style={styles.friendInfo}>
-                        <Text style={styles.friendName} numberOfLines={1}>
-                          {name}
+                        <Text style={styles.friendDisplayName} numberOfLines={1}>
+                          {display.displayName}{' '}
+                          <Text style={styles.friendUsername}>@{display.username}</Text>
                         </Text>
-                        {handle ? (
-                          <Text style={styles.friendHandle} numberOfLines={1}>
-                            {handle}
+                        <View style={styles.friendIdRow}>
+                          <Text style={styles.friendIdLabel} numberOfLines={1}>
+                            ID: {friendId.slice(0, 18)}
                           </Text>
-                        ) : null}
+                          <TouchableOpacity
+                            onPress={() => handleCopyId(friendId)}
+                            style={styles.copySmallBtn}
+                          >
+                            <Ionicons
+                              name="copy-outline"
+                              size={11}
+                              color={nintendoTheme.colors.textSecondary}
+                            />
+                          </TouchableOpacity>
+                        </View>
                         <Text style={styles.friendDateText}>
                           DESDE {formatDate(item.updated_at || item.created_at).toUpperCase()}
                         </Text>
@@ -298,9 +346,13 @@ export const NetworkModal: React.FC<NetworkModalProps> = ({ visible, onClose }) 
                         onPress={() => handleRemoveFriend(friendId)}
                         activeOpacity={0.7}
                       >
-                        <Ionicons name="trash-outline" size={13} color={nintendoTheme.colors.famicomRed} />
+                        <Ionicons
+                          name="trash-outline"
+                          size={13}
+                          color={nintendoTheme.colors.famicomRed}
+                        />
                       </TouchableOpacity>
-                    </View>
+                    </TouchableOpacity>
                   );
                 })
               )}
@@ -312,7 +364,10 @@ export const NetworkModal: React.FC<NetworkModalProps> = ({ visible, onClose }) 
             <View style={styles.tabContentContainer}>
               <View style={styles.subTabBar}>
                 <TouchableOpacity
-                  style={[styles.subTabPill, requestSubTab === 'incoming' && styles.subTabPillActive]}
+                  style={[
+                    styles.subTabPill,
+                    requestSubTab === 'incoming' && styles.subTabPillActive,
+                  ]}
                   onPress={() => setRequestSubTab('incoming')}
                   activeOpacity={0.75}
                 >
@@ -327,7 +382,10 @@ export const NetworkModal: React.FC<NetworkModalProps> = ({ visible, onClose }) 
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.subTabPill, requestSubTab === 'outgoing' && styles.subTabPillActive]}
+                  style={[
+                    styles.subTabPill,
+                    requestSubTab === 'outgoing' && styles.subTabPillActive,
+                  ]}
                   onPress={() => setRequestSubTab('outgoing')}
                   activeOpacity={0.75}
                 >
@@ -355,33 +413,42 @@ export const NetworkModal: React.FC<NetworkModalProps> = ({ visible, onClose }) 
                   ) : (
                     incomingRequests.map((req) => {
                       const requesterId = req.requested_by;
-                      const avatarColor = req.profile?.color || getColorForId(requesterId);
-                      const name = profileName(req.profile);
-                      const handle = profileHandle(req.profile);
+                      const display = getProfileDisplay(requesterId);
                       return (
                         <View key={req.id} style={styles.requestCard}>
-                          <View style={styles.requestCardTop}>
-                            <View style={[styles.avatarBox, { borderColor: avatarColor }]}>
-                              <View style={[styles.avatarInner, { backgroundColor: avatarColor }]}>
-                                <Text style={styles.avatarLetter}>
-                                  {name.charAt(0).toUpperCase()}
-                                </Text>
-                              </View>
+                          <TouchableOpacity
+                            style={styles.requestCardTop}
+                            activeOpacity={0.8}
+                            onPress={() => handleInspectProfile(requesterId)}
+                          >
+                            <View style={[styles.avatarBox, { borderColor: display.color }]}>
+                              {display.avatarUrl ? (
+                                <Image
+                                  source={{ uri: display.avatarUrl }}
+                                  style={styles.avatarImage}
+                                />
+                              ) : (
+                                <View
+                                  style={[
+                                    styles.avatarInner,
+                                    { backgroundColor: display.color },
+                                  ]}
+                                >
+                                  <Text style={styles.avatarLetter}>
+                                    {display.displayName.charAt(0).toUpperCase()}
+                                  </Text>
+                                </View>
+                              )}
                             </View>
                             <View style={styles.requestInfo}>
                               <Text style={styles.requestUserText} numberOfLines={1}>
-                                {name}
+                                DE: {display.displayName} (@{display.username})
                               </Text>
-                              {handle ? (
-                                <Text style={styles.requestHandle} numberOfLines={1}>
-                                  {handle}
-                                </Text>
-                              ) : null}
                               <Text style={styles.friendDateText}>
                                 {formatDate(req.created_at).toUpperCase()}
                               </Text>
                             </View>
-                          </View>
+                          </TouchableOpacity>
 
                           <View style={styles.requestActionsRow}>
                             <WiiButton
@@ -414,34 +481,45 @@ export const NetworkModal: React.FC<NetworkModalProps> = ({ visible, onClose }) 
                   </View>
                 ) : (
                   outgoingRequests.map((req) => {
-                    const recipientId = req.other_user_id || (req.user_a === user?.id ? req.user_b : req.user_a);
-                    const avatarColor = req.profile?.color || getColorForId(recipientId);
-                    const name = profileName(req.profile);
-                    const handle = profileHandle(req.profile);
+                    const recipientId =
+                      req.other_user_id ||
+                      (req.user_a === user?.id ? req.user_b : req.user_a);
+                    const display = getProfileDisplay(recipientId);
                     return (
                       <View key={req.id} style={styles.requestCard}>
-                        <View style={styles.requestCardTop}>
-                          <View style={[styles.avatarBox, { borderColor: avatarColor }]}>
-                            <View style={[styles.avatarInner, { backgroundColor: avatarColor }]}>
-                              <Text style={styles.avatarLetter}>
-                                {name.charAt(0).toUpperCase()}
-                              </Text>
-                            </View>
+                        <TouchableOpacity
+                          style={styles.requestCardTop}
+                          activeOpacity={0.8}
+                          onPress={() => handleInspectProfile(recipientId)}
+                        >
+                          <View style={[styles.avatarBox, { borderColor: display.color }]}>
+                            {display.avatarUrl ? (
+                              <Image
+                                source={{ uri: display.avatarUrl }}
+                                style={styles.avatarImage}
+                              />
+                            ) : (
+                              <View
+                                style={[
+                                  styles.avatarInner,
+                                  { backgroundColor: display.color },
+                                ]}
+                              >
+                                <Text style={styles.avatarLetter}>
+                                  {display.displayName.charAt(0).toUpperCase()}
+                                </Text>
+                              </View>
+                            )}
                           </View>
                           <View style={styles.requestInfo}>
                             <Text style={styles.requestUserText} numberOfLines={1}>
-                              {name}
+                              PARA: {display.displayName} (@{display.username})
                             </Text>
-                            {handle ? (
-                              <Text style={styles.requestHandle} numberOfLines={1}>
-                                {handle}
-                              </Text>
-                            ) : null}
                             <Text style={styles.friendDateText}>
                               ENVIADA: {formatDate(req.created_at).toUpperCase()}
                             </Text>
                           </View>
-                        </View>
+                        </TouchableOpacity>
 
                         <View style={styles.requestActionsRow}>
                           <WiiButton
@@ -463,18 +541,22 @@ export const NetworkModal: React.FC<NetworkModalProps> = ({ visible, onClose }) 
           {/* Contenido de la pestaña: AGREGAR AMIGO */}
           {activeTab === 'add' && (
             <ScrollView style={styles.scrollList} contentContainerStyle={styles.listContent}>
-              {/* Tarjeta con el usuario propio */}
+              {/* Tarjeta con ID propio del usuario */}
               <View style={styles.myIdCard}>
                 <View style={styles.myIdHeaderRow}>
-                  <Ionicons name="at-outline" size={15} color={nintendoTheme.colors.textPrimary} />
-                  <Text style={styles.myIdTitle}>TU NOMBRE DE USUARIO</Text>
+                  <Ionicons
+                    name="finger-print-outline"
+                    size={15}
+                    color={nintendoTheme.colors.textPrimary}
+                  />
+                  <Text style={styles.myIdTitle}>TU ID DE EXPLORADOR</Text>
                 </View>
                 <Text style={styles.myIdText} numberOfLines={1} selectable>
-                  {user?.username ? `@${user.username}` : 'No disponible'}
+                  {user?.id || 'No disponible'}
                 </Text>
                 <TouchableOpacity
                   style={styles.copyMyIdBtn}
-                  onPress={() => user?.username && handleCopyUsername(user.username)}
+                  onPress={() => user?.id && handleCopyId(user.id)}
                   activeOpacity={0.75}
                 >
                   <Ionicons
@@ -488,31 +570,28 @@ export const NetworkModal: React.FC<NetworkModalProps> = ({ visible, onClose }) 
                       copiedNotification && { color: '#275E33' },
                     ]}
                   >
-                    {copiedNotification ? '¡USUARIO COPIADO!' : 'COPIAR MI USUARIO'}
+                    {copiedNotification ? '¡ID COPIADO AL PORTAPAPELES!' : 'COPIAR MI ID'}
                   </Text>
                 </TouchableOpacity>
               </View>
 
-              {/* Búsqueda de exploradores por nombre de usuario */}
+              {/* Buscador por nombre o username (`GET /api/profiles/search`) */}
               <View style={styles.formContainer}>
                 <Text style={styles.formLabel}>
-                  BUSCA POR NOMBRE DE USUARIO:
+                  BUSCAR EXPLORADOR POR NOMBRE O @USUARIO:
                 </Text>
-
                 <View style={styles.inputBox}>
-                  <Ionicons name="search-outline" size={15} color={nintendoTheme.colors.textSecondary} />
+                  <Ionicons
+                    name="search-outline"
+                    size={15}
+                    color={nintendoTheme.colors.textSecondary}
+                  />
                   <TextInput
                     style={styles.textInput}
-                    placeholder="ej. ExploradorGeo"
+                    placeholder="ej. Explorador, Viajero, BiciRuta..."
                     placeholderTextColor={nintendoTheme.colors.textMuted}
                     value={searchQuery}
-                    onChangeText={(val) => {
-                      setSearchQuery(val);
-                      setFormError(null);
-                      setFormSuccess(null);
-                      setHasSearched(false);
-                    }}
-                    onSubmitEditing={handleSearch}
+                    onChangeText={handleSearchProfiles}
                     autoCapitalize="none"
                     autoCorrect={false}
                   />
@@ -521,18 +600,125 @@ export const NetworkModal: React.FC<NetworkModalProps> = ({ visible, onClose }) 
                       onPress={() => {
                         setSearchQuery('');
                         setSearchResults([]);
-                        setHasSearched(false);
                       }}
                       style={{ padding: 2 }}
                     >
-                      <Ionicons name="close-circle" size={14} color={nintendoTheme.colors.textMuted} />
+                      <Ionicons
+                        name="close-circle"
+                        size={14}
+                        color={nintendoTheme.colors.textMuted}
+                      />
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                {searchResults.length > 0 && (
+                  <View style={styles.searchResultsList}>
+                    {searchResults.map((prof) => {
+                      const rel = getRelationshipStatus(prof.userId);
+                      const col = prof.color || colorForUserId(prof.userId);
+                      return (
+                        <View key={prof.userId} style={styles.searchResultRow}>
+                          <TouchableOpacity
+                            style={styles.searchResultLeft}
+                            onPress={() => handleInspectProfile(prof.userId)}
+                          >
+                            <View style={[styles.avatarBox, { borderColor: col }]}>
+                              {prof.avatarUrl ? (
+                                <Image
+                                  source={{ uri: prof.avatarUrl }}
+                                  style={styles.avatarImage}
+                                />
+                              ) : (
+                                <View
+                                  style={[styles.avatarInner, { backgroundColor: col }]}
+                                >
+                                  <Text style={styles.avatarLetter}>
+                                    {(prof.displayName || prof.username)
+                                      .charAt(0)
+                                      .toUpperCase()}
+                                  </Text>
+                                </View>
+                              )}
+                            </View>
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.friendDisplayName} numberOfLines={1}>
+                                {prof.displayName || prof.username}
+                              </Text>
+                              <Text style={styles.friendDateText} numberOfLines={1}>
+                                @{prof.username}
+                              </Text>
+                            </View>
+                          </TouchableOpacity>
+
+                          {rel === 'friend' ? (
+                            <Text style={styles.searchStatusTag}>AMIGO</Text>
+                          ) : rel === 'outgoing' || rel === 'incoming' ? (
+                            <Text style={styles.searchStatusTag}>PENDIENTE</Text>
+                          ) : (
+                            <TouchableOpacity
+                              style={styles.searchAddBtn}
+                              onPress={() => handleSendRequestToId(prof.userId)}
+                              disabled={isSubmitting}
+                            >
+                              <Ionicons name="person-add" size={11} color="#FFFFFF" />
+                              <Text style={styles.searchAddBtnText}>AGREGAR</Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
+
+                {isSearching && (
+                  <Text style={styles.searchingHint}>Buscando perfiles...</Text>
+                )}
+              </View>
+
+              {/* Formulario de envío directo por UUID */}
+              <View style={styles.formContainer}>
+                <Text style={styles.formLabel}>
+                  O INGRESA EL ID DIRECTO DEL EXPLORADOR:
+                </Text>
+
+                <View style={styles.inputBox}>
+                  <Ionicons
+                    name="person-add-outline"
+                    size={15}
+                    color={nintendoTheme.colors.textSecondary}
+                  />
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="ej. 123e4567-e89b-12d3-a456-426614174000"
+                    placeholderTextColor={nintendoTheme.colors.textMuted}
+                    value={targetIdInput}
+                    onChangeText={(val) => {
+                      setTargetIdInput(val);
+                      setFormError(null);
+                      setFormSuccess(null);
+                    }}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                  {targetIdInput.length > 0 && (
+                    <TouchableOpacity onPress={() => setTargetIdInput('')} style={{ padding: 2 }}>
+                      <Ionicons
+                        name="close-circle"
+                        size={14}
+                        color={nintendoTheme.colors.textMuted}
+                      />
                     </TouchableOpacity>
                   )}
                 </View>
 
                 {formError ? (
                   <View style={styles.errorBox}>
-                    <Ionicons name="alert-circle-outline" size={13} color={nintendoTheme.colors.famicomRed} />
+                    <Ionicons
+                      name="alert-circle-outline"
+                      size={13}
+                      color={nintendoTheme.colors.famicomRed}
+                    />
                     <Text style={styles.errorText}>{formError}</Text>
                   </View>
                 ) : null}
@@ -545,58 +731,15 @@ export const NetworkModal: React.FC<NetworkModalProps> = ({ visible, onClose }) 
                 ) : null}
 
                 <WiiButton
-                  title={isSearching ? 'BUSCANDO...' : 'BUSCAR EXPLORADOR'}
+                  title={isSubmitting ? 'ENVIANDO...' : 'ENVIAR SOLICITUD'}
                   variant="mint"
                   size="md"
-                  disabled={searchQuery.trim().length < 2 || isSearching}
-                  icon={<Ionicons name="search" size={13} color="#FFFFFF" />}
-                  onPress={handleSearch}
+                  disabled={!targetIdInput.trim() || isSubmitting}
+                  icon={<Ionicons name="send" size={13} color="#FFFFFF" />}
+                  onPress={handleSendRequest}
                   style={{ marginTop: 12 }}
                 />
               </View>
-
-              {searchResults.length > 0 ? (
-                <View style={styles.searchResults}>
-                  {searchResults.map((profile) => {
-                    const relationship = relationshipLabel(profile);
-                    const avatarColor = profile.color || getColorForId(profile.userId);
-                    return (
-                      <View key={profile.userId} style={styles.searchResultCard}>
-                        <View style={[styles.avatarBox, { borderColor: avatarColor }]}>
-                          <View style={[styles.avatarInner, { backgroundColor: avatarColor }]}>
-                            <Text style={styles.avatarLetter}>
-                              {profileName(profile).charAt(0).toUpperCase()}
-                            </Text>
-                          </View>
-                        </View>
-                        <View style={styles.friendInfo}>
-                          <Text style={styles.friendName} numberOfLines={1}>
-                            {profileName(profile)}
-                          </Text>
-                          <Text style={styles.friendHandle} numberOfLines={1}>
-                            {profileHandle(profile)}
-                          </Text>
-                        </View>
-                        <WiiButton
-                          title={relationship ?? (isSubmitting ? 'ENVIANDO...' : 'AGREGAR')}
-                          variant={relationship ? 'secondary' : 'mint'}
-                          size="sm"
-                          disabled={!!relationship || isSubmitting}
-                          onPress={() => handleSendRequest(profile)}
-                        />
-                      </View>
-                    );
-                  })}
-                </View>
-              ) : hasSearched && !isSearching && !formError ? (
-                <View style={styles.emptyContainer}>
-                  <Ionicons name="search-outline" size={30} color="#B0B8BF" />
-                  <Text style={styles.emptyTitle}>[ SIN RESULTADOS ]</Text>
-                  <Text style={styles.emptyText}>
-                    No encontramos exploradores con ese nombre de usuario.
-                  </Text>
-                </View>
-              ) : null}
             </ScrollView>
           )}
         </View>
@@ -765,7 +908,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   scrollList: {
-    maxHeight: 320,
+    maxHeight: 340,
     marginTop: 4,
   },
   listContent: {
@@ -783,13 +926,18 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   avatarBox: {
-    width: 26,
-    height: 26,
+    width: 28,
+    height: 28,
     borderRadius: 2,
-    borderWidth: 1,
+    borderWidth: 1.5,
     padding: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 1,
   },
   avatarInner: {
     width: '100%',
@@ -807,24 +955,37 @@ const styles = StyleSheet.create({
   friendInfo: {
     flex: 1,
   },
-  friendName: {
-    fontSize: 10,
+  friendDisplayName: {
+    fontSize: 11,
     fontWeight: '800',
     color: nintendoTheme.colors.textPrimary,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
-  friendHandle: {
+  friendUsername: {
     fontSize: 9,
     fontWeight: '600',
     color: nintendoTheme.colors.textSecondary,
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-    marginTop: 1,
+  },
+  friendIdRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  friendIdLabel: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: nintendoTheme.colors.textSecondary,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    maxWidth: 200,
+  },
+  copySmallBtn: {
+    padding: 2,
   },
   friendDateText: {
     fontSize: 8,
     color: nintendoTheme.colors.textMuted,
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-    marginTop: 2,
+    marginTop: 1,
   },
   removeFriendBtn: {
     padding: 6,
@@ -855,31 +1016,10 @@ const styles = StyleSheet.create({
     color: nintendoTheme.colors.textPrimary,
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
-  requestHandle: {
-    fontSize: 9,
-    fontWeight: '600',
-    color: nintendoTheme.colors.textSecondary,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-    marginTop: 1,
-  },
   requestActionsRow: {
     flexDirection: 'row',
     gap: 6,
     marginTop: 2,
-  },
-  searchResults: {
-    gap: 8,
-    marginTop: 8,
-  },
-  searchResultCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FAF9F6',
-    borderRadius: nintendoTheme.borderRadius.sm,
-    borderWidth: 1,
-    borderColor: nintendoTheme.colors.borderLight,
-    padding: 8,
-    gap: 8,
   },
   myIdCard: {
     backgroundColor: '#FAF9F6',
@@ -887,7 +1027,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: nintendoTheme.colors.borderMedium,
     padding: 10,
-    marginBottom: 8,
   },
   myIdHeaderRow: {
     flexDirection: 'row',
@@ -937,7 +1076,7 @@ const styles = StyleSheet.create({
     borderRadius: nintendoTheme.borderRadius.sm,
     borderWidth: 1,
     borderColor: nintendoTheme.colors.borderLight,
-    padding: 12,
+    padding: 10,
   },
   formLabel: {
     fontSize: 9,
@@ -955,13 +1094,62 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#D4D0C6',
     paddingHorizontal: 10,
-    height: 38,
+    height: 36,
     gap: 6,
   },
   textInput: {
     flex: 1,
     fontSize: 11,
     color: nintendoTheme.colors.textPrimary,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  searchResultsList: {
+    marginTop: 8,
+    gap: 6,
+  },
+  searchResultRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FAF9F6',
+    borderWidth: 1,
+    borderColor: '#E2DFD8',
+    borderRadius: nintendoTheme.borderRadius.xs,
+    padding: 6,
+    gap: 8,
+  },
+  searchResultLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  searchStatusTag: {
+    fontSize: 8,
+    fontWeight: '800',
+    color: nintendoTheme.colors.textSecondary,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    paddingHorizontal: 6,
+  },
+  searchAddBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: nintendoTheme.colors.miiverseGreen,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: nintendoTheme.borderRadius.xs,
+  },
+  searchAddBtnText: {
+    color: '#FFFFFF',
+    fontSize: 8,
+    fontWeight: '800',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  searchingHint: {
+    fontSize: 9,
+    color: nintendoTheme.colors.textMuted,
+    marginTop: 4,
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   errorBox: {

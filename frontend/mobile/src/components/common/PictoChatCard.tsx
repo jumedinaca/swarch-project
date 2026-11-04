@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  Image,
   Alert,
   Platform,
 } from 'react-native';
@@ -17,12 +18,14 @@ import { StatusBadge } from './StatusBadge';
 interface PictoChatCardProps {
   message: GeoMessage;
   onPress?: () => void;
+  onPressAuthor?: (authorId: string) => void;
   showDeleteAction?: boolean;
 }
 
 export const PictoChatCard: React.FC<PictoChatCardProps> = ({
   message,
   onPress,
+  onPressAuthor,
   showDeleteAction = true,
 }) => {
   const { user } = useAuth();
@@ -30,13 +33,27 @@ export const PictoChatCard: React.FC<PictoChatCardProps> = ({
 
   const isAuthor = user?.id === message.authorId;
   const isDeleted = message.status === 'eliminado';
+  const isRateable = message.status === 'publicado' && !isAuthor && !isDeleted;
+  const netScore =
+    typeof message.score === 'number'
+      ? message.score
+      : (message.likes ?? 0) - (message.dislikes ?? 0);
 
   const handleVote = async (vote: 'LIKE' | 'DISLIKE', e?: any) => {
     if (e && typeof e.stopPropagation === 'function') {
       e.stopPropagation();
     }
-    if (isAuthor || isDeleted) return;
+    if (!isRateable) return;
     await rateMessage(message.id, vote);
+  };
+
+  const handleAuthorPress = (e?: any) => {
+    if (e && typeof e.stopPropagation === 'function') {
+      e.stopPropagation();
+    }
+    if (onPressAuthor && message.authorId) {
+      onPressAuthor(message.authorId);
+    }
   };
 
   // Formato amigable de expiración
@@ -100,13 +117,24 @@ export const PictoChatCard: React.FC<PictoChatCardProps> = ({
     >
       {/* Cabecera estilo cartucho PictoChat Nintendo DS */}
       <View style={styles.cardHeader}>
-        <View style={styles.authorSection}>
+        <TouchableOpacity
+          style={styles.authorSection}
+          activeOpacity={onPressAuthor ? 0.7 : 1}
+          onPress={onPressAuthor ? handleAuthorPress : undefined}
+        >
           <View style={[styles.avatarBox, { borderColor: message.authorColor }]}>
-            <View style={[styles.avatarInner, { backgroundColor: message.authorColor }]}>
-              <Text style={styles.avatarInitial}>
-                {message.authorName.charAt(0).toUpperCase()}
-              </Text>
-            </View>
+            {message.authorAvatarUrl ? (
+              <Image
+                source={{ uri: message.authorAvatarUrl }}
+                style={styles.avatarImage}
+              />
+            ) : (
+              <View style={[styles.avatarInner, { backgroundColor: message.authorColor }]}>
+                <Text style={styles.avatarInitial}>
+                  {(message.authorName || 'E').charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            )}
           </View>
           <View>
             <View style={styles.nameRow}>
@@ -119,7 +147,7 @@ export const PictoChatCard: React.FC<PictoChatCardProps> = ({
             </View>
             <Text style={styles.timeText}>{formatTime(message.createdAt)}</Text>
           </View>
-        </View>
+        </TouchableOpacity>
 
         <StatusBadge
           status={message.status}
@@ -128,9 +156,30 @@ export const PictoChatCard: React.FC<PictoChatCardProps> = ({
         />
       </View>
 
+      {/* Avisos contextuales de moderación (PENDING / BLOCKED) */}
+      {message.status === 'pendiente' && (
+        <View style={styles.moderationBannerPending}>
+          <Ionicons name="hourglass-outline" size={11} color="#8A5A00" />
+          <Text style={styles.moderationBannerPendingText}>
+            EN REVISIÓN DE MODERACIÓN · SE PUBLICARÁ EN BREVE
+          </Text>
+        </View>
+      )}
+      {message.status === 'oculto' && (
+        <View style={styles.moderationBannerBlocked}>
+          <Ionicons
+            name="shield-outline"
+            size={11}
+            color={nintendoTheme.colors.famicomRed}
+          />
+          <Text style={styles.moderationBannerBlockedText}>
+            NOTA OCULTA POR MODERACIÓN (SOLO VISIBLE PARA TI)
+          </Text>
+        </View>
+      )}
+
       {/* Contenido con cuadrícula técnica PictoChat */}
       <View style={styles.contentBody}>
-        {/* Línea de guía cuadriculada minimalista */}
         <View style={styles.gridLine} />
 
         <Text style={[styles.contentText, isDeleted && styles.deletedText]}>
@@ -138,7 +187,7 @@ export const PictoChatCard: React.FC<PictoChatCardProps> = ({
         </Text>
       </View>
 
-      {/* Pie de tarjeta con metadatos y acciones */}
+      {/* Pie de tarjeta con metadatos y acciones de calificación */}
       <View style={styles.cardFooter}>
         <View style={styles.footerInfo}>
           <Ionicons name="time-outline" size={12} color={nintendoTheme.colors.textMuted} />
@@ -151,10 +200,10 @@ export const PictoChatCard: React.FC<PictoChatCardProps> = ({
                 style={[
                   styles.voteChip,
                   message.myRating === 'LIKE' && styles.voteChipLiked,
-                  isAuthor && styles.voteChipReadonly,
+                  !isRateable && styles.voteChipReadonly,
                 ]}
                 onPress={(e) => handleVote('LIKE', e)}
-                disabled={isAuthor}
+                disabled={!isRateable}
                 activeOpacity={0.7}
               >
                 <Ionicons
@@ -169,10 +218,10 @@ export const PictoChatCard: React.FC<PictoChatCardProps> = ({
                 style={[
                   styles.voteChip,
                   message.myRating === 'DISLIKE' && styles.voteChipDisliked,
-                  isAuthor && styles.voteChipReadonly,
+                  !isRateable && styles.voteChipReadonly,
                 ]}
                 onPress={(e) => handleVote('DISLIKE', e)}
-                disabled={isAuthor}
+                disabled={!isRateable}
                 activeOpacity={0.7}
               >
                 <Ionicons
@@ -182,6 +231,24 @@ export const PictoChatCard: React.FC<PictoChatCardProps> = ({
                 />
                 <Text style={styles.ratingText}>{message.dislikes ?? 0}</Text>
               </TouchableOpacity>
+
+              <View
+                style={[
+                  styles.scoreTag,
+                  netScore > 0 && styles.scoreTagPos,
+                  netScore < 0 && styles.scoreTagNeg,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.scoreTagText,
+                    netScore > 0 && styles.scoreTextPos,
+                    netScore < 0 && styles.scoreTextNeg,
+                  ]}
+                >
+                  {netScore > 0 ? `+${netScore}` : netScore}
+                </Text>
+              </View>
             </View>
           )}
         </View>
@@ -240,6 +307,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 2,
+  },
   avatarInner: {
     width: '100%',
     height: '100%',
@@ -281,6 +353,38 @@ const styles = StyleSheet.create({
   timeText: {
     fontSize: 10,
     color: nintendoTheme.colors.textMuted,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  moderationBannerPending: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#FDF6E4',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F4E2B2',
+  },
+  moderationBannerPendingText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#8A5A00',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  moderationBannerBlocked: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: nintendoTheme.colors.famicomRedLight,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: nintendoTheme.colors.famicomRedBorder,
+  },
+  moderationBannerBlockedText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: nintendoTheme.colors.famicomRed,
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   contentBody: {
@@ -325,28 +429,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
-  badgesColumn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  warnBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    backgroundColor: '#FFF9EB',
-    borderColor: '#F2C057',
-    borderWidth: 1,
-    borderRadius: nintendoTheme.borderRadius.xs,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-  },
-  warnBadgeText: {
-    fontSize: 8,
-    fontWeight: '800',
-    color: '#B26B00',
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-  },
   ratingRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -373,13 +455,41 @@ const styles = StyleSheet.create({
     borderColor: nintendoTheme.colors.famicomRedBorder,
   },
   voteChipReadonly: {
-    opacity: 0.85,
+    opacity: 0.78,
   },
   ratingText: {
     fontSize: 10,
     fontWeight: '700',
     color: nintendoTheme.colors.textSecondary,
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  scoreTag: {
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: nintendoTheme.borderRadius.xs,
+    backgroundColor: '#ECEAE3',
+    borderWidth: 1,
+    borderColor: '#D4D0C6',
+  },
+  scoreTagPos: {
+    backgroundColor: '#EDF5EE',
+    borderColor: '#C2DEC5',
+  },
+  scoreTagNeg: {
+    backgroundColor: nintendoTheme.colors.famicomRedLight,
+    borderColor: nintendoTheme.colors.famicomRedBorder,
+  },
+  scoreTagText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: nintendoTheme.colors.textSecondary,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  scoreTextPos: {
+    color: '#275E33',
+  },
+  scoreTextNeg: {
+    color: nintendoTheme.colors.famicomRed,
   },
   expirationText: {
     fontSize: 10,

@@ -6,17 +6,28 @@ import React, {
   useCallback,
   ReactNode,
 } from 'react';
-import { GeoMessage, MessageStatus, ModerationStatus, LocationCoords } from '../types';
+import {
+  GeoMessage,
+  MessageStatus,
+  ModerationStatus,
+  LocationCoords,
+  UserProfile,
+  RatingSummary,
+} from '../types';
 import { useAuth } from './AuthContext';
 import { useRealtime } from './RealtimeContext';
+import { useProfile } from './ProfileContext';
 import {
   messagesService,
   mapBackendMessageStatus,
 } from '../services/messages/messagesService';
-import { apiClient } from '../services/api/apiClient';
+import {
+  profileService,
+  colorForUserId,
+} from '../services/profile/profileService';
+import { ratingService } from '../services/rating/ratingService';
 import { BOGOTA_SEED_MESSAGES } from '../data/bogotaMessages';
 import { API_CONFIG } from '../config/api.config';
-import { nintendoTheme } from '../theme/nintendoTheme';
 
 // Radio de búsqueda en el servidor: el mayor rango seleccionable en el mapa.
 // El mapa filtra después por el rango que elija el usuario.
@@ -51,7 +62,9 @@ const MessagesContext = createContext<MessagesContextType | undefined>(undefined
 
 export const MessagesProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
+  const { myProfile, resolveProfiles } = useProfile();
   const { onEvent, onReconnected, subscribeTopic, pushToast } = useRealtime();
+
   // Con el backend real se parte vacío; los datos de ejemplo son solo del modo simulado
   const [messages, setMessages] = useState<GeoMessage[]>(
     API_CONFIG.USE_MOCKS ? BOGOTA_SEED_MESSAGES : []
@@ -66,51 +79,68 @@ export const MessagesProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     setError(null);
     try {
+      const currentAuthor = user
+        ? {
+            id: user.id,
+            username: user.username,
+            displayName: myProfile?.displayName ?? null,
+            color: myProfile?.color || user.color || colorForUserId(user.id),
+            avatarUrl: myProfile?.avatarUrl ?? null,
+          }
+        : null;
+
       const response = await messagesService.getMessages({
         status: statusFilter === 'todos' ? undefined : statusFilter,
         latitude: searchCenter?.latitude,
         longitude: searchCenter?.longitude,
         radiusMeters: SEARCH_RADIUS_METERS,
-        currentUser: user,
+        currentUser: currentAuthor,
       });
+
       if (!response.success) {
         setError(response.error || 'No se pudieron recuperar los mensajes.');
       } else if (!API_CONFIG.USE_MOCKS || response.data.length > 0) {
         let loaded = response.data;
-        if (!API_CONFIG.USE_MOCKS && user && loaded.length > 0) {
-          try {
-            const ids = loaded.slice(0, 100).map((m) => m.id);
-            const batchSummaries = await apiClient.requestRaw<any[]>(
-              API_CONFIG.ROUTES.RATINGS.BATCH,
-              {
-                method: 'POST',
-                body: JSON.stringify({ messageIds: ids }),
-              }
-            );
-            if (Array.isArray(batchSummaries)) {
-              const mapById = new Map<string, any>();
-              batchSummaries.forEach((s) => {
-                if (s && s.messageId) mapById.set(String(s.messageId), s);
-              });
-              loaded = loaded.map((m) => {
-                const s = mapById.get(m.id);
-                if (!s) return m;
-                return {
-                  ...m,
-                  likes: typeof s.likes === 'number' ? s.likes : m.likes,
-                  dislikes: typeof s.dislikes === 'number' ? s.dislikes : m.dislikes,
-                  score: typeof s.score === 'number' ? s.score : m.score,
-                  myRating:
-                    s.userRating === 'LIKE' || s.userRating === 'DISLIKE'
-                      ? s.userRating
-                      : null,
-                };
-              });
+
+        if (loaded.length > 0 && user) {
+          const messageIds = loaded.slice(0, 100).map((m) => m.id);
+          const authorIds = Array.from(
+            new Set(loaded.slice(0, 100).map((m) => m.authorId).filter(Boolean))
+          );
+
+          // Consultar perfiles de autores y calificaciones de mensajes en paralelo (sin N+1)
+          const [profilesMap, batchRatings] = await Promise.all([
+            resolveProfiles(authorIds).catch(() => ({} as Record<string, UserProfile>)),
+            ratingService.getBatchRatings(messageIds).catch(() => [] as RatingSummary[]),
+          ]);
+
+          const ratingsById = new Map<string, RatingSummary>();
+          batchRatings.forEach((r) => {
+            if (r && r.messageId) {
+              ratingsById.set(String(r.messageId), r);
             }
-          } catch {
-            // Si rating no está disponible aún, continuamos con los mensajes sin votos
-          }
+          });
+
+          loaded = loaded.map((m) => {
+            const profile = profilesMap[m.authorId];
+            const rating = ratingsById.get(m.id);
+
+            return {
+              ...m,
+              authorName: profile
+                ? profile.displayName || profile.username
+                : m.authorName,
+              authorColor: profile?.color || m.authorColor,
+              authorAvatarUrl:
+                profile?.avatarUrl !== undefined ? profile.avatarUrl : m.authorAvatarUrl,
+              likes: rating ? rating.likes : m.likes ?? 0,
+              dislikes: rating ? rating.dislikes : m.dislikes ?? 0,
+              score: rating ? rating.score : m.score ?? 0,
+              myRating: rating ? rating.myRating : m.myRating ?? null,
+            };
+          });
         }
+
         setMessages((prev) => {
           const loadedById = new Map<string, GeoMessage>();
           loaded.forEach((m) => loadedById.set(m.id, m));
@@ -129,7 +159,7 @@ export const MessagesProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [statusFilter, searchCenter, user]);
+  }, [statusFilter, searchCenter, user, myProfile, resolveProfiles]);
 
   useEffect(() => {
     fetchMessages();
@@ -148,7 +178,7 @@ export const MessagesProvider = ({ children }: { children: ReactNode }) => {
     return subscribeTopic(`message:${selectedMessage.id}`);
   }, [selectedMessage?.id, subscribeTopic]);
 
-  // Manejo de eventos en tiempo real (`message.published.v1`, `moderation.completed.v1`, `rating.changed.v1`)
+  // Manejo de eventos en tiempo real (`message.published.v1`, `moderation.completed.v1`, `rating.changed.v1`, `profile.updated.v1`)
   useEffect(() => {
     const unsubPublished = onEvent('message.published.v1', ({ payload }) => {
       if (!payload || !payload.messageId) return;
@@ -178,11 +208,7 @@ export const MessagesProvider = ({ children }: { children: ReactNode }) => {
         }
 
         const isMine = !!user && authorId === user.id;
-        const palette = nintendoTheme.colors.avatarColors;
-        let hash = 0;
-        for (const ch of authorId) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
-        const fallbackColor = palette[hash % palette.length];
-
+        const fallbackColor = colorForUserId(authorId);
         const publishedAt = payload.publishedAt
           ? new Date(payload.publishedAt)
           : new Date();
@@ -190,8 +216,13 @@ export const MessagesProvider = ({ children }: { children: ReactNode }) => {
         const newMsg: GeoMessage = {
           id: msgId,
           authorId,
-          authorName: isMine ? user!.username : `Explorador ${authorId.slice(0, 4)}`,
-          authorColor: isMine ? user!.color : fallbackColor,
+          authorName: isMine
+            ? myProfile?.displayName || user!.username
+            : `Explorador ${authorId.slice(0, 4)}`,
+          authorColor: isMine
+            ? myProfile?.color || user!.color || fallbackColor
+            : fallbackColor,
+          authorAvatarUrl: isMine ? myProfile?.avatarUrl ?? null : null,
           content: String(payload.contentPreview || '').slice(0, 140),
           latitude: payload.latitude,
           longitude: payload.longitude,
@@ -199,7 +230,33 @@ export const MessagesProvider = ({ children }: { children: ReactNode }) => {
           expiresAt: new Date(publishedAt.getTime() + 24 * 3600 * 1000).toISOString(),
           status: 'publicado',
           moderationStatus: decision,
+          likes: 0,
+          dislikes: 0,
+          score: 0,
+          myRating: null,
         };
+
+        // Resolver asíncronamente el perfil del autor si es otro explorador
+        if (!isMine && authorId) {
+          profileService
+            .getById(authorId)
+            .then((prof) => {
+              if (!prof) return;
+              setMessages((curr) =>
+                curr.map((m) =>
+                  m.id === msgId
+                    ? {
+                        ...m,
+                        authorName: prof.displayName || prof.username,
+                        authorColor: prof.color || m.authorColor,
+                        authorAvatarUrl: prof.avatarUrl ?? m.authorAvatarUrl,
+                      }
+                    : m
+                )
+              );
+            })
+            .catch(() => {});
+        }
 
         return [newMsg, ...prev];
       });
@@ -292,13 +349,55 @@ export const MessagesProvider = ({ children }: { children: ReactNode }) => {
       setSelectedMessage((prev) => (prev && prev.id === msgId ? null : prev));
     });
 
+    const unsubProfile = onEvent('profile.updated.v1', ({ payload }) => {
+      if (!payload || !payload.userId) return;
+      const updatedUserId = String(payload.userId);
+
+      setMessages((prev) =>
+        prev.map((m) => {
+          if (m.authorId !== updatedUserId) return m;
+          return {
+            ...m,
+            authorName:
+              typeof payload.displayName === 'string' && payload.displayName.trim() !== ''
+                ? payload.displayName
+                : m.authorName,
+            authorColor:
+              typeof payload.color === 'string' && payload.color.trim() !== ''
+                ? payload.color
+                : m.authorColor,
+            authorAvatarUrl:
+              payload.avatarUrl !== undefined ? payload.avatarUrl : m.authorAvatarUrl,
+          };
+        })
+      );
+
+      setSelectedMessage((prev) => {
+        if (!prev || prev.authorId !== updatedUserId) return prev;
+        return {
+          ...prev,
+          authorName:
+            typeof payload.displayName === 'string' && payload.displayName.trim() !== ''
+              ? payload.displayName
+              : prev.authorName,
+          authorColor:
+            typeof payload.color === 'string' && payload.color.trim() !== ''
+              ? payload.color
+              : prev.authorColor,
+          authorAvatarUrl:
+            payload.avatarUrl !== undefined ? payload.avatarUrl : prev.authorAvatarUrl,
+        };
+      });
+    });
+
     return () => {
       unsubPublished();
       unsubModeration();
       unsubRating();
       unsubDeleted();
+      unsubProfile();
     };
-  }, [onEvent, user, pushToast]);
+  }, [onEvent, user, myProfile, pushToast]);
 
   const createMessage = async (
     content: string,
@@ -331,7 +430,9 @@ export const MessagesProvider = ({ children }: { children: ReactNode }) => {
         {
           id: user.id,
           username: user.username,
-          color: user.color,
+          displayName: myProfile?.displayName ?? null,
+          color: myProfile?.color || user.color || colorForUserId(user.id),
+          avatarUrl: myProfile?.avatarUrl ?? null,
         }
       );
 
@@ -375,7 +476,6 @@ export const MessagesProvider = ({ children }: { children: ReactNode }) => {
       const result = await messagesService.deleteMessage(messageId);
 
       if (result.success) {
-        // Marcamos como eliminado según las reglas del dominio
         setMessages((prev) =>
           prev.map((m) =>
             m.id === messageId ? { ...m, status: 'eliminado' as MessageStatus } : m
@@ -414,59 +514,71 @@ export const MessagesProvider = ({ children }: { children: ReactNode }) => {
       return { success: false, error: 'No puedes calificar tu propio mensaje.' };
     }
 
-    const isToggleOff = target?.myRating === vote;
+    if (target && target.status !== 'publicado') {
+      return {
+        success: false,
+        error: 'Solo se pueden calificar mensajes publicados.',
+      };
+    }
+
+    const prevLikes = target?.likes ?? 0;
+    const prevDislikes = target?.dislikes ?? 0;
+    const prevMyRating = target?.myRating ?? null;
+    const isToggleOff = prevMyRating === vote;
+    const nextOptimisticVote: 'LIKE' | 'DISLIKE' | null = isToggleOff ? null : vote;
+
+    // Calcular conteos optimistas inmediatos
+    let optLikes = prevLikes;
+    let optDislikes = prevDislikes;
+    if (prevMyRating === 'LIKE') optLikes = Math.max(0, optLikes - 1);
+    if (prevMyRating === 'DISLIKE') optDislikes = Math.max(0, optDislikes - 1);
+    if (nextOptimisticVote === 'LIKE') optLikes += 1;
+    if (nextOptimisticVote === 'DISLIKE') optDislikes += 1;
+    const optScore = optLikes - optDislikes;
+
+    const applyRatingState = (
+      likes: number,
+      dislikes: number,
+      score: number,
+      myRating: 'LIKE' | 'DISLIKE' | null
+    ) => {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === messageId ? { ...m, likes, dislikes, score, myRating } : m
+        )
+      );
+      setSelectedMessage((prev) =>
+        prev && prev.id === messageId
+          ? { ...prev, likes, dislikes, score, myRating }
+          : prev
+      );
+    };
+
+    // 1. Actualización optimista inmediata en UI
+    applyRatingState(optLikes, optDislikes, optScore, nextOptimisticVote);
 
     try {
-      const summary = await apiClient.requestRaw<any>(
-        API_CONFIG.ROUTES.RATINGS.BY_MESSAGE(messageId),
-        isToggleOff
-          ? { method: 'DELETE' }
-          : {
-              method: 'PUT',
-              body: JSON.stringify({ value: vote }),
-            }
+      const summary = isToggleOff
+        ? await ratingService.removeRating(messageId)
+        : await ratingService.rateMessage(messageId, vote);
+
+      // 2. Reconciliación con el conteo autoritativo del backend
+      applyRatingState(
+        summary.likes,
+        summary.dislikes,
+        summary.score,
+        summary.myRating
       );
-
-      if (summary) {
-        const nextLikes = typeof summary.likes === 'number' ? summary.likes : target?.likes ?? 0;
-        const nextDislikes =
-          typeof summary.dislikes === 'number' ? summary.dislikes : target?.dislikes ?? 0;
-        const nextMyRating: 'LIKE' | 'DISLIKE' | null =
-          summary.userRating === 'LIKE' || summary.userRating === 'DISLIKE'
-            ? summary.userRating
-            : isToggleOff
-            ? null
-            : vote;
-
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === messageId
-              ? {
-                  ...m,
-                  likes: nextLikes,
-                  dislikes: nextDislikes,
-                  score: nextLikes - nextDislikes,
-                  myRating: nextMyRating,
-                }
-              : m
-          )
-        );
-
-        setSelectedMessage((prev) =>
-          prev && prev.id === messageId
-            ? {
-                ...prev,
-                likes: nextLikes,
-                dislikes: nextDislikes,
-                score: nextLikes - nextDislikes,
-                myRating: nextMyRating,
-              }
-            : prev
-        );
-      }
 
       return { success: true };
     } catch (err: any) {
+      // Revertir estado optimista si falló la petición
+      applyRatingState(
+        prevLikes,
+        prevDislikes,
+        prevLikes - prevDislikes,
+        prevMyRating
+      );
       return {
         success: false,
         error: err.message || 'No se pudo registrar tu calificación.',
@@ -474,10 +586,18 @@ export const MessagesProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Filtrado de mensajes visibles
+  // Filtrado de mensajes visibles:
+  // En 'todos', los mensajes 'oculto' (BLOCKED) o 'pendiente' solo los ve su propio autor
   const activeMessages = messages.filter((m) => {
+    if (m.status === 'eliminado') return false;
     if (statusFilter === 'todos') {
-      return m.status !== 'eliminado';
+      if ((m.status === 'oculto' || m.status === 'pendiente') && m.authorId !== user?.id) {
+        return false;
+      }
+      return true;
+    }
+    if ((statusFilter === 'oculto' || statusFilter === 'pendiente') && m.authorId !== user?.id) {
+      return false;
     }
     return m.status === statusFilter;
   });

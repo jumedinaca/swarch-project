@@ -82,6 +82,9 @@ export const API_CONFIG = {
       GRAPHQL: '/api/network/graphql',
     },
     PROFILES: {
+      ME: '/api/profiles/me',
+      ME_AVATAR: '/api/profiles/me/avatar',
+      BY_ID: (userId: string) => `/api/profiles/${userId}`,
       BATCH: '/api/profiles/batch',
       SEARCH: '/api/profiles/search',
     },
@@ -92,6 +95,9 @@ export const API_CONFIG = {
     REPUTATION: {
       ME: '/api/reputation/me',
       BY_USER: (userId: string) => `/api/reputation/${userId}`,
+      LEADERBOARD: '/api/reputation/leaderboard',
+      HISTORY: (userId: string) => `/api/reputation/${userId}/history`,
+      RECOMPUTE: (userId: string) => `/api/reputation/${userId}/recompute`,
     },
     SOCKET: {
       TICKETS: '/api/socket/tickets',

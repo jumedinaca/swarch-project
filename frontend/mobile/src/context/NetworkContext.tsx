@@ -6,7 +6,7 @@ import React, {
   useCallback,
   ReactNode,
 } from 'react';
-import { Friendship } from '../types';
+import { Friendship, UserProfile } from '../types';
 import { useAuth } from './AuthContext';
 import { useRealtime } from './RealtimeContext';
 import { networkService } from '../services/network/networkService';
@@ -27,7 +27,10 @@ async function attachProfiles(
 ): Promise<Friendship[]> {
   if (friendships.length === 0) return friendships;
   const ids = friendships.map((friendship) => otherUserId(friendship, currentUserId));
-  const profiles = await profileService.getBatch(ids);
+  const profilesList = await profileService.getBatch(ids);
+  const profiles = new Map<string, UserProfile>(
+    Array.isArray(profilesList) ? profilesList.map((p) => [p.userId, p]) : []
+  );
   return friendships.map((friendship) => ({
     ...friendship,
     profile: profiles.get(otherUserId(friendship, currentUserId)) ?? friendship.profile ?? null,
