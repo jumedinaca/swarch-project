@@ -42,7 +42,10 @@ async function graphql<T>(
   return body.data;
 }
 
-export async function searchProfilesAction(query: string): Promise<ProfileSearchResult> {
+export async function searchProfilesAction(
+  query: string,
+  limit = 10,
+): Promise<ProfileSearchResult> {
   const token = await tokenOrNull();
   if (!token) {
     return { ok: false, error: "Inicia sesión para buscar exploradores." };
@@ -54,11 +57,51 @@ export async function searchProfilesAction(query: string): Promise<ProfileSearch
   }
 
   try {
-    const params = new URLSearchParams({ q: clean, limit: "10" });
+    const params = new URLSearchParams({
+      q: clean,
+      limit: String(Math.min(50, Math.max(1, Math.trunc(limit) || 10))),
+    });
     const profiles = await gatewayJson<Profile[]>(
       `/api/profiles/search?${params.toString()}`,
       { token },
     );
+    return { ok: true, profiles };
+  } catch (error) {
+    return { ok: false, error: errorToMessage(error) };
+  }
+}
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Consulta uno o varios perfiles por id (GET /profiles/{id} o /profiles/batch). */
+export async function lookupProfilesAction(ids: string[]): Promise<ProfileSearchResult> {
+  const token = await tokenOrNull();
+  if (!token) return { ok: false, error: "Inicia sesión para consultar perfiles." };
+
+  const unique = Array.from(new Set(ids.map((id) => id.trim()).filter(Boolean)));
+  if (unique.length === 0) {
+    return { ok: false, error: "Escribe al menos un id de explorador." };
+  }
+  if (unique.length > 100) {
+    return { ok: false, error: "Puedes consultar máximo 100 ids a la vez." };
+  }
+  const invalid = unique.find((id) => !UUID_PATTERN.test(id));
+  if (invalid) {
+    return { ok: false, error: `"${invalid}" no es un id válido (UUID).` };
+  }
+
+  try {
+    if (unique.length === 1) {
+      const profile = await gatewayJson<Profile>(
+        `/api/profiles/${encodeURIComponent(unique[0])}`,
+        { token },
+      );
+      return { ok: true, profiles: [profile] };
+    }
+    const params = new URLSearchParams({ ids: unique.join(",") });
+    const profiles = await gatewayJson<Profile[]>(`/api/profiles/batch?${params}`, {
+      token,
+    });
     return { ok: true, profiles };
   } catch (error) {
     return { ok: false, error: errorToMessage(error) };

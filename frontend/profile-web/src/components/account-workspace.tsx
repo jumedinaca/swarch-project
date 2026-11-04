@@ -8,6 +8,7 @@ import {
   LogOut,
   MessageSquareText,
   RefreshCw,
+  Search,
   Trophy,
   UserRound,
   Users,
@@ -17,6 +18,7 @@ import { formatDate, relativeTime } from "@/lib/format";
 import { PROFILE_TABS, type ProfileTab } from "@/lib/theme";
 import type { AccountData, AccountMode } from "@/lib/types";
 import { Brand } from "./brand";
+import { ExplorePanel } from "./explore-panel";
 import { NetworkPanel } from "./network-panel";
 import { MessagesPanel } from "./messages-panel";
 import { ProfilePanel } from "./profile-panel";
@@ -38,6 +40,7 @@ interface ToastState {
 
 const tabIcons = {
   profile: UserRound,
+  explore: Search,
   messages: MessageSquareText,
   reputation: Trophy,
   network: Users,
@@ -264,6 +267,14 @@ export function AccountWorkspace({
         <div className="tab-panel" key={activeTab}>
           {activeTab === "profile" ? (
             <ProfilePanel
+              data={data}
+              mode={mode}
+              onData={setData}
+              notify={notify}
+            />
+          ) : null}
+          {activeTab === "explore" ? (
+            <ExplorePanel
               data={data}
               mode={mode}
               onData={setData}
