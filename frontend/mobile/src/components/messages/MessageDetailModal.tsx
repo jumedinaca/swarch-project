@@ -244,19 +244,6 @@ export const MessageDetailModal: React.FC<MessageDetailModalProps> = ({
             </View>
           )}
 
-          {/* Información contextual geoespacial */}
-          <View style={styles.geoInfoBox}>
-            <Ionicons
-              name="location-outline"
-              size={13}
-              color={nintendoTheme.colors.textSecondary}
-            />
-            <Text style={styles.geoCoordsText}>
-              COORDS // LAT {message.latitude.toFixed(5)}, LNG{' '}
-              {message.longitude.toFixed(5)}
-            </Text>
-          </View>
-
           <View style={styles.buttonRow}>
             <WiiButton
               title="CERRAR"

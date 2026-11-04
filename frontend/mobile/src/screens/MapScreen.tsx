@@ -47,12 +47,10 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
     activeMessages,
     selectedMessage,
     setSelectedMessage,
-    statusFilter,
-    setStatusFilter,
     setSearchCenter,
   } = useMessages();
   const { pendingCount } = useNetwork();
-  const { connectionState, updateRadarLocation } = useRealtime();
+  const { updateRadarLocation } = useRealtime();
 
   const mapViewRef = useRef<MapLibreOsmViewRef>(null);
 
@@ -83,7 +81,6 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
       : '@invitado');
   const userAvatarUrl = myProfile?.avatarUrl || null;
   const repLevel = myReputation?.level || 'Novato';
-  const repScore = myReputation?.score ?? 0;
 
   // Mensajes dentro del rango activo alrededor del centro actual del radar
   const inRangeMessages = useMemo(() => {
@@ -227,21 +224,6 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
     setProfileModalVisible(true);
   };
 
-  const filters: (MessageStatus | 'todos')[] = ['todos', 'publicado', 'pendiente', 'oculto'];
-
-  const wsStatusColor =
-    connectionState === 'connected'
-      ? '#2AC769'
-      : connectionState === 'connecting' || connectionState === 'reconnecting'
-      ? '#F59E0B'
-      : '#9CA3AF';
-  const wsStatusLabel =
-    connectionState === 'connected'
-      ? 'LIVE'
-      : connectionState === 'connecting' || connectionState === 'reconnecting'
-      ? 'SYNC'
-      : 'OFF';
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
@@ -274,25 +256,14 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
               <View style={styles.userReputationInline}>
                 <Ionicons name="star" size={9} color="#8A5A00" />
                 <Text style={styles.userReputationText} numberOfLines={1}>
-                  {repLevel.toUpperCase()} · {repScore} PTS
+                  {repLevel.toUpperCase()}
                 </Text>
               </View>
             </View>
           </TouchableOpacity>
 
-          {/* Grupo de acciones del HUD: WS Live, Ranking, Red, Radar y Salir */}
+          {/* Grupo de acciones del HUD: Ranking, Red, Radar y Salir */}
           <View style={styles.topBarActions}>
-            {/* Indicador Realtime WebSocket */}
-            <TouchableOpacity
-              style={styles.wsStatusPill}
-              onPress={() => setReputationModalVisible(true)}
-              activeOpacity={0.75}
-              accessibilityLabel="Estado de conexión en tiempo real"
-            >
-              <View style={[styles.wsDot, { backgroundColor: wsStatusColor }]} />
-              <Text style={styles.wsStatusText}>{wsStatusLabel}</Text>
-            </TouchableOpacity>
-
             {/* Botón de Reputación / Leaderboard */}
             <TouchableOpacity
               style={[styles.actionPill, styles.repActionPill]}
@@ -340,40 +311,6 @@ export const MapScreen: React.FC<MapScreenProps> = ({ onLogout }) => {
               <Ionicons name="log-out-outline" size={15} color={nintendoTheme.colors.famicomRed} />
             </TouchableOpacity>
           </View>
-        </View>
-
-        {/* Barra de Filtros Segmentada Bento */}
-        <View style={styles.filterBar}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filterScroll}
-          >
-            {filters.map((f) => {
-              const isActive = statusFilter === f;
-              const label = f === 'todos' ? 'TODOS' : f.toUpperCase();
-              return (
-                <TouchableOpacity
-                  key={f}
-                  style={[
-                    styles.filterChip,
-                    isActive && styles.filterChipActive,
-                  ]}
-                  onPress={() => setStatusFilter(f)}
-                  activeOpacity={0.75}
-                >
-                  <Text
-                    style={[
-                      styles.filterChipText,
-                      isActive && styles.filterChipTextActive,
-                    ]}
-                  >
-                    {label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
         </View>
 
         {/* Contenedor del Mapa 3D */}
