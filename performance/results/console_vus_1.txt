@@ -26,56 +26,8 @@ default   [  10% ] 1 VUs  03.0s/30s
 running (0m04.0s), 1/1 VUs, 3 complete and 0 interrupted iterations
 default   [  13% ] 1 VUs  04.0s/30s
 
-running (0m04.6s), 1/1 VUs, 4 complete and 0 interrupted iterations
-default   [  15% ] 1 VUs  04.6s/30s
-
-running (0m04.6s), 1/1 VUs, 4 complete and 0 interrupted iterations
-default   [  15% ] 1 VUs  04.6s/30s
-
-running (0m04.7s), 1/1 VUs, 4 complete and 0 interrupted iterations
-default   [  16% ] 1 VUs  04.7s/30s
-
-running (0m04.7s), 1/1 VUs, 4 complete and 0 interrupted iterations
-default   [  16% ] 1 VUs  04.7s/30s
-
-running (0m04.7s), 1/1 VUs, 4 complete and 0 interrupted iterations
-default   [  16% ] 1 VUs  04.7s/30s
-
-running (0m04.7s), 1/1 VUs, 4 complete and 0 interrupted iterations
-default   [  16% ] 1 VUs  04.7s/30s
-
-running (0m04.7s), 1/1 VUs, 4 complete and 0 interrupted iterations
-default   [  16% ] 1 VUs  04.7s/30s
-
-running (0m04.7s), 1/1 VUs, 4 complete and 0 interrupted iterations
-default   [  16% ] 1 VUs  04.7s/30s
-
-running (0m04.8s), 1/1 VUs, 4 complete and 0 interrupted iterations
-default   [  16% ] 1 VUs  04.8s/30s
-
-running (0m04.8s), 1/1 VUs, 4 complete and 0 interrupted iterations
-default   [  16% ] 1 VUs  04.8s/30s
-
-running (0m04.8s), 1/1 VUs, 4 complete and 0 interrupted iterations
-default   [  16% ] 1 VUs  04.8s/30s
-
-running (0m04.8s), 1/1 VUs, 4 complete and 0 interrupted iterations
-default   [  16% ] 1 VUs  04.8s/30s
-
-running (0m04.9s), 1/1 VUs, 4 complete and 0 interrupted iterations
-default   [  16% ] 1 VUs  04.9s/30s
-
 running (0m05.0s), 1/1 VUs, 4 complete and 0 interrupted iterations
 default   [  17% ] 1 VUs  05.0s/30s
-
-running (0m05.1s), 1/1 VUs, 5 complete and 0 interrupted iterations
-default   [  17% ] 1 VUs  05.1s/30s
-
-running (0m05.4s), 1/1 VUs, 5 complete and 0 interrupted iterations
-default   [  18% ] 1 VUs  05.4s/30s
-
-running (0m05.6s), 1/1 VUs, 5 complete and 0 interrupted iterations
-default   [  19% ] 1 VUs  05.6s/30s
 
 running (0m06.0s), 1/1 VUs, 5 complete and 0 interrupted iterations
 default   [  20% ] 1 VUs  06.0s/30s
@@ -155,21 +107,21 @@ default   [ 100% ] 1 VUs  30.0s/30s
 
   █ TOTAL RESULTS 
 
-    checks_total.......: 30      0.992498/s
+    checks_total.......: 30      0.993177/s
     checks_succeeded...: 100.00% 30 out of 30
     checks_failed......: 0.00%   0 out of 30
 
     ✓ status is 200
 
     HTTP
-    http_req_duration..............: avg=6.17ms min=3.44ms med=6.09ms max=13.71ms p(90)=7.17ms p(95)=8.84ms
-      { expected_response:true }...: avg=6.17ms min=3.44ms med=6.09ms max=13.71ms p(90)=7.17ms p(95)=8.84ms
+    http_req_duration..............: avg=5.47ms min=2.09ms med=5.86ms max=8.09ms p(90)=6.99ms p(95)=7.54ms
+      { expected_response:true }...: avg=5.47ms min=2.09ms med=5.86ms max=8.09ms p(90)=6.99ms p(95)=7.54ms
     http_req_failed................: 0.00%  0 out of 30
-    http_reqs......................: 30     0.992498/s
+    http_reqs......................: 30     0.993177/s
 
     EXECUTION
-    iteration_duration.............: avg=1s     min=1s     med=1s     max=1.01s   p(90)=1s     p(95)=1.01s 
-    iterations.....................: 30     0.992498/s
+    iteration_duration.............: avg=1s     min=1s     med=1s     max=1.01s  p(90)=1s     p(95)=1s    
+    iterations.....................: 30     0.993177/s
     vus............................: 1      min=1       max=1
     vus_max........................: 1      min=1       max=1
 

@@ -17,8 +17,8 @@
 running (0m01.0s), 099/200 VUs, 0 complete and 0 interrupted iterations
 default   [   3% ] 099/200 VUs  01.0s/32.0s
 
-running (0m02.0s), 198/200 VUs, 99 complete and 0 interrupted iterations
-default   [   6% ] 198/200 VUs  02.0s/32.0s
+running (0m02.0s), 199/200 VUs, 99 complete and 0 interrupted iterations
+default   [   6% ] 199/200 VUs  02.0s/32.0s
 
 running (0m03.0s), 200/200 VUs, 296 complete and 0 interrupted iterations
 default   [   9% ] 200/200 VUs  03.0s/32.0s
@@ -41,19 +41,19 @@ default   [  25% ] 200/200 VUs  08.0s/32.0s
 running (0m09.0s), 200/200 VUs, 1494 complete and 0 interrupted iterations
 default   [  28% ] 200/200 VUs  09.0s/32.0s
 
-running (0m10.0s), 200/200 VUs, 1692 complete and 0 interrupted iterations
+running (0m10.0s), 200/200 VUs, 1694 complete and 0 interrupted iterations
 default   [  31% ] 200/200 VUs  10.0s/32.0s
 
-running (0m11.0s), 200/200 VUs, 1892 complete and 0 interrupted iterations
+running (0m11.0s), 200/200 VUs, 1894 complete and 0 interrupted iterations
 default   [  34% ] 200/200 VUs  11.0s/32.0s
 
-running (0m12.0s), 200/200 VUs, 2092 complete and 0 interrupted iterations
+running (0m12.0s), 200/200 VUs, 2094 complete and 0 interrupted iterations
 default   [  37% ] 200/200 VUs  12.0s/32.0s
 
 running (0m13.0s), 200/200 VUs, 2292 complete and 0 interrupted iterations
 default   [  41% ] 200/200 VUs  13.0s/32.0s
 
-running (0m14.0s), 200/200 VUs, 2492 complete and 0 interrupted iterations
+running (0m14.0s), 200/200 VUs, 2491 complete and 0 interrupted iterations
 default   [  44% ] 200/200 VUs  14.0s/32.0s
 
 running (0m15.0s), 200/200 VUs, 2690 complete and 0 interrupted iterations
@@ -71,7 +71,7 @@ default   [  56% ] 200/200 VUs  18.0s/32.0s
 running (0m19.0s), 200/200 VUs, 3490 complete and 0 interrupted iterations
 default   [  59% ] 200/200 VUs  19.0s/32.0s
 
-running (0m20.0s), 200/200 VUs, 3688 complete and 0 interrupted iterations
+running (0m20.0s), 200/200 VUs, 3690 complete and 0 interrupted iterations
 default   [  62% ] 200/200 VUs  20.0s/32.0s
 
 running (0m21.0s), 200/200 VUs, 3888 complete and 0 interrupted iterations
@@ -95,43 +95,43 @@ default   [  81% ] 200/200 VUs  26.0s/32.0s
 running (0m27.0s), 200/200 VUs, 5086 complete and 0 interrupted iterations
 default   [  84% ] 200/200 VUs  27.0s/32.0s
 
-running (0m28.0s), 200/200 VUs, 5282 complete and 0 interrupted iterations
+running (0m28.0s), 200/200 VUs, 5286 complete and 0 interrupted iterations
 default   [  87% ] 200/200 VUs  28.0s/32.0s
 
-running (0m29.0s), 200/200 VUs, 5482 complete and 0 interrupted iterations
+running (0m29.0s), 200/200 VUs, 5484 complete and 0 interrupted iterations
 default   [  91% ] 200/200 VUs  29.0s/32.0s
 
-running (0m30.0s), 200/200 VUs, 5682 complete and 0 interrupted iterations
+running (0m30.0s), 200/200 VUs, 5684 complete and 0 interrupted iterations
 default   [  94% ] 200/200 VUs  30.0s/32.0s
 
-running (0m31.0s), 200/200 VUs, 5882 complete and 0 interrupted iterations
+running (0m31.0s), 200/200 VUs, 5884 complete and 0 interrupted iterations
 default   [  97% ] 200/200 VUs  31.0s/32.0s
 
-running (0m32.0s), 200/200 VUs, 6082 complete and 0 interrupted iterations
+running (0m32.0s), 200/200 VUs, 6084 complete and 0 interrupted iterations
 default   [ 100% ] 200/200 VUs  32.0s/32.0s
 
-running (0m33.0s), 004/200 VUs, 6282 complete and 0 interrupted iterations
+running (0m33.0s), 002/200 VUs, 6284 complete and 0 interrupted iterations
 default ↓ [ 100% ] 200/200 VUs  32s
 
 
   █ TOTAL RESULTS 
 
-    checks_total.......: 6286    190.459142/s
+    checks_total.......: 6286    190.482338/s
     checks_succeeded...: 100.00% 6286 out of 6286
     checks_failed......: 0.00%   0 out of 6286
 
     ✓ status is 200
 
     HTTP
-    http_req_duration..............: avg=1.73ms min=884µs med=1.62ms max=8.25ms p(90)=2.28ms p(95)=2.58ms
-      { expected_response:true }...: avg=1.73ms min=884µs med=1.62ms max=8.25ms p(90)=2.28ms p(95)=2.58ms
+    http_req_duration..............: avg=1.68ms min=851µs med=1.55ms max=127.25ms p(90)=2.16ms p(95)=2.44ms
+      { expected_response:true }...: avg=1.68ms min=851µs med=1.55ms max=127.25ms p(90)=2.16ms p(95)=2.44ms
     http_req_failed................: 0.00%  0 out of 6286
-    http_reqs......................: 6286   190.459142/s
+    http_reqs......................: 6286   190.482338/s
 
     EXECUTION
-    iteration_duration.............: avg=1s     min=1s    med=1s     max=1s     p(90)=1s     p(95)=1s    
-    iterations.....................: 6286   190.459142/s
-    vus............................: 4      min=4         max=200
+    iteration_duration.............: avg=1s     min=1s    med=1s     max=1.12s    p(90)=1s     p(95)=1s    
+    iterations.....................: 6286   190.482338/s
+    vus............................: 2      min=2         max=200
     vus_max........................: 200    min=200       max=200
 
     NETWORK
