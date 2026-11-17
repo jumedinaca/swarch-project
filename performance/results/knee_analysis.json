@@ -1,0 +1,74 @@
+{
+  "rows": [
+    {
+      "vus": 1,
+      "samples": 30,
+      "avg_ms": 6.17,
+      "min_ms": 3.44,
+      "med_ms": 6.1,
+      "p90_ms": 7.18,
+      "p95_ms": 8.84,
+      "max_ms": 13.71,
+      "error_pct": 0.0,
+      "rps": 0.99
+    },
+    {
+      "vus": 50,
+      "samples": 1567,
+      "avg_ms": 4.34,
+      "min_ms": 1.03,
+      "med_ms": 4.5,
+      "p90_ms": 6.09,
+      "p95_ms": 6.54,
+      "max_ms": 17.13,
+      "error_pct": 0.0,
+      "rps": 47.48
+    },
+    {
+      "vus": 200,
+      "samples": 6286,
+      "avg_ms": 1.73,
+      "min_ms": 0.88,
+      "med_ms": 1.63,
+      "p90_ms": 2.28,
+      "p95_ms": 2.59,
+      "max_ms": 8.26,
+      "error_pct": 0.0,
+      "rps": 190.46
+    },
+    {
+      "vus": 500,
+      "samples": 15714,
+      "avg_ms": 2.08,
+      "min_ms": 0.82,
+      "med_ms": 1.75,
+      "p90_ms": 3.19,
+      "p95_ms": 3.82,
+      "max_ms": 35.45,
+      "error_pct": 0.0,
+      "rps": 476.45
+    },
+    {
+      "vus": 2000,
+      "samples": 61290,
+      "avg_ms": 26.85,
+      "min_ms": 0.76,
+      "med_ms": 4.38,
+      "p90_ms": 92.57,
+      "p95_ms": 145.92,
+      "max_ms": 260.65,
+      "error_pct": 0.0,
+      "rps": 1857.08
+    }
+  ],
+  "knee": {
+    "knee_vus": 500,
+    "knee_avg_ms": 2.08,
+    "knee_p95_ms": 3.82,
+    "knee_rps": 476.45,
+    "knee_error_pct": 0.0,
+    "first_error_vus": null,
+    "first_error_pct": 0.0,
+    "first_error_avg_ms": null
+  }
+}

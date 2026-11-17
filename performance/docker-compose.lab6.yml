@@ -1,0 +1,104 @@
+# Despliegue para Laboratory 6 (Performance Tests - Option 2: k6)
+# Despliega exactamente los 4 componentes requeridos en la seccion ii.b:
+#   1. A database       -> messages-db (PostgreSQL + PostGIS)
+#   2. A microservice   -> messages (Go REST API)
+#   3. The API Gateway  -> gateway (Spring Cloud Gateway :8080)
+#   4. The web frontend -> frontend (Expo Web / Nginx :8081)
+
+name: geopicto-lab6
+
+x-jwt-secret: &jwt-secret ${JWT_SECRET:-geopicto-prototipo-secreto-local-no-usar-en-produccion}
+x-jwt-issuer: &jwt-issuer ${JWT_ISSUER:-geopicto-auth}
+
+services:
+  # 1. Database (PostgreSQL 18 + PostGIS 3.6)
+  messages-db:
+    image: postgis/postgis:18-3.6
+    container_name: geopicto-lab6-messages-db
+    cpus: "1.40"
+    mem_limit: "512m"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: messages
+    volumes:
+      - lab6_messages_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d messages"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # 2. Microservice (messages - Go)
+  messages:
+    build: ../services/messages
+    container_name: geopicto-lab6-messages
+    cpus: "1.15"
+    mem_limit: "512m"
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@messages-db:5432/messages?sslmode=disable
+      PORT: "8080"
+      JWT_SECRET: *jwt-secret
+      JWT_ISSUER: *jwt-issuer
+      # Sin broker para aislar el microservicio y la BD en la prueba de desempeno
+      RABBITMQ_URL: ""
+      MODERATION_TIMEOUT_SECONDS: "1"
+      PENDING_SWEEP_INTERVAL_SECONDS: "1"
+      FAIL_OPEN: "true"
+    depends_on:
+      messages-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- 'http://localhost:8080/health' || exit 1"]
+      interval: 5s
+      timeout: 3s
+      start_period: 15s
+      retries: 10
+    restart: unless-stopped
+
+  # 3. API Gateway (Spring Cloud Gateway - WebFlux)
+  gateway:
+    build: ../gateway
+    container_name: geopicto-lab6-gateway
+    environment:
+      JWT_SECRET: *jwt-secret
+      JWT_ISSUER: *jwt-issuer
+      MESSAGES_SERVICE_URL: http://messages:8080
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8081,http://127.0.0.1:8081}
+    ports:
+      - "8080:8080"
+    depends_on:
+      messages:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/actuator/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      start_period: 30s
+      retries: 15
+    restart: unless-stopped
+
+  # 4. Web Front-end (Expo React Native Web + Nginx)
+  frontend:
+    build:
+      context: ../frontend/mobile
+      args:
+        EXPO_PUBLIC_API_GATEWAY_URL: ${EXPO_PUBLIC_API_GATEWAY_URL:-http://localhost:8080}
+        EXPO_PUBLIC_USE_MOCK_DATA: "false"
+    container_name: geopicto-lab6-frontend
+    ports:
+      - "8081:80"
+    depends_on:
+      gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      start_period: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  lab6_messages_data:
