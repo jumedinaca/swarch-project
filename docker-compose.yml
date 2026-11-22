@@ -1,7 +1,13 @@
-# Entorno completo de GeoPicto: frontends, API Gateway y los servicios de
-# autenticacion, mensajes, moderacion, red social, perfiles, calificaciones,
-# reputacion, correo y tiempo real, con sus bases de datos, RabbitMQ, Redis,
-# MinIO y Mailpit en la misma red.
+# Entorno completo de GeoPicto con segmentacion de redes Docker.
+#
+# Topologia de redes (Network Segmentation Pattern — Escenario 3):
+#
+#   edge_net              — Borde: reverse-proxy*, gateway, frontend, profile-web
+#   gateway_net  (interna)— Gateway + microservicios HTTP que enruta
+#   broker_net   (interna)— RabbitMQ, Redis + servicios con eventos/cache
+#   *_db_net     (interna)— Red aislada por cada par servicio <-> base de datos
+#
+# * El contenedor reverse-proxy se agregara en feat/security-edge-tls (Persona 2).
 #
 #   docker compose up --build --wait
 #
@@ -11,7 +17,7 @@
 #
 # Se publican al host el gateway (:8080), el frontend Expo (:8081), el panel
 # SSR (:8082) y la bandeja de Mailpit (:8025). El resto de servicios se
-# alcanzan unicamente por la red interna de Compose.
+# alcanzan unicamente por redes internas segmentadas de Compose.
 
 name: geopicto
 
@@ -50,6 +56,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+    networks:
+      - broker_net
     restart: unless-stopped
 
   redis:
@@ -59,6 +67,8 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+    networks:
+      - broker_net
     restart: unless-stopped
 
   # Almacenamiento S3 compatible de los avatares. El bucket es privado: los
@@ -78,6 +88,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - profile_data_net
     restart: unless-stopped
 
   # Servidor SMTP local de desarrollo. Solo se publica la interfaz web (:8025)
@@ -91,6 +103,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - email_data_net
     restart: unless-stopped
 
   # ---------------------------------------------------------------------------
@@ -110,6 +124,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - auth_db_net
     restart: unless-stopped
 
   messages-db:
@@ -125,6 +141,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - messages_db_net
     restart: unless-stopped
 
   moderation-db:
@@ -140,6 +158,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - moderation_db_net
     restart: unless-stopped
 
   network-db:
@@ -155,6 +175,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - network_db_net
     restart: unless-stopped
 
   profile-db:
@@ -170,6 +192,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - profile_data_net
     restart: unless-stopped
 
   rating-db:
@@ -185,6 +209,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - rating_db_net
     restart: unless-stopped
 
   reputation-db:
@@ -200,6 +226,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - reputation_db_net
     restart: unless-stopped
 
   email-db:
@@ -215,6 +243,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - email_data_net
     restart: unless-stopped
 
   # ---------------------------------------------------------------------------
@@ -246,6 +276,10 @@ services:
       timeout: 5s
       start_period: 30s
       retries: 5
+    networks:
+      - gateway_net
+      - broker_net
+      - auth_db_net
     restart: unless-stopped
 
   messages:
@@ -274,6 +308,10 @@ services:
       timeout: 3s
       start_period: 60s
       retries: 5
+    networks:
+      - gateway_net
+      - broker_net
+      - messages_db_net
     restart: unless-stopped
 
   # Consume message.submitted.v1 y responde moderation.completed.v1. No se
@@ -300,6 +338,9 @@ services:
       timeout: 5s
       start_period: 30s
       retries: 5
+    networks:
+      - broker_net
+      - moderation_db_net
     restart: unless-stopped
 
   network:
@@ -330,6 +371,10 @@ services:
       timeout: 5s
       start_period: 30s
       retries: 5
+    networks:
+      - gateway_net
+      - broker_net
+      - network_db_net
     restart: unless-stopped
 
   profile:
@@ -365,6 +410,10 @@ services:
       timeout: 5s
       start_period: 30s
       retries: 5
+    networks:
+      - gateway_net
+      - broker_net
+      - profile_data_net
     restart: unless-stopped
 
   rating:
@@ -385,6 +434,10 @@ services:
       timeout: 5s
       start_period: 20s
       retries: 5
+    networks:
+      - gateway_net
+      - broker_net
+      - rating_db_net
     restart: unless-stopped
 
   reputation:
@@ -405,12 +458,20 @@ services:
       timeout: 5s
       start_period: 25s
       retries: 5
+    networks:
+      - gateway_net
+      - broker_net
+      - reputation_db_net
     restart: unless-stopped
 
   socket-gateway:
     build: ./services/realtime
     networks:
-      default:
+      gateway_net:
+        aliases:
+          - realtime
+          - socket-gateway
+      broker_net:
         aliases:
           - realtime
           - socket-gateway
@@ -467,6 +528,9 @@ services:
       timeout: 5s
       start_period: 30s
       retries: 5
+    networks:
+      - broker_net
+      - email_data_net
     restart: unless-stopped
 
   # ---------------------------------------------------------------------------
@@ -510,6 +574,10 @@ services:
       timeout: 5s
       start_period: 40s
       retries: 10
+    networks:
+      - edge_net
+      - gateway_net
+      - broker_net
     restart: unless-stopped
 
   # ---------------------------------------------------------------------------
@@ -535,6 +603,8 @@ services:
       timeout: 5s
       start_period: 5s
       retries: 3
+    networks:
+      - edge_net
     restart: unless-stopped
 
   # Panel SSR de cuenta (Next.js): perfil, mensajes, reputacion y red de amigos.
@@ -556,6 +626,8 @@ services:
       timeout: 5s
       start_period: 10s
       retries: 3
+    networks:
+      - edge_net
     restart: unless-stopped
 
 volumes:
@@ -568,3 +640,67 @@ volumes:
   profile_avatars:
   rating_data:
   reputation_data:
+
+# =============================================================================
+# Redes segmentadas (Network Segmentation Pattern — Escenario 3)
+# =============================================================================
+#
+# Topologia:
+#   edge_net              — Borde: reverse-proxy*, gateway, frontend, profile-web
+#   gateway_net  (interna)— Gateway + microservicios HTTP que enruta
+#   broker_net   (interna)— RabbitMQ, Redis + servicios con eventos/cache
+#   *_db_net     (interna)— Red aislada por cada par servicio <-> base de datos
+#
+# * El reverse-proxy se agregara en la rama feat/security-edge-tls (Persona 2).
+
+networks:
+  # Red de borde: conecta los servicios expuestos al exterior.
+  # Unica red no interna; aqui se publican puertos al host.
+  edge_net:
+    driver: bridge
+
+  # Red del gateway: conecta el gateway con los microservicios HTTP que enruta.
+  # moderation y email NO estan aqui porque no reciben trafico del gateway.
+  gateway_net:
+    driver: bridge
+    internal: true
+
+  # Red del broker: conecta RabbitMQ, Redis y los microservicios que
+  # publican/consumen eventos o usan Redis como cache distribuida.
+  broker_net:
+    driver: bridge
+    internal: true
+
+  # --- Redes de datos aisladas (una por bounded context) ---
+
+  auth_db_net:
+    driver: bridge
+    internal: true
+
+  messages_db_net:
+    driver: bridge
+    internal: true
+
+  moderation_db_net:
+    driver: bridge
+    internal: true
+
+  network_db_net:
+    driver: bridge
+    internal: true
+
+  profile_data_net:
+    driver: bridge
+    internal: true
+
+  rating_db_net:
+    driver: bridge
+    internal: true
+
+  reputation_db_net:
+    driver: bridge
+    internal: true
+
+  email_data_net:
+    driver: bridge
+    internal: true
