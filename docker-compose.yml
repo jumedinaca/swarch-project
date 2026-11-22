@@ -9,9 +9,10 @@
 # el prototipo (ver x-jwt-secret abajo). Para usar uno propio, define
 # JWT_SECRET en un archivo .env (ver .env.example).
 #
-# Se publican al host el gateway (:8080), el frontend Expo (:8081), el panel
-# SSR (:8082) y la bandeja de Mailpit (:8025). El resto de servicios se
-# alcanzan unicamente por la red interna de Compose.
+# Solo se publican al host el Reverse Proxy (:80/:443) y la bandeja de Mailpit
+# (:8025). El gateway, el frontend Expo y el panel SSR se alcanzan unicamente a
+# traves del proxy (https://app.localhost, https://profile.localhost); el resto
+# de servicios, solo por la red interna de Compose.
 
 name: geopicto
 
@@ -349,7 +350,7 @@ services:
       # avatarUrl apunta al gateway, que es lo unico que ve el navegador.
       # EXPO_PUBLIC_API_GATEWAY_URL tambien se usa para el build del frontend,
       # asi que al cambiar de host ambas cosas quedan alineadas.
-      AVATAR_PUBLIC_BASE_URL: ${EXPO_PUBLIC_API_GATEWAY_URL:-http://localhost:8080}/api/profiles/avatars
+      AVATAR_PUBLIC_BASE_URL: ${EXPO_PUBLIC_API_GATEWAY_URL:-https://app.localhost}/api/profiles/avatars
       # Vacio a proposito: el gateway agrega las cabeceras CORS.
       CORS_ORIGINS: ""
     depends_on:
@@ -420,7 +421,7 @@ services:
       RABBITMQ_URL: *rabbitmq-url
       RABBITMQ_EXCHANGE: *rabbitmq-exchange
       RABBITMQ_QUEUE: socket.events.q
-      WS_ALLOWED_ORIGINS: ${WS_ALLOWED_ORIGINS:-http://localhost:8081,http://localhost:8082,http://localhost:8080,http://127.0.0.1:8081,http://127.0.0.1:8082,http://127.0.0.1:8080,http://socket-gateway:8080,http://realtime:8080,http://gateway:8080}
+      WS_ALLOWED_ORIGINS: ${WS_ALLOWED_ORIGINS:-https://app.localhost,https://profile.localhost,http://socket-gateway:8080,http://realtime:8080,http://gateway:8080}
       INTERNAL_TOKEN: *internal-token
       APP_ENV: production
       CORS_ORIGINS: ""
@@ -486,9 +487,8 @@ services:
       REPUTATION_SERVICE_URL: http://reputation:8080
       SOCKET_GATEWAY_HTTP_URL: http://socket-gateway:8080
       SOCKET_GATEWAY_WS_URL: ws://socket-gateway:8080
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8081,http://localhost:8082,http://127.0.0.1:8081,http://127.0.0.1:8082}
-    ports:
-      - "8080:8080"
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://app.localhost,https://profile.localhost}
+    # Sin ports: solo se alcanza a traves de reverse-proxy (Escenario 2).
     depends_on:
       auth:
         condition: service_healthy
@@ -522,10 +522,10 @@ services:
       args:
         # Expo incrusta las variables EXPO_PUBLIC_* al compilar, por eso van
         # como argumentos de build y no como variables de entorno del contenedor.
-        EXPO_PUBLIC_API_GATEWAY_URL: ${EXPO_PUBLIC_API_GATEWAY_URL:-http://localhost:8080}
+        # El API se sirve en el mismo origen que la app, a traves del proxy.
+        EXPO_PUBLIC_API_GATEWAY_URL: ${EXPO_PUBLIC_API_GATEWAY_URL:-https://app.localhost}
         EXPO_PUBLIC_USE_MOCK_DATA: ${EXPO_PUBLIC_USE_MOCK_DATA:-false}
-    ports:
-      - "8081:80"
+    # Sin ports: solo se alcanza a traves de reverse-proxy (Escenario 2).
     depends_on:
       gateway:
         condition: service_healthy
@@ -542,8 +542,7 @@ services:
   profile-web:
     build:
       context: ./frontend/profile-web
-    ports:
-      - "8082:3000"
+    # Sin ports: solo se alcanza a traves de reverse-proxy (Escenario 2).
     environment:
       API_GATEWAY_URL: http://gateway:8080
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
@@ -555,6 +554,37 @@ services:
       interval: 30s
       timeout: 5s
       start_period: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Perimetro (Escenario de seguridad 2: Reverse Proxy Pattern)
+  # ---------------------------------------------------------------------------
+
+  # Unico punto de entrada HTTP(S) publicado al host. Enruta por subdominio:
+  # app.localhost -> frontend (+ /api -> gateway), profile.localhost ->
+  # profile-web. Aplica cabeceras de seguridad, limites y timeouts. Ver nginx/.
+  reverse-proxy:
+    build: ./nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # Certificados de Persona 1 (scripts/generate-certs.sh). Si no existen,
+      # el contenedor usa un autofirmado temporal.
+      - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      gateway:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+      profile-web:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/healthz > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 3s
+      start_period: 5s
       retries: 3
     restart: unless-stopped
 
