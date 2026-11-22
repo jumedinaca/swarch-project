@@ -34,6 +34,12 @@ x-rabbitmq-exchange: &rabbitmq-exchange ${RABBITMQ_EXCHANGE:-geopicto.events}
 # socket-gateway. No se publica al host.
 x-internal-token: &internal-token ${INTERNAL_TOKEN:-dev-internal-token}
 
+# Interruptor compartido del Token Revocation Blacklist Pattern (Escenario 5).
+# Debe tener el mismo valor en auth (escribe) y gateway (consulta). Con false
+# se puede demostrar la vulnerabilidad: el access token sigue sirviendo hasta
+# que expira aunque se haya hecho logout.
+x-token-blacklist-enabled: &token-blacklist-enabled ${TOKEN_BLACKLIST_ENABLED:-true}
+
 services:
   # ---------------------------------------------------------------------------
   # Infraestructura compartida
@@ -235,10 +241,17 @@ services:
       CORS_ORIGINS: ""
       RABBITMQ_URL: *rabbitmq-url
       RABBITMQ_EXCHANGE: *rabbitmq-exchange
+      # Redis compartido con el gateway para la blacklist de sesiones revocadas
+      # (Escenario 5). Misma base 1 que usa el gateway.
+      REDIS_URL: redis://redis:6379/1
+      TOKEN_BLACKLIST_ENABLED: *token-blacklist-enabled
+      TOKEN_BLACKLIST_PREFIX: ${TOKEN_BLACKLIST_PREFIX:-auth:revoked:}
     depends_on:
       auth-db:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
@@ -493,6 +506,10 @@ services:
       RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
       # Poner en true cuando el gateway quede detras del Reverse Proxy (sin puerto publicado).
       RATE_LIMIT_TRUST_PROXY: ${RATE_LIMIT_TRUST_PROXY:-false}
+      # Token Revocation Blacklist (esc. 5). El interruptor debe coincidir con auth.
+      TOKEN_BLACKLIST_ENABLED: *token-blacklist-enabled
+      TOKEN_BLACKLIST_FAIL_OPEN: ${TOKEN_BLACKLIST_FAIL_OPEN:-true}
+      TOKEN_BLACKLIST_PREFIX: ${TOKEN_BLACKLIST_PREFIX:-auth:revoked:}
     ports:
       - "8080:8080"
     depends_on:

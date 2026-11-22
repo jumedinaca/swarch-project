@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from app.core.config import Settings, get_settings
+from app.core.token_blacklist import TokenBlacklist
 from app.db.session import create_engine, create_session_factory
 from app.handler.auth_handler import router as auth_router
 from app.handler.errors import error_body, register_error_handlers
@@ -27,6 +28,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     publisher = (
         UserEventPublisher(connection, settings.rabbitmq_exchange) if connection else None
     )
+    # Blacklist distribuida compartida con el gateway (Escenario 5).
+    token_blacklist = TokenBlacklist(settings)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
@@ -44,6 +47,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         finally:
             if connection is not None:
                 await connection.close()
+            await token_blacklist.close()
             await engine.dispose()
 
     app = FastAPI(
@@ -56,6 +60,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.engine = engine
     app.state.session_factory = create_session_factory(engine)
     app.state.user_event_publisher = publisher
+    app.state.token_blacklist = token_blacklist
 
     if settings.cors_origin_list:
         app.add_middleware(

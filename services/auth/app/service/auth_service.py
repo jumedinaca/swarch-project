@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import security
 from app.core.config import Settings
+from app.core.token_blacklist import TokenBlacklist
 from app.domain.models import Session, User
 from app.messaging import UserEventPublisher
 from app.messaging.events import UserRegisteredEvent, UserRegisteredPayload
@@ -60,12 +61,14 @@ class AuthService:
         db: AsyncSession,
         settings: Settings,
         user_event_publisher: UserEventPublisher | None,
+        token_blacklist: TokenBlacklist | None = None,
     ):
         self.db = db
         self.settings = settings
         self.users = UserRepository(db)
         self.sessions = SessionRepository(db)
         self.user_event_publisher = user_event_publisher
+        self.token_blacklist = token_blacklist
 
     # ==========================================
     # Registro y login
@@ -167,6 +170,7 @@ class AuthService:
             # Se presentó un refresh token ya rotado: posible robo. Se revoca la sesión completa.
             session.revoked_at = now
             await self.db.commit()
+            await self._blacklist_session(session.id, self._access_token_deadline(now))
             raise invalid_token()
 
         new_refresh, new_hash = security.create_refresh_token(session.id)
@@ -203,13 +207,24 @@ class AuthService:
     # Sesiones
     # ==========================================
 
-    async def logout(self, session: Session) -> None:
-        session.revoked_at = security.utcnow()
+    async def logout(self, session: Session, access_expires_at: datetime | None = None) -> None:
+        now = security.utcnow()
+        session.revoked_at = now
         await self.db.commit()
+        # TTL exacto: lo que le queda de vida al access token que se está usando.
+        # Si no se recibe (p. ej. una llamada interna), se usa el máximo posible.
+        await self._blacklist_session(
+            session.id, access_expires_at or self._access_token_deadline(now)
+        )
 
     async def logout_all(self, user: User) -> int:
-        count = await self.sessions.revoke_all(user.id, security.utcnow())
+        now = security.utcnow()
+        active_sessions = await self.sessions.list_active(user.id, now)
+        count = await self.sessions.revoke_all(user.id, now)
         await self.db.commit()
+        deadline = self._access_token_deadline(now)
+        for session in active_sessions:
+            await self._blacklist_session(session.id, deadline)
         return count
 
     async def list_sessions(self, user: User) -> list[Session]:
@@ -219,8 +234,10 @@ class AuthService:
         session = await self.sessions.get(session_id)
         if session is None or session.user_id != user.id or session.revoked_at is not None:
             raise AuthError(404, "session_not_found", "Sesión no encontrada.")
-        session.revoked_at = security.utcnow()
+        now = security.utcnow()
+        session.revoked_at = now
         await self.db.commit()
+        await self._blacklist_session(session.id, self._access_token_deadline(now))
 
     # ==========================================
     # Perfil
@@ -236,12 +253,29 @@ class AuthService:
 
         user.password_hash = security.hash_password(new_password)
         # Cierra las demás sesiones abiertas con la contraseña anterior
-        await self.sessions.revoke_all(user.id, security.utcnow(), except_session=current_session.id)
+        now = security.utcnow()
+        active_sessions = await self.sessions.list_active(user.id, now)
+        await self.sessions.revoke_all(user.id, now, except_session=current_session.id)
         await self.db.commit()
+        deadline = self._access_token_deadline(now)
+        for session in active_sessions:
+            if session.id != current_session.id:
+                await self._blacklist_session(session.id, deadline)
 
     # ==========================================
     # Internos
     # ==========================================
+
+    def _access_token_deadline(self, now: datetime) -> datetime:
+        """Cota superior de vida de cualquier access token emitido para una sesión."""
+        return now + timedelta(minutes=self.settings.access_token_expire_minutes)
+
+    async def _blacklist_session(self, session_id: uuid.UUID, expires_at: datetime) -> None:
+        if self.token_blacklist is None:
+            return
+        ttl = math.ceil((expires_at - security.utcnow()).total_seconds())
+        if ttl > 0:
+            await self.token_blacklist.revoke_session(session_id, ttl)
 
     async def _publish_user_registered(self, user: User) -> None:
         if self.user_event_publisher is None:

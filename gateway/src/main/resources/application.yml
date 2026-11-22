@@ -194,6 +194,20 @@ rate-limit:
       refill-tokens: ${RATE_LIMIT_RATING_REFILL:60}
       refill-period: ${RATE_LIMIT_RATING_PERIOD:1m}
 
+# Token Revocation Blacklist Pattern (Escenario de seguridad 5).
+# services/auth escribe en Redis "auth:revoked:sid:<sid>" al hacer logout y el
+# filtro JwtAuth consulta esa clave antes de reenviar cada peticion protegida.
+token-blacklist:
+  # Interruptor compartido con services/auth. Con false, auth no escribe y el
+  # gateway no consulta: el token sigue valido hasta expirar (vulnerabilidad).
+  enabled: ${TOKEN_BLACKLIST_ENABLED:true}
+  # Si Redis no responde se deja pasar el trafico (prioriza disponibilidad).
+  # Con false se responde 503 (prioriza seguridad).
+  fail-open: ${TOKEN_BLACKLIST_FAIL_OPEN:true}
+  redis-timeout: 500ms
+  # Debe coincidir exactamente con TOKEN_BLACKLIST_PREFIX de services/auth.
+  key-prefix: ${TOKEN_BLACKLIST_PREFIX:auth:revoked:}
+
 # Secreto HS256 compartido con el microservicio de autenticacion para firmar
 # los JWT. Es obligatorio (minimo 32 bytes): el gateway no arranca sin el.
 jwt:

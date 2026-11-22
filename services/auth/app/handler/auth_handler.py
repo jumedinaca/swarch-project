@@ -81,7 +81,9 @@ async def logout(
     auth: CurrentAuth = Depends(get_current_auth),
     service: AuthService = Depends(get_auth_service),
 ):
-    await service.logout(auth.session)
+    # El TTL de la blacklist en Redis debe ser el tiempo que le queda a este
+    # access token, no la duración completa del refresh token.
+    await service.logout(auth.session, auth.claims.expires_at)
     return Envelope(message="Sesión cerrada.")
 
 

@@ -61,6 +61,8 @@ class RateLimitTests {
         registry.add("SOCKET_GATEWAY_HTTP_URL", () -> backendUrl);
         registry.add("SOCKET_GATEWAY_WS_URL", () -> "ws://localhost:" + backend.getPort());
         registry.add("JWT_SECRET", () -> SECRET);
+        // La blacklist de tokens se prueba aparte (TokenBlacklistTests).
+        registry.add("TOKEN_BLACKLIST_ENABLED", () -> "false");
         // Cuotas pequenas y sin recarga durante la prueba.
         registry.add("RATE_LIMIT_AUTH_CAPACITY", () -> "3");
         registry.add("RATE_LIMIT_AUTH_REFILL", () -> "1");
