@@ -475,3 +475,9 @@ Temporary Items
 # End of https://www.toptal.com/developers/gitignore/api/python,go,reactnative,java
 # Build temporal de air en messages
 /services/messages/tmp/
+
+# Archivos temporales / pesados de pruebas de rendimiento (Persona 8)
+performance/.seed-manifest.json
+performance/results/**/k6_timeseries.ndjson
+performance/results/**/.current_phase
+performance/results/latest
