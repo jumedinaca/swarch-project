@@ -487,9 +487,17 @@ services:
       SOCKET_GATEWAY_HTTP_URL: http://socket-gateway:8080
       SOCKET_GATEWAY_WS_URL: ws://socket-gateway:8080
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8081,http://localhost:8082,http://127.0.0.1:8081,http://127.0.0.1:8082}
+      # Redis del gateway: Rate Limiting (esc. 4) y Token Blacklist (esc. 5). Base 1.
+      REDIS_URL: redis://redis:6379/1
+      # Umbrales y demas: ver rate-limit en gateway/src/main/resources/application.yml.
+      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
+      # Poner en true cuando el gateway quede detras del Reverse Proxy (sin puerto publicado).
+      RATE_LIMIT_TRUST_PROXY: ${RATE_LIMIT_TRUST_PROXY:-false}
     ports:
       - "8080:8080"
     depends_on:
+      redis:
+        condition: service_healthy
       auth:
         condition: service_healthy
       messages:

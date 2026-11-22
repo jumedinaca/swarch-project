@@ -61,6 +61,8 @@ class GatewayRoutingTests {
         registry.add("SOCKET_GATEWAY_WS_URL", () -> backendWsUrl);
         registry.add("JWT_SECRET", () -> SECRET);
         registry.add("CORS_ALLOWED_ORIGINS", () -> ALLOWED_ORIGIN);
+        // El Rate Limiting se prueba aparte (RateLimitTests); aqui no hay Redis.
+        registry.add("RATE_LIMIT_ENABLED", () -> "false");
     }
 
     @AfterAll
