@@ -1,0 +1,4 @@
+# Aqui van cert.pem y key.pem generados por scripts/generate-certs.sh
+# (Persona 1). Nunca se suben al repositorio: la llave privada es secreta.
+*
+!.gitignore

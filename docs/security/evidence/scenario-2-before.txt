@@ -1,0 +1,27 @@
+Escenario 2 - Reverse Proxy Pattern
+No hay perimetro en https://localhost: se prueban los servidores publicados directamente
+
+1. Superficie de ataque (puertos publicados al host)
+[EXPUESTO] gateway responde directamente en :8080 (HTTP 200)
+[EXPUESTO] frontend responde directamente en :8081 (HTTP 200)
+[EXPUESTO] profile-web responde directamente en :8082 (HTTP 200)
+[EXPUESTO] no hay un punto de entrada unico (3 servidores atienden al cliente por separado)
+
+2. Cabeceras de seguridad HTTP
+[EXPUESTO] http://localhost:8081/ no envia: X-Frame-Options X-Content-Type-Options Referrer-Policy (clickjacking / MIME sniffing / fuga de Referer)
+[EXPUESTO] http://localhost:8082/login no envia: X-Frame-Options X-Content-Type-Options Referrer-Policy (clickjacking / MIME sniffing / fuga de Referer)
+
+3. Divulgacion de tecnologia y version
+[EXPUESTO] http://localhost:8081/ revela Server: nginx/1.31.8
+[EXPUESTO] http://localhost:8082/login revela X-Powered-By: Next.js
+[MITIGADO] http://localhost:8080/api/messages/nearby?lat=4.6371&lng=-74.0834&radius=500 no revela version ni tecnologia (Server: <ausente>)
+
+4. Limite de tamano de peticion
+[EXPUESTO] un cuerpo de 7 MB llega hasta el microservicio de auth (HTTP 422 en vez de 413)
+
+5. Funcionamiento a traves del proxy
+[N/A]      no hay proxy: se omiten las verificaciones funcionales
+
+Resumen
+EXPUESTO: 9   MITIGADO: 1   FALLA: 0
+Puntos de entrada publicados: 3 (sin perimetro comun)
