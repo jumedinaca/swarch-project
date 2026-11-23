@@ -156,10 +156,9 @@ expect_reach gateway        reputation      8080 "gateway → reputation:8080 (g
 expect_reach gateway        socket-gateway  8080 "gateway → socket-gateway:8080 (gateway_net)"
 echo ""
 
-# --- broker_net: Servicios → RabbitMQ / Redis ---
-printf "  ${BOLD}broker_net — Servicios → RabbitMQ / Redis${NC}\n"
+# --- broker_net: Servicios → RabbitMQ ---
+printf "  ${BOLD}broker_net — Servicios → RabbitMQ (AMQP)${NC}\n"
 expect_reach auth           rabbitmq        5672 "auth → rabbitmq:5672 (broker_net)"
-expect_reach auth           redis           6379 "auth → redis:6379 (broker_net — token blacklist)"
 expect_reach messages       rabbitmq        5672 "messages → rabbitmq:5672 (broker_net)"
 expect_reach moderation     rabbitmq        5672 "moderation → rabbitmq:5672 (broker_net)"
 expect_reach network        rabbitmq        5672 "network → rabbitmq:5672 (broker_net)"
@@ -168,8 +167,13 @@ expect_reach rating         rabbitmq        5672 "rating → rabbitmq:5672 (brok
 expect_reach reputation     rabbitmq        5672 "reputation → rabbitmq:5672 (broker_net)"
 expect_reach email          rabbitmq        5672 "email → rabbitmq:5672 (broker_net)"
 expect_reach socket-gateway rabbitmq        5672 "socket-gateway → rabbitmq:5672 (broker_net)"
-expect_reach socket-gateway redis           6379 "socket-gateway → redis:6379 (broker_net)"
-expect_reach gateway        redis           6379 "gateway → redis:6379 (broker_net — rate-limit/blacklist)"
+echo ""
+
+# --- redis_net: Clientes autorizados → Redis ---
+printf "  ${BOLD}redis_net — Clientes autorizados → Redis${NC}\n"
+expect_reach gateway        redis           6379 "gateway → redis:6379 (redis_net — rate-limit/blacklist)"
+expect_reach auth           redis           6379 "auth → redis:6379 (redis_net — token blacklist)"
+expect_reach socket-gateway redis           6379 "socket-gateway → redis:6379 (redis_net — tickets/pubsub)"
 echo ""
 
 # --- *_db_net: Servicios → Sus propias bases de datos ---
@@ -207,8 +211,8 @@ expect_block profile-web    auth-db         5432 "profile-web ✗ auth-db:5432"
 expect_block profile-web    redis           6379 "profile-web ✗ redis:6379"
 echo ""
 
-# --- gateway ✗ Bases de datos: Gateway no debe alcanzar ninguna BD ---
-printf "  ${BOLD}gateway ✗ Bases de datos${NC}\n"
+# --- gateway ✗ Bases de datos, workers internos y RabbitMQ ---
+printf "  ${BOLD}gateway ✗ Bases de datos, workers no enrutados y broker${NC}\n"
 expect_block gateway        auth-db         5432 "gateway ✗ auth-db:5432"
 expect_block gateway        messages-db     5432 "gateway ✗ messages-db:5432"
 expect_block gateway        profile-db      5432 "gateway ✗ profile-db:5432"
@@ -217,6 +221,20 @@ expect_block gateway        reputation-db   5432 "gateway ✗ reputation-db:5432
 expect_block gateway        network-db      27017 "gateway ✗ network-db:27017"
 expect_block gateway        moderation-db   5432 "gateway ✗ moderation-db:5432"
 expect_block gateway        email-db        5432 "gateway ✗ email-db:5432"
+expect_block gateway        moderation      8080 "gateway ✗ moderation:8080 (fuera de gateway_net y broker_net)"
+expect_block gateway        email           8080 "gateway ✗ email:8080 (fuera de gateway_net y broker_net)"
+expect_block gateway        rabbitmq        5672 "gateway ✗ rabbitmq:5672 (fuera de broker_net)"
+echo ""
+
+# --- Servicios no autorizados ✗ Redis (aislamiento de redis_net) ---
+printf "  ${BOLD}Servicios no autorizados ✗ Redis (aislamiento de redis_net)${NC}\n"
+expect_block messages       redis           6379 "messages ✗ redis:6379"
+expect_block network        redis           6379 "network ✗ redis:6379"
+expect_block profile        redis           6379 "profile ✗ redis:6379"
+expect_block rating         redis           6379 "rating ✗ redis:6379"
+expect_block reputation     redis           6379 "reputation ✗ redis:6379"
+expect_block moderation     redis           6379 "moderation ✗ redis:6379"
+expect_block email          redis           6379 "email ✗ redis:6379"
 echo ""
 
 # --- Cross-DB: Servicios no deben alcanzar BDs de otros servicios ---

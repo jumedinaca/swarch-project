@@ -164,7 +164,7 @@ curl --cacert nginx/certs/ca.pem -sI https://localhost/healthz
 
 ---
 
-### Escenario 3 (DESPUÉS) — Network Segmentation Pattern (11 Redes, 10 `internal: true`)
+### Escenario 3 (DESPUÉS) — Network Segmentation Pattern (12 Redes, 11 `internal: true`)
 
 ```bash
 # 1. Repetir las mismas 2 pruebas de ataque que antes tuvieron éxito — ahora BLOQUEADAS:
@@ -172,13 +172,13 @@ docker compose exec frontend nc -zv -w 2 auth-db 5432 || echo "MITIGADO: fronten
 docker compose exec auth python -c "import socket; socket.create_connection(('messages-db', 5432), timeout=2)" \
   || echo "MITIGADO: auth bloqueado hacia messages-db"
 
-# 2. Suite completa de matriz positiva y negativa (75/75 PASS, 0 SKIP)
+# 2. Suite completa de matriz positiva y negativa (85/85 PASS, 0 SKIP)
 ./scripts/test-network-segmentation.sh
 ```
 
 **Qué señalar al profesor:**
-* **34 pruebas positivas PASS:** cada servicio alcanza únicamente lo autorizado (`edge_net`, `gateway_net`, `broker_net` y su propia `*_db_net`).
-* **41 pruebas negativas PASS:** `reverse-proxy`, `frontend`, `profile-web` y `gateway` no pueden resolver ni conectar a ninguna base de datos; ningún microservicio alcanza la BD de otro; ninguna BD alcanza a otra BD.
+* **34 pruebas positivas PASS:** cada servicio alcanza únicamente lo autorizado (`edge_net`, `gateway_net`, `broker_net`, `redis_net` y su propia `*_db_net`).
+* **51 pruebas negativas PASS:** `reverse-proxy`, `frontend`, `profile-web` y `gateway` no pueden resolver ni conectar a ninguna base de datos; `gateway` tampoco alcanza a `moderation:8080`, `email:8080` ni `rabbitmq:5672`; los 7 servicios que no usan Redis no pueden conectar a `redis:6379`; ningún microservicio alcanza la BD de otro; ninguna BD alcanza a otra BD.
 
 ---
 

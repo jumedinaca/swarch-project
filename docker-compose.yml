@@ -3,8 +3,9 @@
 # Topologia de redes (Network Segmentation Pattern — Escenario 3):
 #
 #   edge_net              — Borde: reverse-proxy, gateway, frontend, profile-web
-#   gateway_net  (interna)— Gateway + microservicios HTTP que enruta
-#   broker_net   (interna)— RabbitMQ, Redis + servicios con eventos/cache
+#   gateway_net  (interna)— Gateway + 7 microservicios HTTP/WS que enruta
+#   broker_net   (interna)— RabbitMQ + 9 microservicios de logica (sin gateway ni Redis)
+#   redis_net    (interna)— Redis + sus 3 clientes reales: gateway, auth, socket-gateway
 #   *_db_net     (interna)— Red aislada por cada par servicio <-> base de datos
 #
 #   docker compose up --build --wait
@@ -73,7 +74,7 @@ services:
       timeout: 3s
       retries: 10
     networks:
-      - broker_net
+      - redis_net
     restart: unless-stopped
 
   # Almacenamiento S3 compatible de los avatares. El bucket es privado: los
@@ -289,6 +290,7 @@ services:
     networks:
       - gateway_net
       - broker_net
+      - redis_net
       - auth_db_net
     restart: unless-stopped
 
@@ -487,6 +489,10 @@ services:
         aliases:
           - realtime
           - socket-gateway
+      redis_net:
+        aliases:
+          - realtime
+          - socket-gateway
     environment:
       PORT: "8080"
       REDIS_URL: redis://redis:6379/0
@@ -605,7 +611,7 @@ services:
     networks:
       - edge_net
       - gateway_net
-      - broker_net
+      - redis_net
     restart: unless-stopped
 
   # ---------------------------------------------------------------------------
@@ -709,27 +715,36 @@ volumes:
 # Redes segmentadas (Network Segmentation Pattern — Escenario 3)
 # =============================================================================
 #
-# Topologia:
+# Topologia (12 redes: 1 perimetral + 11 internal: true):
 #   edge_net              — Borde: reverse-proxy, gateway, frontend, profile-web
-#   gateway_net  (interna)— Gateway + microservicios HTTP que enruta
-#   broker_net   (interna)— RabbitMQ, Redis + servicios con eventos/cache
+#   gateway_net  (interna)— Gateway + 7 microservicios HTTP/WS que enruta
+#   broker_net   (interna)— RabbitMQ + 9 microservicios de logica (sin gateway ni Redis)
+#   redis_net    (interna)— Redis + sus 3 clientes reales: gateway, auth, socket-gateway
 #   *_db_net     (interna)— Red aislada por cada par servicio <-> base de datos
 
 networks:
-  # Red de borde: conecta los servicios expuestos al exterior.
-  # Unica red no interna; aqui se publican puertos al host.
+  # Red de borde: conecta los servicios del perimetro. Unica red no interna;
+  # la exposicion al host ocurre unicamente via reverse-proxy (:80/:443).
   edge_net:
     driver: bridge
 
-  # Red del gateway: conecta el gateway con los microservicios HTTP que enruta.
-  # moderation y email NO estan aqui porque no reciben trafico del gateway.
+  # Red del gateway: conecta el gateway con los 7 microservicios HTTP/WS que
+  # enruta. moderation y email NO estan aqui porque no reciben trafico del gateway.
   gateway_net:
     driver: bridge
     internal: true
 
-  # Red del broker: conecta RabbitMQ, Redis y los microservicios que
-  # publican/consumen eventos o usan Redis como cache distribuida.
+  # Red del broker: conecta unicamente RabbitMQ y los 9 microservicios de logica
+  # que publican/consumen eventos AMQP. Ni gateway ni Redis pertenecen a esta red.
   broker_net:
+    driver: bridge
+    internal: true
+
+  # Red de cache y seguridad en memoria: aisla Redis exclusivamente a sus 3
+  # clientes autorizados (gateway para rate limit/blacklist, auth para revocacion
+  # y socket-gateway para tickets/presencia/PubSub). Impide que los otros 7
+  # servicios accedan a Redis y mantiene a gateway aislado de moderation y email.
+  redis_net:
     driver: bridge
     internal: true
 
