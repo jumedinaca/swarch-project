@@ -22,14 +22,15 @@
 //
 // Uso:
 //   node scripts/test-rate-limit.mjs [--mode protected|vulnerable]
-//        [--gateway http://localhost:8080] [--attempts 30] [--nearby-attempts 150]
+//        [--gateway https://localhost] [--insecure] [--attempts 30] [--nearby-attempts 150]
 //        [--json performance/results/rate-limit-protected.json]
 //
 //   Para cambiar de modo:
 //     RATE_LIMIT_ENABLED=false docker compose up -d gateway   # vulnerable
 //     RATE_LIMIT_ENABLED=true  docker compose up -d gateway   # protected
-//   (detras del Reverse Proxy: --gateway https://localhost, con NODE_TLS_REJECT_UNAUTHORIZED=0
-//    si el certificado es autofirmado)
+//   Para verificar el certificado de la CA local (scripts/generate-certs.sh):
+//     NODE_EXTRA_CA_CERTS=nginx/certs/ca.pem node scripts/test-rate-limit.mjs
+//   Con certificado autofirmado temporal, usa --insecure (o -k).
 //
 // Ojo: en modo protected la cuota de login/registro es por IP (10/min por
 // defecto); si se acaba de correr el smoke test o el propio script, conviene
@@ -46,8 +47,12 @@ const option = (name, fallback) => {
   return index >= 0 ? args[index + 1] : fallback;
 };
 
+if (args.includes('--insecure') || args.includes('-k')) {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+}
+
 const MODE = option('--mode', 'protected');
-const GATEWAY = option('--gateway', 'http://localhost:8080');
+const GATEWAY = option('--gateway', process.env.PUBLIC_URL || 'https://localhost').replace(/\/$/, '');
 const ATTEMPTS = Number(option('--attempts', '30'));
 const NEARBY_ATTEMPTS = Number(option('--nearby-attempts', '150'));
 const JSON_OUT = option('--json', null);

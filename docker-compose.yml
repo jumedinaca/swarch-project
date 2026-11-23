@@ -2,12 +2,10 @@
 #
 # Topologia de redes (Network Segmentation Pattern — Escenario 3):
 #
-#   edge_net              — Borde: reverse-proxy*, gateway, frontend, profile-web
+#   edge_net              — Borde: reverse-proxy, gateway, frontend, profile-web
 #   gateway_net  (interna)— Gateway + microservicios HTTP que enruta
 #   broker_net   (interna)— RabbitMQ, Redis + servicios con eventos/cache
 #   *_db_net     (interna)— Red aislada por cada par servicio <-> base de datos
-#
-# * El contenedor reverse-proxy se agregara en feat/security-edge-tls (Persona 2).
 #
 #   docker compose up --build --wait
 #
@@ -15,10 +13,10 @@
 # el prototipo (ver x-jwt-secret abajo). Para usar uno propio, define
 # JWT_SECRET en un archivo .env (ver .env.example).
 #
-# Solo se publican al host el Reverse Proxy (:80/:443) y la bandeja de Mailpit
-# (:8025). El gateway, el frontend Expo y el panel SSR se alcanzan unicamente a
-# traves del proxy (https://localhost, https://localhost/account); el resto
-# de servicios, solo por redes internas segmentadas de Compose.
+# Unicamente se publica al host el Reverse Proxy (:80/:443). El gateway, el
+# frontend Expo y el panel SSR se alcanzan unicamente a traves del proxy
+# (https://localhost, https://localhost/account); el resto de servicios
+# (incluido Mailpit en email_data_net), solo por redes internas segmentadas.
 
 name: geopicto
 
@@ -99,12 +97,10 @@ services:
       - profile_data_net
     restart: unless-stopped
 
-  # Servidor SMTP local de desarrollo. Solo se publica la interfaz web (:8025)
-  # para inspeccionar los correos de bienvenida y transaccionales sin envio real.
+  # Servidor SMTP local de desarrollo. Permanece aislado en email_data_net
+  # (internal: true) sin puertos publicados al host (Limit Exposure).
   mailpit:
     image: axllent/mailpit:latest
-    ports:
-      - "8025:8025"
     healthcheck:
       test: ["CMD", "/mailpit", "readyz"]
       interval: 5s
@@ -714,12 +710,10 @@ volumes:
 # =============================================================================
 #
 # Topologia:
-#   edge_net              — Borde: reverse-proxy*, gateway, frontend, profile-web
+#   edge_net              — Borde: reverse-proxy, gateway, frontend, profile-web
 #   gateway_net  (interna)— Gateway + microservicios HTTP que enruta
 #   broker_net   (interna)— RabbitMQ, Redis + servicios con eventos/cache
 #   *_db_net     (interna)— Red aislada por cada par servicio <-> base de datos
-#
-# * El reverse-proxy se agregara en la rama feat/security-edge-tls (Persona 2).
 
 networks:
   # Red de borde: conecta los servicios expuestos al exterior.

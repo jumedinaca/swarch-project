@@ -36,25 +36,38 @@ fi
 # Funcion de conectividad
 # ---------------------------------------------------------------------------
 # Intenta conexion TCP desde $1 hacia $2:$3 usando la primera herramienta
-# disponible en el contenedor (nc, python3, python, node).
-# Retorna: 0 = alcanzable, 1 = bloqueado, 2 = sin herramienta disponible.
+# disponible en el contenedor (nc, python3, python, node, bash /dev/tcp).
+# Retorna: 0 = alcanzable, 1 = bloqueado, 2 = sin herramienta disponible,
+#          3 = error ejecutando docker compose exec.
 
 try_connect() {
   local src="$1" host="$2" port="$3"
+  local rc=0
   $COMPOSE exec -T "$src" sh -c "
     if command -v nc >/dev/null 2>&1; then
-      nc -z -w $TIMEOUT_S \"$host\" \"$port\" 2>/dev/null
+      nc -z -w $TIMEOUT_S \"$host\" \"$port\" 2>/dev/null && exit 10 || exit 11
     elif command -v python3 >/dev/null 2>&1; then
-      python3 -c \"import socket; s=socket.create_connection(('$host', $port), timeout=$TIMEOUT_S); s.close()\" 2>/dev/null
+      python3 -c \"import socket; s=socket.create_connection(('$host', $port), timeout=$TIMEOUT_S); s.close()\" 2>/dev/null && exit 10 || exit 11
     elif command -v python >/dev/null 2>&1; then
-      python -c \"import socket; s=socket.create_connection(('$host', $port), timeout=$TIMEOUT_S); s.close()\" 2>/dev/null
+      python -c \"import socket; s=socket.create_connection(('$host', $port), timeout=$TIMEOUT_S); s.close()\" 2>/dev/null && exit 10 || exit 11
     elif command -v node >/dev/null 2>&1; then
-      node -e \"require('net').connect($port,'$host').on('connect',function(){process.exit(0)}).on('error',function(){process.exit(1)});setTimeout(function(){process.exit(1)},${TIMEOUT_S}000)\" 2>/dev/null
+      node -e \"require('net').connect($port,'$host').on('connect',function(){process.exit(0)}).on('error',function(){process.exit(1)});setTimeout(function(){process.exit(1)},${TIMEOUT_S}000)\" 2>/dev/null && exit 10 || exit 11
+    elif command -v bash >/dev/null 2>&1; then
+      if command -v timeout >/dev/null 2>&1; then
+        timeout $TIMEOUT_S bash -c \"exec 3<>/dev/tcp/$host/$port\" 2>/dev/null && exit 10 || exit 11
+      else
+        bash -c \"exec 3<>/dev/tcp/$host/$port\" 2>/dev/null && exit 10 || exit 11
+      fi
     else
-      exit 2
+      exit 12
     fi
-  " >/dev/null 2>&1
-  return $?
+  " >/dev/null 2>&1 || rc=$?
+  case "$rc" in
+    10) return 0 ;;
+    11) return 1 ;;
+    12) return 2 ;;
+    *)  return 3 ;;
+  esac
 }
 
 # ---------------------------------------------------------------------------
@@ -71,6 +84,9 @@ expect_reach() {
   elif [ "$rc" -eq 2 ]; then
     printf "  ${YELLOW}⊘ SKIP${NC}  %s  (sin herramienta de red en el contenedor)\n" "$desc"
     SKIP=$((SKIP + 1))
+  elif [ "$rc" -eq 3 ]; then
+    printf "  ${RED}✗ FAIL${NC}  %s  — error ejecutando docker compose exec en %s\n" "$desc" "$src"
+    FAIL=$((FAIL + 1))
   else
     printf "  ${RED}✗ FAIL${NC}  %s  — esperado ALCANZABLE, resultado BLOQUEADO\n" "$desc"
     FAIL=$((FAIL + 1))
@@ -81,16 +97,15 @@ expect_block() {
   local src="$1" host="$2" port="$3" desc="$4"
   local rc=0
   try_connect "$src" "$host" "$port" || rc=$?
-  if [ "$rc" -ge 1 ]; then
-    # rc=1 (blocked) o rc=2 (no tool → no podemos demostrar que está abierto)
-    # Ambos se cuentan como PASS para pruebas negativas; rc=2 se anota.
-    if [ "$rc" -eq 2 ]; then
-      printf "  ${YELLOW}⊘ SKIP${NC}  %s  (sin herramienta — no se pudo verificar bloqueo)\n" "$desc"
-      SKIP=$((SKIP + 1))
-    else
-      printf "  ${GREEN}✓ PASS${NC}  %s\n" "$desc"
-      PASS=$((PASS + 1))
-    fi
+  if [ "$rc" -eq 1 ]; then
+    printf "  ${GREEN}✓ PASS${NC}  %s\n" "$desc"
+    PASS=$((PASS + 1))
+  elif [ "$rc" -eq 2 ]; then
+    printf "  ${YELLOW}⊘ SKIP${NC}  %s  (sin herramienta — no se pudo verificar bloqueo)\n" "$desc"
+    SKIP=$((SKIP + 1))
+  elif [ "$rc" -eq 3 ]; then
+    printf "  ${RED}✗ FAIL${NC}  %s  — error ejecutando docker compose exec en %s\n" "$desc" "$src"
+    FAIL=$((FAIL + 1))
   else
     printf "  ${RED}✗ FAIL${NC}  %s  — esperado BLOQUEADO, resultado ALCANZABLE\n" "$desc"
     FAIL=$((FAIL + 1))
@@ -121,8 +136,11 @@ printf "${CYAN}▸ %d contenedores detectados en ejecucion${NC}\n\n" "$RUNNING"
 # ==========================================================================
 printf "${BOLD}━━━ PRUEBAS POSITIVAS (conectividad esperada) ━━━${NC}\n\n"
 
-# --- edge_net: Frontend/Profile-web → Gateway ---
-printf "  ${BOLD}edge_net — Frontends → Gateway${NC}\n"
+# --- edge_net: Reverse Proxy / Frontends → Gateway & Frontends ---
+printf "  ${BOLD}edge_net — Reverse Proxy y Frontends${NC}\n"
+expect_reach reverse-proxy  gateway         8080 "reverse-proxy → gateway:8080 (edge_net)"
+expect_reach reverse-proxy  frontend        80   "reverse-proxy → frontend:80 (edge_net)"
+expect_reach reverse-proxy  profile-web     3000 "reverse-proxy → profile-web:3000 (edge_net)"
 expect_reach frontend       gateway         8080 "frontend → gateway:8080 (edge_net)"
 expect_reach profile-web    gateway         8080 "profile-web → gateway:8080 (edge_net)"
 echo ""
@@ -141,9 +159,15 @@ echo ""
 # --- broker_net: Servicios → RabbitMQ / Redis ---
 printf "  ${BOLD}broker_net — Servicios → RabbitMQ / Redis${NC}\n"
 expect_reach auth           rabbitmq        5672 "auth → rabbitmq:5672 (broker_net)"
+expect_reach auth           redis           6379 "auth → redis:6379 (broker_net — token blacklist)"
 expect_reach messages       rabbitmq        5672 "messages → rabbitmq:5672 (broker_net)"
 expect_reach moderation     rabbitmq        5672 "moderation → rabbitmq:5672 (broker_net)"
+expect_reach network        rabbitmq        5672 "network → rabbitmq:5672 (broker_net)"
+expect_reach profile        rabbitmq        5672 "profile → rabbitmq:5672 (broker_net)"
+expect_reach rating         rabbitmq        5672 "rating → rabbitmq:5672 (broker_net)"
+expect_reach reputation     rabbitmq        5672 "reputation → rabbitmq:5672 (broker_net)"
 expect_reach email          rabbitmq        5672 "email → rabbitmq:5672 (broker_net)"
+expect_reach socket-gateway rabbitmq        5672 "socket-gateway → rabbitmq:5672 (broker_net)"
 expect_reach socket-gateway redis           6379 "socket-gateway → redis:6379 (broker_net)"
 expect_reach gateway        redis           6379 "gateway → redis:6379 (broker_net — rate-limit/blacklist)"
 echo ""
@@ -167,8 +191,13 @@ echo ""
 # ==========================================================================
 printf "${BOLD}━━━ PRUEBAS NEGATIVAS (aislamiento esperado) ━━━${NC}\n\n"
 
-# --- edge_net ✗ Infra: Frontends no deben alcanzar infra interna ---
-printf "  ${BOLD}edge_net ✗ Infraestructura interna${NC}\n"
+# --- edge_net ✗ Infra: Reverse Proxy y Frontends no deben alcanzar infra/servicios internos ---
+printf "  ${BOLD}edge_net ✗ Infraestructura y microservicios internos${NC}\n"
+expect_block reverse-proxy  auth            8080 "reverse-proxy ✗ auth:8080 (fuera de gateway_net)"
+expect_block reverse-proxy  auth-db         5432 "reverse-proxy ✗ auth-db:5432"
+expect_block reverse-proxy  redis           6379 "reverse-proxy ✗ redis:6379"
+expect_block reverse-proxy  rabbitmq        5672 "reverse-proxy ✗ rabbitmq:5672"
+expect_block reverse-proxy  minio           9000 "reverse-proxy ✗ minio:9000"
 expect_block frontend       auth-db         5432 "frontend ✗ auth-db:5432"
 expect_block frontend       messages-db     5432 "frontend ✗ messages-db:5432"
 expect_block frontend       redis           6379 "frontend ✗ redis:6379"

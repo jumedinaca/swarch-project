@@ -257,7 +257,7 @@ with open(ndjson_path, "r", encoding="utf-8") as fh:
             status = str(tags.get("status", "0"))
             if status == "429":
                 buckets[b_idx]["r429"] += 1
-            elif status == "0" or status.startswith("5") or status == "408":
+            elif status == "0" or status.startswith("5") or status.startswith("4"):
                 buckets[b_idx]["err"] += 1
         elif metric == "vus":
             buckets[b_idx]["vus"].append(val)

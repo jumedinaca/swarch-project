@@ -3,6 +3,7 @@ package com.geopicto.gateway.revocation;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
+import java.net.ServerSocket;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -43,6 +44,7 @@ class TokenBlacklistTests {
     private static final String SECRET = "test-secret-for-gateway-routing-tests-0123456789";
     private static final String ISSUER = "geopicto-auth";
     private static final MockWebServer backend = startBackend();
+    private static final int UNREACHABLE_PORT = findClosedPort();
 
     @TestConfiguration
     static class InMemoryBlacklistConfig {
@@ -56,9 +58,10 @@ class TokenBlacklistTests {
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
         String backendUrl = "http://localhost:" + backend.getPort();
-        for (String service : new String[] { "MESSAGES", "AUTH", "NETWORK", "PROFILE", "RATING", "REPUTATION" }) {
+        for (String service : new String[] { "MESSAGES", "AUTH", "NETWORK", "PROFILE", "RATING" }) {
             registry.add(service + "_SERVICE_URL", () -> backendUrl);
         }
+        registry.add("REPUTATION_SERVICE_URL", () -> "http://127.0.0.1:" + UNREACHABLE_PORT);
         registry.add("SOCKET_GATEWAY_HTTP_URL", () -> backendUrl);
         registry.add("SOCKET_GATEWAY_WS_URL", () -> "ws://localhost:" + backend.getPort());
         registry.add("JWT_SECRET", () -> SECRET);
@@ -153,6 +156,19 @@ class TokenBlacklistTests {
                 .expectBody().jsonPath("$.message").isEqualTo("Token revocation check unavailable");
     }
 
+    @Test
+    void downstreamFailureIsNotMaskedAsRevocationCheckUnavailable() {
+        String bearer = "Bearer " + token(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID().toString());
+
+        client.get().uri("/api/reputation/me")
+                .header(HttpHeaders.AUTHORIZATION, bearer)
+                .exchange()
+                .expectStatus().is5xxServerError()
+                .expectBody(String.class)
+                .value(body -> assertThat(body == null ? "" : body)
+                        .doesNotContain("Token revocation check unavailable"));
+    }
+
     // --- Utilidades ---
 
     private void expectUnauthorized(String token, String message) {
@@ -203,5 +219,13 @@ class TokenBlacklistTests {
             throw new IllegalStateException(e);
         }
         return server;
+    }
+
+    private static int findClosedPort() {
+        try (ServerSocket socket = new ServerSocket(0)) {
+            return socket.getLocalPort();
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
     }
 }

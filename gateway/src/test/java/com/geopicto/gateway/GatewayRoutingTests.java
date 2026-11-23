@@ -109,6 +109,16 @@ class GatewayRoutingTests {
     }
 
     @Test
+    void clientSuppliedInternalTokenIsDropped() throws InterruptedException {
+        client.get().uri("/api/messages/nearby?lat=0&lng=0&radius=100")
+                .header("X-Internal-Token", "forged-internal-token")
+                .exchange()
+                .expectStatus().isOk();
+
+        assertThat(takeForwarded().getHeader("X-Internal-Token")).isNull();
+    }
+
+    @Test
     void authRoutesArePublicAndDropClientSuppliedUserId() throws InterruptedException {
         client.post().uri("/api/auth/login")
                 .header("X-User-ID", UUID.randomUUID().toString())

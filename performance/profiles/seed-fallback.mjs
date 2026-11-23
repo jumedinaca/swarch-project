@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const BASE_URL = (process.env.BASE_URL || 'http://localhost:8080').replace(/\/+$/, '');
+const BASE_URL = (process.env.BASE_URL || 'https://localhost').replace(/\/+$/, '');
 const SEED_USERS = Math.max(4, Number.parseInt(process.env.SEED_USERS || '20', 10));
 const SEED_MESSAGES = Math.max(10, Number.parseInt(process.env.SEED_MESSAGES || '60', 10));
 const PASSWORD = process.env.SEED_PASSWORD || 'PerfTest123!';
@@ -153,8 +153,8 @@ async function seedMessages(users) {
         .map((m) => ({
           id: m.id,
           authorId: m.sender_id,
-          lat: m.latitude ?? CENTER_LAT,
-          lng: m.longitude ?? CENTER_LNG,
+          lat: m.location?.latitude ?? m.latitude ?? CENTER_LAT,
+          lng: m.location?.longitude ?? m.longitude ?? CENTER_LNG,
         }))
     : [];
 
@@ -203,8 +203,8 @@ async function seedMessages(users) {
         .map((m) => ({
           id: m.id,
           authorId: m.sender_id,
-          lat: m.latitude ?? CENTER_LAT,
-          lng: m.longitude ?? CENTER_LNG,
+          lat: m.location?.latitude ?? m.latitude ?? CENTER_LAT,
+          lng: m.location?.longitude ?? m.longitude ?? CENTER_LNG,
         }));
       if (publishedPool.length >= targetMin) {
         break;

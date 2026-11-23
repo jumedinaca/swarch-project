@@ -400,7 +400,7 @@ WSS_HEADERS="$(curl -k -s -S -i -N --max-time 3 \
   -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
   "https://${HOST}:${HTTPS_PORT}/api/ws" 2>/dev/null | tr -d '\r' || true)"
 WSS_STATUS="$(printf "%s\n" "${WSS_HEADERS}" | awk 'NR==1 {print $2}')"
-if [[ "${WSS_STATUS}" =~ ^(101|200|400|401|403|426|502)$ ]]; then
+if [[ "${WSS_STATUS}" =~ ^(101|200|400|401|403|426)$ ]]; then
   pass "Canal WebSocket seguro (wss://${HOST}:${HTTPS_PORT}/api/ws) protegido bajo TLS (HTTP ${WSS_STATUS})"
 else
   fail "Canal WebSocket seguro (wss://)" "status=${WSS_STATUS:-none}"

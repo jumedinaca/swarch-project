@@ -10,23 +10,31 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 /**
- * Elimina cualquier "X-User-ID" enviado por el cliente en todas las rutas.
- * Los servicios internos confian en ese header, asi que solo el filtro JwtAuth
- * (que corre despues) puede ponerlo, a partir de un token valido.
+ * Elimina cualquier "X-User-ID" o "X-Internal-Token" enviado por el cliente en
+ * todas las rutas. Los servicios internos confian en esos headers, asi que solo
+ * el filtro JwtAuth (que corre despues) puede inyectar X-User-ID a partir de un
+ * token valido, y X-Internal-Token nunca debe aceptarse desde el exterior.
  */
 @Component
 public class StripUserIdGlobalFilter implements GlobalFilter, Ordered {
 
     public static final String USER_ID_HEADER = "X-User-ID";
+    public static final String INTERNAL_TOKEN_HEADER = "X-Internal-Token";
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-        if (!exchange.getRequest().getHeaders().containsHeader(USER_ID_HEADER)) {
+        var headers = exchange.getRequest().getHeaders();
+        boolean hasUserId = headers.containsHeader(USER_ID_HEADER);
+        boolean hasInternalToken = headers.containsHeader(INTERNAL_TOKEN_HEADER);
+        if (!hasUserId && !hasInternalToken) {
             return chain.filter(exchange);
         }
 
         ServerHttpRequest request = exchange.getRequest().mutate()
-                .headers(headers -> headers.remove(USER_ID_HEADER))
+                .headers(mutableHeaders -> {
+                    mutableHeaders.remove(USER_ID_HEADER);
+                    mutableHeaders.remove(INTERNAL_TOKEN_HEADER);
+                })
                 .build();
 
         return chain.filter(exchange.mutate().request(request).build());

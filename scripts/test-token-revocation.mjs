@@ -11,7 +11,11 @@
 // auth (escribe en Redis) y en gateway (consulta Redis).
 //
 // Uso:
-//   node scripts/test-token-revocation.mjs [--gateway http://localhost:8080] [--mode auto|on|off]
+//   node scripts/test-token-revocation.mjs [--gateway https://localhost] [--insecure] [--mode auto|on|off]
+//
+//   Para verificar el certificado de la CA local (scripts/generate-certs.sh):
+//     NODE_EXTRA_CA_CERTS=nginx/certs/ca.pem node scripts/test-token-revocation.mjs --mode on
+//   Con certificado autofirmado temporal, usa --insecure (o -k).
 //
 //   --mode on   exige que el token revocado reciba 401 (falla si se acepta).
 //   --mode off  exige que el token revocado se acepte (reproduce la vulnerabilidad).
@@ -43,7 +47,11 @@ const option = (name, fallback) => {
 };
 const hasFlag = (name) => args.includes(name);
 
-const GATEWAY = option('--gateway', 'http://localhost:8080');
+if (hasFlag('--insecure') || hasFlag('-k')) {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+}
+
+const GATEWAY = option('--gateway', process.env.PUBLIC_URL || 'https://localhost').replace(/\/$/, '');
 const MODE = option('--mode', 'auto');
 const USERNAME = option('--username', '');
 const PASSWORD = option('--password', 'secreto123');
@@ -132,7 +140,19 @@ async function main() {
   console.log(`Gateway: ${GATEWAY}  Modo: ${MODE}\n`);
 
   const health = await call('GET', '/actuator/health');
-  check('gateway saludable', health.data?.status === 'UP', JSON.stringify(health.data));
+  if (health.data?.status === 'UP') {
+    check('gateway saludable', true);
+  } else {
+    // Detras del Reverse Proxy (Nginx), /actuator/health no se publica al host:
+    // verificamos /healthz en el proxy y una ruta publica del gateway.
+    const proxyHealth = await call('GET', '/healthz');
+    const apiProbe = await call('GET', '/api/messages/nearby?lat=4.6371&lng=-74.0834&radius=100');
+    check(
+      'gateway saludable (via reverse proxy)',
+      proxyHealth.status === 200 && (apiProbe.status === 200 || apiProbe.status === 429),
+      `/healthz=${proxyHealth.status}, /api/messages/nearby=${apiProbe.status}`
+    );
+  }
 
   const session = await registerOrLogin();
   if (!session?.token) throw new Error('No se obtuvo un access token.');

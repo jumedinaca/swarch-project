@@ -17,7 +17,7 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Counter, Rate, Trend } from 'k6/metrics';
 
-export const BASE_URL = (__ENV.BASE_URL || 'http://localhost:8080').replace(/\/+$/, '');
+export const BASE_URL = (__ENV.BASE_URL || 'https://localhost').replace(/\/+$/, '');
 export const FLOW_MODE = (__ENV.FLOW || 'mixed').toLowerCase();
 export const REQ_TIMEOUT = __ENV.REQ_TIMEOUT || '5s';
 export const THINK_TIME = Number.parseFloat(__ENV.THINK_TIME ?? '1.0');
@@ -85,7 +85,9 @@ function pickRateableMessage(userId) {
 
 function recordOutcome(res, flowTrend, flowCounter, expectedStatuses) {
   const is429 = res.status === 429;
-  const isRealErr = res.status === 0 || res.status >= 500 || res.status === 408;
+  const is5xxOrTimeout = res.status === 0 || res.status >= 500 || res.status === 408;
+  // Count any unexpected non-429 status (including 401/403/400/404) as a real error
+  const isRealErr = is5xxOrTimeout || (!is429 && !expectedStatuses.includes(res.status));
 
   flowTrend.add(res.timings.duration);
   flowCounter.add(1);
@@ -95,7 +97,7 @@ function recordOutcome(res, flowTrend, flowCounter, expectedStatuses) {
   if (is429) {
     http429Responses.add(1);
   }
-  if (isRealErr) {
+  if (is5xxOrTimeout) {
     http5xxOrTimeout.add(1);
   }
 

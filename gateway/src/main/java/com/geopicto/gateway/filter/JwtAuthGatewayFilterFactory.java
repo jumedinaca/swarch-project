@@ -25,6 +25,12 @@ public class JwtAuthGatewayFilterFactory extends AbstractGatewayFilterFactory<Ob
 
     private static final String BEARER_PREFIX = "Bearer ";
 
+    private enum RevocationCheckResult {
+        ALLOWED,
+        REVOKED,
+        UNAVAILABLE
+    }
+
     private final JwtService jwtService;
     private final TokenRevocationChecker revocationChecker;
 
@@ -53,9 +59,20 @@ public class JwtAuthGatewayFilterFactory extends AbstractGatewayFilterFactory<Ob
                 return ErrorResponses.write(exchange, HttpStatus.UNAUTHORIZED, "Invalid or expired token");
             }
 
+            // El manejo de errores se acota unicamente a la consulta en Redis para no
+            // enmascarar fallos de los microservicios aguas abajo como error de revocacion.
             return revocationChecker.isRevoked(claims)
-                    .flatMap(revoked -> {
-                        if (Boolean.TRUE.equals(revoked)) {
+                    .map(revoked -> Boolean.TRUE.equals(revoked)
+                            ? RevocationCheckResult.REVOKED
+                            : RevocationCheckResult.ALLOWED)
+                    .defaultIfEmpty(RevocationCheckResult.ALLOWED)
+                    .onErrorReturn(RevocationCheckResult.UNAVAILABLE)
+                    .flatMap(result -> {
+                        if (result == RevocationCheckResult.UNAVAILABLE) {
+                            return ErrorResponses.write(exchange, HttpStatus.SERVICE_UNAVAILABLE,
+                                    "Token revocation check unavailable");
+                        }
+                        if (result == RevocationCheckResult.REVOKED) {
                             return ErrorResponses.write(exchange, HttpStatus.UNAUTHORIZED,
                                     "Token has been revoked");
                         }
@@ -68,9 +85,7 @@ public class JwtAuthGatewayFilterFactory extends AbstractGatewayFilterFactory<Ob
                                 .build();
 
                         return chain.filter(exchange.mutate().request(mutatedRequest).build());
-                    })
-                    .onErrorResume(error -> ErrorResponses.write(exchange, HttpStatus.SERVICE_UNAVAILABLE,
-                            "Token revocation check unavailable"));
+                    });
         };
     }
 }
