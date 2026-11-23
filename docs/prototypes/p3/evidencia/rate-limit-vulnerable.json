@@ -1,0 +1,125 @@
+{
+  "mode": "vulnerable",
+  "gateway": "http://localhost:8080",
+  "startedAt": "2026-11-23T00:27:05.683Z",
+  "attacks": {
+    "writeBurst": {
+      "label": "Ataque 1: rafaga de POST /api/messages (por usuario)",
+      "requests": 30,
+      "byStatus": {
+        "201": 30
+      },
+      "reachedBackend": 30,
+      "blocked": 0,
+      "firstBlockedRequest": null,
+      "wallMs": 194.3,
+      "throughputRps": 154.4,
+      "latencyMs": {
+        "allP50": 143.8,
+        "allP95": 182.7,
+        "reachedBackendP50": 143.8,
+        "reachedBackendP95": 182.7,
+        "blockedP50": null,
+        "blockedP95": null
+      }
+    },
+    "loginBruteForce": {
+      "label": "Ataque 2: fuerza bruta en POST /api/auth/login (por IP)",
+      "requests": 30,
+      "byStatus": {
+        "401": 14,
+        "423": 16
+      },
+      "reachedBackend": 30,
+      "blocked": 0,
+      "firstBlockedRequest": null,
+      "wallMs": 1436,
+      "throughputRps": 20.9,
+      "latencyMs": {
+        "allP50": 1411.6,
+        "allP95": 1432.3,
+        "reachedBackendP50": 1411.6,
+        "reachedBackendP95": 1432.3,
+        "blockedP50": null,
+        "blockedP95": null
+      },
+      "passwordsVerified": 14,
+      "accountLocked": 16
+    },
+    "nearbyFlood": {
+      "label": "Ataque 3: rafaga de GET /api/messages/nearby (por IP)",
+      "requests": 150,
+      "byStatus": {
+        "200": 150
+      },
+      "reachedBackend": 150,
+      "blocked": 0,
+      "firstBlockedRequest": null,
+      "wallMs": 489.1,
+      "throughputRps": 306.7,
+      "latencyMs": {
+        "allP50": 224.2,
+        "allP95": 421.4,
+        "reachedBackendP50": 224.2,
+        "reachedBackendP95": 421.4,
+        "blockedP50": null,
+        "blockedP95": null
+      }
+    }
+  },
+  "checks": [
+    {
+      "name": "registro de spammer",
+      "ok": true
+    },
+    {
+      "name": "registro de legit",
+      "ok": true
+    },
+    {
+      "name": "VULNERABLE: ninguna publicacion es frenada (0 respuestas 429)",
+      "ok": true
+    },
+    {
+      "name": "VULNERABLE: el atacante guarda los 30 mensajes de spam",
+      "ok": true
+    },
+    {
+      "name": "otro usuario sigue publicando (201)",
+      "ok": true
+    },
+    {
+      "name": "ningun intento adivino la contraseña",
+      "ok": true
+    },
+    {
+      "name": "VULNERABLE: ningun intento de login es frenado (0 respuestas 429)",
+      "ok": true
+    },
+    {
+      "name": "VULNERABLE: los 30 intentos llegan al servicio auth (401 o 423)",
+      "ok": true
+    },
+    {
+      "name": "las lecturas siguen respondiendo tras los ataques (nearby 200)",
+      "ok": true
+    },
+    {
+      "name": "VULNERABLE: todas las consultas geoespaciales llegan a PostGIS (0 respuestas 429)",
+      "ok": true
+    },
+    {
+      "name": "otro usuario sigue publicando tras la rafaga de lecturas (201)",
+      "ok": true
+    }
+  ],
+  "dictionaryEstimate": {
+    "dictionarySize": 10000,
+    "measuredGuessesPerSecond": 20.9,
+    "secondsWithoutLimit": 478.5,
+    "secondsWithLimit": 60000,
+    "authPolicyPerMinute": 10
+  },
+  "finishedAt": "2026-11-23T00:27:08.281Z",
+  "failures": 0
+}
