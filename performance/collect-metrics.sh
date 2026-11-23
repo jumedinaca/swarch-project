@@ -271,8 +271,11 @@ while [[ "${STOP_REQUESTED}" -eq 0 ]]; do
     # shellcheck disable=SC2086
     RAW_JSON="$(docker stats --no-stream --format '{{json .}}' ${IDS} 2>/dev/null || true)"
     if [[ -n "${RAW_JSON}" ]]; then
-      printf '%s\n' "${RAW_JSON}" | python3 - "${TS_ISO}" "${TICK_START}" "${ELAPSED}" "${CURRENT_PHASE}" "${PROJECT}" >> "${OUTPUT_CSV}" <<'PY'
+      # Los datos van por variable de entorno: con "python3 -" el stdin ya lo
+      # ocupa el heredoc con el programa, así que un pipe se perdería.
+      DOCKER_STATS_JSON="${RAW_JSON}" python3 - "${TS_ISO}" "${TICK_START}" "${ELAPSED}" "${CURRENT_PHASE}" "${PROJECT}" >> "${OUTPUT_CSV}" <<'PY'
 import json
+import os
 import re
 import sys
 
@@ -350,7 +353,7 @@ def classify_tier(service: str) -> str:
 
 safe_phase = phase.replace(",", "_")
 
-for line in sys.stdin:
+for line in os.environ.get("DOCKER_STATS_JSON", "").splitlines():
     line = line.strip()
     if not line:
         continue
