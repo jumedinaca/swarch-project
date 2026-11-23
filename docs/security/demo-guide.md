@@ -55,8 +55,9 @@ Con `geopicto-p2` ya levantado, ejecuta todo desde tu carpeta principal (`swarch
 ### Escenario 1 (ANTES) — Tráfico en texto plano (sin TLS ni HSTS)
 
 ```bash
-# 1. El API Gateway responde en HTTP sin cifrar por :8080 (credenciales, JWT y GPS en texto plano)
-curl -i "http://localhost:8080/api/messages/nearby?lat=4.6371&lng=-74.0834&radius=500"
+# 1. Captura pasiva en el cable (wiretap TCP) durante un POST /api/auth/login real por HTTP :8080:
+#    muestra la ruta, el usuario, la contraseña ("MiClaveSecreta123!") y el JWT en texto plano
+node scripts/demo-wiretap-tls.mjs
 
 # 2. No existe canal HTTPS en :443 ni redirección desde :80
 curl -skI https://localhost/ || echo "SIN HTTPS (:443 rechazado)"
@@ -67,7 +68,7 @@ curl -sI http://localhost:8082/login
 ```
 
 **Qué señalar al profesor:**
-* El tráfico viaja en `http://` y `ws://` sin cifrado (vulnerable a *Eavesdropping* / *MitM*).
+* En el volcado de `demo-wiretap-tls.mjs` (4/4 datos `[VISIBLE EN CLARO]`), cualquier atacante en la red (*Eavesdropping* / *MitM*) lee literalmente `POST /api/auth/login`, la contraseña y el JWT emitido en texto plano.
 * No hay puerto `:443`, no hay redirección `301` ni cabecera `Strict-Transport-Security` (HSTS).
 
 ---
@@ -130,10 +131,13 @@ docker compose ps --format "table {{.Service}}\t{{.Status}}\t{{.Ports}}"
 ### Escenario 1 (DESPUÉS) — Secure Channel Pattern (TLS 1.2/1.3, HSTS, WSS)
 
 ```bash
-# 1. Prueba rápida visual: HTTP :80 fuerza redirección 301 a HTTPS
-curl -sI "http://localhost/api/messages/nearby?lat=4.6371&lng=-74.0834&radius=500"
+# 1. Misma captura pasiva en el cable (wiretap TCP) durante un POST /api/auth/login real por HTTPS :443:
+#    curl valida el certificado contra nginx/certs/ca.pem y recibe HTTP 200 + JWT,
+#    pero el interceptor solo captura registros TLS cifrados (0/4 secretos visibles)
+node scripts/demo-wiretap-tls.mjs
 
-# 2. Prueba HTTPS validando la CA local (sin -k) y verificando HSTS
+# 2. Prueba rápida visual: HTTP :80 fuerza redirección 301 a HTTPS y :443 entrega HSTS
+curl -sI "http://localhost/api/messages/nearby?lat=4.6371&lng=-74.0834&radius=500"
 curl --cacert nginx/certs/ca.pem -sI https://localhost/healthz
 
 # 3. Suite automatizada completa del Escenario 1 (21/21 PASS)
@@ -141,6 +145,7 @@ curl --cacert nginx/certs/ca.pem -sI https://localhost/healthz
 ```
 
 **Qué señalar al profesor:**
+* En `demo-wiretap-tls.mjs`, el login funciona (`HTTP 200`, CA local verificada, JWT recibido), pero el interceptor en la red solo ve `Handshake (0x16)` y `Application Data cifrado (0x17)` — **0/4 datos sensibles visibles** (ni `/api/auth/login`, ni usuario, ni contraseña, ni JWT).
 * `301 Moved Permanently` desde `:80` hacia `https://`.
 * Negociación real de **TLS 1.3** (`TLS_AES_256_GCM_SHA384`) y **TLS 1.2** (`ECDHE-RSA-AES256-GCM-SHA384`) validada contra nuestra CA local (`ca.pem`).
 * Rechazo explícito de **TLS 1.0**, **TLS 1.1**, HTTP plano en `:443` y clientes sin CA confiable.
