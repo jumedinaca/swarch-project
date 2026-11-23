@@ -76,8 +76,12 @@ class TokenBlacklistTests {
     private WebTestClient client;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws InterruptedException {
         checker.reset();
+        // Descarta peticiones que otros tests reenviaron y no consumieron: el
+        // MockWebServer es compartido y JUnit no garantiza el orden de los tests.
+        while (backend.takeRequest(0, java.util.concurrent.TimeUnit.MILLISECONDS) != null) {
+        }
         client = WebTestClient.bindToServer().baseUrl("http://localhost:" + port).build();
     }
 
