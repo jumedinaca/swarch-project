@@ -45,12 +45,12 @@ Cliente (Navegador / App)
   ├── HTTP  :80  ──▶ reverse-proxy ──▶ 301 Moved Permanently ──▶ https://$host$request_uri
   │
   ├── HTTPS :443 ──▶ reverse-proxy (Terminación TLS 1.2 / 1.3 + HSTS)
-  │                    ├─ https://app.localhost/        ──▶ frontend:80
-  │                    ├─ https://profile.localhost/    ──▶ profile-web:3000
-  │                    └─ https://*/api/*               ──▶ gateway:8080
+  │                    ├─ https://localhost/                 ──▶ frontend:80
+  │                    ├─ https://localhost/account, /login  ──▶ profile-web:3000
+  │                    └─ https://localhost/api/*            ──▶ gateway:8080
   │
   └── WSS   :443 ──▶ reverse-proxy (Terminación TLS + Upgrade: websocket)
-                       └─ wss://app.localhost/api/ws    ──▶ gateway:8080 ──▶ socket-gateway:8080
+                       └─ wss://localhost/api/ws             ──▶ gateway:8080 ──▶ socket-gateway:8080
 ```
 
 Archivos del Escenario 1 (Persona 1):
