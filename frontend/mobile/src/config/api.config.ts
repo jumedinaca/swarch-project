@@ -5,18 +5,24 @@
  * peticiones hacia los microservicios de Autenticación y de Mensajes.
  */
 
+const DEFAULT_GATEWAY_URL = 'https://localhost';
+
 // Permite leer variables de entorno con prefijo EXPO_PUBLIC_ en Expo SDK 57+
 function resolveGatewayUrl(): string {
-  // Si se abre en navegador web vía localhost/127.0.0.1, usar siempre localhost:8080
-  // para evitar que una IP LAN de otra red Wi-Fi bloquee la versión web.
+  // En el navegador, cuando la app se sirve por HTTPS lo hace a traves del
+  // reverse proxy perimetral, que publica la SPA (/) y el API Gateway (/api) en
+  // el mismo origen. Usar ese origen evita Mixed Content, peticiones CORS entre
+  // puertos y que una IP LAN incrustada en el build rompa la version web.
   if (
     typeof window !== 'undefined' &&
     window.location &&
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    window.location.protocol === 'https:'
   ) {
-    return `http://${window.location.hostname}:8080`;
+    return window.location.origin;
   }
-  return process.env.EXPO_PUBLIC_API_GATEWAY_URL || 'http://localhost:8080';
+  // App nativa o servidor de desarrollo de Expo (http://localhost:8081): se usa
+  // la URL publica del proxy configurada al compilar.
+  return (process.env.EXPO_PUBLIC_API_GATEWAY_URL || DEFAULT_GATEWAY_URL).replace(/\/$/, '');
 }
 
 const GATEWAY_URL = resolveGatewayUrl();
@@ -47,9 +53,10 @@ const IS_MOCK_ENABLED_BY_DEFAULT =
 
 export const API_CONFIG = {
   /**
-   * URL base del API Gateway.
-   * Ejemplo en desarrollo local: http://localhost:8080 o la IP de la máquina (ej: http://192.168.1.15:8080)
-   * Ejemplo en producción: https://gateway.geopicto.org
+   * URL publica del API Gateway, siempre detras del reverse proxy con TLS.
+   * Ejemplo en local: https://localhost o la IP de la máquina (ej: https://192.168.1.15)
+   * Ejemplo en producción: https://geopicto.org
+   * WS_URL se deriva de ella (https:// -> wss://).
    */
   BASE_URL: GATEWAY_URL,
   WS_URL: deriveWsBaseUrl(GATEWAY_URL),

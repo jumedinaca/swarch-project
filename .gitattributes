@@ -1,0 +1,8 @@
+# Archivos que se ejecutan o se leen dentro de contenedores Linux: siempre LF,
+# aunque el repositorio se clone en Windows con core.autocrlf=true. Con CRLF el
+# shebang queda como "#!/bin/sh\r" y el script no arranca (p. ej. el
+# entrypoint de nginx/ hace que el reverse-proxy se reinicie en bucle).
+*.sh            text eol=lf
+nginx/**        text eol=lf
+Dockerfile      text eol=lf
+*.Dockerfile    text eol=lf

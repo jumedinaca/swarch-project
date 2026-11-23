@@ -30,9 +30,11 @@ Desde la raíz del repositorio:
 docker compose up --build profile-web
 ```
 
-El panel queda publicado en `http://localhost:8082`. Next.js corre en modo
-standalone dentro del contenedor y usa `API_GATEWAY_URL=http://gateway:8080`
-para la red interna de Compose.
+El contenedor no publica puertos: el panel se sirve a través del reverse proxy
+perimetral en `https://localhost/account` y `https://localhost/login` (TLS en
+el borde, cookies `Secure`). Next.js corre en modo standalone dentro del
+contenedor y usa `API_GATEWAY_URL=http://gateway:8080` para la red interna de
+Compose. Ver [../README.md](../README.md#detrás-del-reverse-proxy-https--wss).
 
 ## Modos de uso
 
@@ -93,7 +95,7 @@ src/
 | Variable | Descripción |
 | --- | --- |
 | `API_GATEWAY_URL` | URL interna del gateway. En local `http://localhost:8080`; en Compose `http://gateway:8080`. |
-| `COOKIE_SECURE` | `true` si el panel se publica por HTTPS para marcar las cookies como `Secure`. |
+| `COOKIE_SECURE` | Marca las cookies como `Secure`. En Compose vale `true` (el panel solo se publica por HTTPS). Sin definir: `true` en producción y `false` en `npm run dev`. |
 
 ## Verificación
 
