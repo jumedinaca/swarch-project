@@ -99,5 +99,5 @@ Resultado esperado: `EXPUESTO: 0`, `MITIGADO: 10`, `FALLA: 0`, `Puntos de entrad
 Notas:
 
 - Si existe un `.env` con `EXPO_PUBLIC_API_GATEWAY_URL=http://localhost:8080` o `CORS_ALLOWED_ORIGINS` con los puertos viejos, quitar esas líneas (así se usan los valores por defecto de `docker-compose.yml`) y reconstruir el frontend.
-- **Pendiente de Persona 3:** cuando la app Expo se abre en `localhost`, `frontend/mobile/src/config/api.config.ts` fuerza `http://localhost:8080` como URL del API, que ya no está publicado. Hasta que se corrija (usar `https://localhost`, o el mismo origen de la página), la app carga a través del proxy pero sus llamadas al API fallan en el navegador. El panel `profile-web` no se ve afectado.
+- La app Expo, servida por HTTPS a través del proxy, usa el mismo origen de la página para el API (`https://localhost/api`) y el WebSocket (`wss://localhost/api/ws`) (ver `frontend/mobile/src/config/api.config.ts`). `node scripts/smoke-test.mjs` y `node scripts/test-realtime.mjs` validan los frontends de punta a punta a través del proxy.
 - Construir ambas versiones antes de la presentación: la compilación del frontend tarda varios minutos.
