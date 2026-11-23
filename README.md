@@ -37,48 +37,54 @@ docker compose up --build --wait
 
 El secreto con el que se firman los JWT (`JWT_SECRET`) tiene un valor por defecto en el `docker-compose.yml`, pensado solo para ejecutar el prototipo en local. Para usar uno propio, copia `.env.example` a `.env` y define `JWT_SECRET` (mínimo 32 bytes; por ejemplo, el resultado de `openssl rand -base64 48`).
 
+Todo el tráfico de la aplicación entra por el reverse proxy perimetral, que termina TLS y publica en un mismo origen HTTPS los frontends y el API Gateway:
+
 | Servicio | URL |
 | --- | --- |
-| Frontend web (Expo) | http://localhost:8081 |
-| Panel de cuenta (Next.js SSR) | http://localhost:8082 |
-| API Gateway | http://localhost:8080 |
-| Salud del gateway | http://localhost:8080/actuator/health |
+| Frontend web (Expo) | https://localhost/ |
+| Panel de cuenta (Next.js SSR) | https://localhost/account (acceso en `/login`) |
+| API Gateway (REST y GraphQL) | https://localhost/api/... |
+| WebSocket de tiempo real | wss://localhost/api/ws |
 | Bandeja de Mailpit | http://localhost:8025 |
+
+Sin certificados propios el proxy usa un autofirmado temporal y el navegador mostrará una advertencia. `./scripts/generate-certs.sh && docker compose restart reverse-proxy` genera una CA local (`nginx/certs/ca.pem`) y un certificado firmado por ella; instala esa CA en el sistema o el navegador para que confíe en el sitio.
 
 Los servicios de autenticación, mensajes, moderación, red social, perfiles, calificaciones, reputación, correo y tiempo real, sus bases de datos, RabbitMQ, Redis y MinIO no se publican al host: solo se accede a ellos a través del gateway (o del broker, en el caso de los eventos). Mailpit publica únicamente su interfaz web para inspeccionar los correos de desarrollo.
 
 El frontend móvil usa el backend real (`EXPO_PUBLIC_USE_MOCK_DATA=false`). Con `true` usa datos simulados en el navegador, útil para trabajar solo en la interfaz. Como la variable se incrusta al compilar, después de cambiarla hay que reconstruir el frontend con `docker compose up --build frontend`.
 
-El panel `profile-web` se renderiza en el servidor con Next.js y habla con el gateway por la red interna de Compose (`API_GATEWAY_URL=http://gateway:8080`). Sin sesión redirige a `/login`; al iniciar sesión guarda el JWT en una cookie httpOnly y administra datos reales de perfil, mensajes, reputación y amigos. La cuenta de ejemplo interactiva sigue disponible desde `/account?demo=1`.
+El panel `profile-web` se renderiza en el servidor con Next.js y habla con el gateway por la red interna de Compose (`API_GATEWAY_URL=http://gateway:8080`). Sin sesión redirige a `/login`; al iniciar sesión guarda el JWT en cookies `HttpOnly; Secure` (`COOKIE_SECURE=true`), que el navegador solo envía por HTTPS, y administra datos reales de perfil, mensajes, reputación y amigos. La cuenta de ejemplo interactiva sigue disponible desde `/account?demo=1`.
 
-Si necesitas acceder desde otro dispositivo de la red local, cambia `EXPO_PUBLIC_API_GATEWAY_URL` y los orígenes CORS/WebSocket en `.env` por la IP de tu computador (`.env.example` incluye un ejemplo).
+Si necesitas acceder desde otro dispositivo de la red local, define `EXPO_PUBLIC_API_GATEWAY_URL=https://<IP de tu computador>` en `.env` y genera el certificado con esa IP (`./scripts/generate-certs.sh --ip <IP>`). Con ese valor se compila el frontend, se construyen los `avatarUrl` y se autorizan CORS y el origen del WebSocket. Si tienes un `.env` de una versión anterior, borra de él los valores `http://` de `EXPO_PUBLIC_API_GATEWAY_URL`, `CORS_ALLOWED_ORIGINS` y `WS_ALLOWED_ORIGINS`.
 
 ## Verificar la integración
 
-Con el sistema levantado, este script recorre frontend → gateway → auth / mensajes / red social / perfiles con dos usuarios nuevos y valida cada paso, incluidos el avatar y CORS (requiere Node):
+Con el sistema levantado, este script recorre reverse proxy → frontends y gateway → auth / mensajes / red social / perfiles con dos usuarios nuevos y valida cada paso por HTTPS, incluidos el avatar, CORS, que los frontends no referencien URLs `http://` ni puertos directos y que el login del panel entregue cookies `Secure` (requiere Node):
 
 ```bash
-node scripts/smoke-test.mjs
+node scripts/smoke-test.mjs --insecure
 ```
 
-Para validar además tickets, WebSocket, rating y reputación en vivo:
+Para validar además tickets, WebSocket (WSS), rating y reputación en vivo:
 
 ```bash
-node scripts/test-realtime.mjs --gateway http://localhost:8080
+node scripts/test-realtime.mjs --insecure
 ```
+
+`--insecure` acepta el certificado autofirmado temporal. Con los certificados de `generate-certs.sh` puedes verificarlo en lugar de ignorarlo: `NODE_EXTRA_CA_CERTS=nginx/certs/ca.pem node scripts/smoke-test.mjs`. Ambos scripts usan `https://localhost` por defecto (`--url` / `--gateway` para cambiarlo). Las pruebas propias del perímetro están en `scripts/test-secure-channel.sh` y `scripts/test-reverse-proxy.sh`.
 
 ## Probar la API
 
 Registra un usuario y guarda su token (el token dura 15 minutos; el frontend lo renueva solo con el refresh token):
 
 ```bash
-TOKEN=$(curl -s -X POST localhost:8080/api/auth/register -H "Content-Type: application/json" -d '{"username":"ExploradorGeo","email":"explorador@geochat.org","password":"secreto123"}' | sed -E 's/.*"token":"([^"]+)".*/\1/')
+TOKEN=$(curl -sk -X POST https://localhost/api/auth/register -H "Content-Type: application/json" -d '{"username":"ExploradorGeo","email":"explorador@geochat.org","password":"secreto123"}' | sed -E 's/.*"token":"([^"]+)".*/\1/')
 ```
 
 Si el usuario ya existe, inicia sesión en su lugar:
 
 ```bash
-TOKEN=$(curl -s -X POST localhost:8080/api/auth/login -H "Content-Type: application/json" -d '{"usernameOrEmail":"ExploradorGeo","password":"secreto123"}' | sed -E 's/.*"token":"([^"]+)".*/\1/')
+TOKEN=$(curl -sk -X POST https://localhost/api/auth/login -H "Content-Type: application/json" -d '{"usernameOrEmail":"ExploradorGeo","password":"secreto123"}' | sed -E 's/.*"token":"([^"]+)".*/\1/')
 ```
 
 Para pruebas sin registrar usuarios, `node scripts/dev-token.mjs <uuid>` genera un token de desarrollo válido (requiere Node).
@@ -86,37 +92,37 @@ Para pruebas sin registrar usuarios, `node scripts/dev-token.mjs <uuid>` genera 
 Crear un mensaje:
 
 ```bash
-curl -X POST localhost:8080/api/messages -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"content":"Hola desde la Plaza Che","latitude":4.6371,"longitude":-74.0834}'
+curl -k -X POST https://localhost/api/messages -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"content":"Hola desde la Plaza Che","latitude":4.6371,"longitude":-74.0834}'
 ```
 
 Buscar mensajes cercanos (no requiere token):
 
 ```bash
-curl "localhost:8080/api/messages/nearby?lat=4.6371&lng=-74.0834&radius=500"
+curl -k "https://localhost/api/messages/nearby?lat=4.6371&lng=-74.0834&radius=500"
 ```
 
 Red social (GraphQL): enviar una solicitud de amistad a otro usuario (su UUID) y consultar amigos y solicitudes en una sola petición:
 
 ```bash
-curl -X POST localhost:8080/api/network/graphql -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"query":"mutation($id: UUID!) { sendFriendRequest(recipientId: $id) { id status } }","variables":{"id":"<uuid-del-otro-usuario>"}}'
-curl -X POST localhost:8080/api/network/graphql -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"query":"{ friends { otherUserId } incomingRequests { id otherUserId } }"}'
+curl -k -X POST https://localhost/api/network/graphql -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"query":"mutation($id: UUID!) { sendFriendRequest(recipientId: $id) { id status } }","variables":{"id":"<uuid-del-otro-usuario>"}}'
+curl -k -X POST https://localhost/api/network/graphql -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"query":"{ friends { otherUserId } incomingRequests { id otherUserId } }"}'
 ```
 
 Perfil: consultar el propio, editarlo y subir una foto (JPEG, PNG o WebP de hasta 5 MB):
 
 ```bash
-curl localhost:8080/api/profiles/me -H "Authorization: Bearer $TOKEN"
-curl -X PATCH localhost:8080/api/profiles/me -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"displayName":"Explorador","about":"Cazando pictos por Bogotá."}'
-curl -X POST localhost:8080/api/profiles/me/avatar -H "Authorization: Bearer $TOKEN" -F "file=@foto.jpg"
+curl -k https://localhost/api/profiles/me -H "Authorization: Bearer $TOKEN"
+curl -k -X PATCH https://localhost/api/profiles/me -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"displayName":"Explorador","about":"Cazando pictos por Bogotá."}'
+curl -k -X POST https://localhost/api/profiles/me/avatar -H "Authorization: Bearer $TOKEN" -F "file=@foto.jpg"
 ```
 
 Calificaciones y reputación:
 
 ```bash
-curl -X PUT localhost:8080/api/ratings/messages/<id-del-mensaje> -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"value":"LIKE"}'
-curl localhost:8080/api/ratings/messages/<id-del-mensaje> -H "Authorization: Bearer $TOKEN"
-curl localhost:8080/api/reputation/me -H "Authorization: Bearer $TOKEN"
-curl "localhost:8080/api/reputation/leaderboard?limit=10" -H "Authorization: Bearer $TOKEN"
+curl -k -X PUT https://localhost/api/ratings/messages/<id-del-mensaje> -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"value":"LIKE"}'
+curl -k https://localhost/api/ratings/messages/<id-del-mensaje> -H "Authorization: Bearer $TOKEN"
+curl -k https://localhost/api/reputation/me -H "Authorization: Bearer $TOKEN"
+curl -k "https://localhost/api/reputation/leaderboard?limit=10" -H "Authorization: Bearer $TOKEN"
 ```
 
 No se puede calificar un mensaje propio. La reputación se actualiza de forma asíncrona con los eventos de RabbitMQ; si consultas justo después de votar, puede tardar unos instantes.

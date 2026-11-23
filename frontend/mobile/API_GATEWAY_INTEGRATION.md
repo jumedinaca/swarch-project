@@ -17,7 +17,7 @@ Si la aplicación cliente (nuestra app móvil/web) tuviera que comunicarse direc
 3. Habría acoplamiento: si se divide o renombra un servicio interno, la app se rompería.
 
 ### La Solución: API Gateway (Punto Único de Entrada)
-El **API Gateway** es un servidor intermediario (Reverse Proxy / Puerta de Enlace) que expone una **única URL pública** (por ejemplo `http://localhost:8080` o `https://api.geopicto.org`).
+El **API Gateway** es un servidor intermediario (Reverse Proxy / Puerta de Enlace) que expone una **única URL pública** (en el sistema completo, `https://localhost/api` a través del reverse proxy con TLS; en producción, por ejemplo, `https://geopicto.org/api`).
 
 La aplicación cliente **solo se comunica con el API Gateway**, y este se encarga de:
 - **Enrutamiento (Routing):** Redirige las peticiones según la ruta URL hacia el microservicio correspondiente.
@@ -255,8 +255,8 @@ El proyecto está diseñado con **resiliencia total**:
 ### Opción 1: Variable de Entorno `.env`
 Edita el archivo `.env`:
 ```bash
-# Cambia la URL cuando tengas el API Gateway corriendo
-EXPO_PUBLIC_API_GATEWAY_URL=http://localhost:8080
+# URL publica del API Gateway (detras del reverse proxy con TLS)
+EXPO_PUBLIC_API_GATEWAY_URL=https://localhost
 
 # 'true': Usa datos simulados (para seguir diseñando o probando sin backend)
 # 'false': Se conecta al API Gateway real

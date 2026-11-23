@@ -1,0 +1,34 @@
+Escenario 2 - Reverse Proxy Pattern
+Perimetro detectado en https://localhost (Reverse Proxy activo)
+
+1. Superficie de ataque (puertos publicados al host)
+[MITIGADO] gateway no es accesible directamente en :8080 (conexion rechazada)
+[MITIGADO] frontend no es accesible directamente en :8081 (conexion rechazada)
+[MITIGADO] profile-web no es accesible directamente en :8082 (conexion rechazada)
+[MITIGADO] existe un unico punto de entrada (https://localhost -> HTTP 200 en /healthz)
+
+2. Cabeceras de seguridad HTTP
+[MITIGADO] https://localhost/ envia X-Frame-Options, X-Content-Type-Options y Referrer-Policy
+[MITIGADO] https://localhost/login envia X-Frame-Options, X-Content-Type-Options y Referrer-Policy
+
+3. Divulgacion de tecnologia y version
+[MITIGADO] https://localhost/ no revela version ni tecnologia (Server: nginx)
+[MITIGADO] https://localhost/login no revela version ni tecnologia (Server: nginx)
+[MITIGADO] https://localhost/api/messages/nearby?lat=4.6371&lng=-74.0834&radius=500 no revela version ni tecnologia (Server: nginx)
+
+4. Limite de tamano de peticion
+[MITIGADO] un cuerpo de 7 MB se rechaza en el borde (HTTP 413, no llega al microservicio)
+
+5. Funcionamiento a traves del proxy
+[OK]       app (Expo) en / responde a traves del proxy (https://localhost/ -> 200)
+[OK]       profile-web (Next.js) en /login responde a traves del proxy (https://localhost/login -> 200)
+[OK]       profile-web (Next.js) en /account responde a traves del proxy (https://localhost/account?demo=1 -> 200)
+[OK]       API publica en /api responde a traves del proxy (https://localhost/api/messages/nearby?lat=4.6371&lng=-74.0834&radius=500 -> 200)
+[OK]       recurso estatico de profile-web enrutado correctamente (/_next/static/chunks/37km4eog0281v.css -> 200)
+[OK]       recurso estatico de frontend enrutado correctamente (/_expo/static/js/web/index-987400a3caf4435ed8562dc0ebc2a785.js -> 200)
+[OK]       el handshake WebSocket /api/ws llega al socket-gateway (HTTP 101 sin ticket)
+[OK]       HTTP :80 redirige a HTTPS (HTTP 301)
+
+Resumen
+EXPUESTO: 0   MITIGADO: 10   FALLA: 0
+Puntos de entrada publicados: 1 (reverse-proxy :80/:443)

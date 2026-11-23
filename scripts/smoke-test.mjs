@@ -1,11 +1,21 @@
 #!/usr/bin/env node
 // Prueba de integracion de punta a punta contra el sistema levantado con
-// `docker compose up`: recorre frontend -> gateway -> auth / messages / profile
-// (REST) y network (GraphQL) con dos usuarios nuevos, igual que lo haria la
-// aplicacion.
+// `docker compose up`: recorre reverse proxy (HTTPS) -> frontends y gateway ->
+// auth / messages / profile (REST) y network (GraphQL) con dos usuarios nuevos,
+// igual que lo haria la aplicacion. Todo entra por el mismo origen publico
+// (ver nginx/sites/https.conf):
+//   https://localhost/api/...          API Gateway (WebSocket en /api/ws)
+//   https://localhost/account, /login  panel SSR (Next.js, assets en /_next)
+//   https://localhost/                 SPA Expo
 //
 // Uso:
-//   node scripts/smoke-test.mjs [--gateway http://localhost:8080] [--frontend http://localhost:8081]
+//   node scripts/smoke-test.mjs [--url https://localhost] [--insecure]
+//   node scripts/smoke-test.mjs --gateway <url> --frontend <url> --profile-web <url>
+//
+// Para verificar el certificado de la CA local (scripts/generate-certs.sh):
+//   NODE_EXTRA_CA_CERTS=nginx/certs/ca.pem node scripts/smoke-test.mjs
+// Con el autofirmado temporal del proxy, o solo para pruebas, usa --insecure
+// (desactiva la verificacion del certificado).
 //
 // Termina con codigo 1 si alguna verificacion falla.
 
@@ -17,9 +27,17 @@ const option = (name, fallback) => {
   return index >= 0 ? args[index + 1] : fallback;
 };
 
-const GATEWAY = option('--gateway', 'http://localhost:8080');
-const FRONTEND = option('--frontend', 'http://localhost:8081');
-const ORIGIN = FRONTEND;
+if (args.includes('--insecure') || args.includes('-k')) {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+}
+
+const strip = (url) => url.replace(/\/$/, '');
+const PUBLIC_URL = strip(option('--url', process.env.PUBLIC_URL || 'https://localhost'));
+const GATEWAY = strip(option('--gateway', PUBLIC_URL));
+const FRONTEND = strip(option('--frontend', PUBLIC_URL));
+// Origen del panel SSR: sirve /account y /login detras del mismo proxy.
+const PROFILE_WEB = strip(option('--profile-web', PUBLIC_URL));
+const ORIGIN = new URL(FRONTEND).origin;
 
 let failures = 0;
 
@@ -72,6 +90,139 @@ function solidPng(width, height) {
   ]);
 }
 
+function describeError(error) {
+  if (!error) return '';
+  const cause = error.cause?.code || error.cause?.message || '';
+  return `${error.message}${cause ? ` (${cause})` : ''}`;
+}
+
+async function fetchText(url, init = {}) {
+  try {
+    const response = await fetch(url, { redirect: 'manual', ...init });
+    return { status: response.status, headers: response.headers, text: await response.text() };
+  } catch (error) {
+    return { status: 0, headers: new Headers(), text: '', error };
+  }
+}
+
+// La SPA y el panel deben cargarse por HTTPS desde el reverse proxy y no hacer
+// referencia a URLs http:// (Mixed Content) ni a los puertos directos 8080-8082.
+async function checkPerimeter() {
+  for (const [name, url] of [
+    ['gateway', GATEWAY],
+    ['frontend', FRONTEND],
+    ['panel SSR', PROFILE_WEB],
+  ]) {
+    check(`${name} se publica por https://`, url.startsWith('https://'), url);
+  }
+
+  const front = await fetchText(FRONTEND);
+  check(
+    'frontend (SPA) responde por el proxy',
+    front.status === 200,
+    `status ${front.status} ${describeError(front.error)}`
+  );
+
+  const scripts = [...front.text.matchAll(/<script[^>]+src="([^"]+)"/g)].map(
+    (m) => new URL(m[1], `${FRONTEND}/`).href
+  );
+  check(
+    'frontend carga sus scripts desde el mismo origen HTTPS',
+    scripts.length > 0 && scripts.every((src) => src.startsWith(`${ORIGIN}/`)),
+    scripts.join(', ')
+  );
+  let bundle = '';
+  for (const src of scripts) bundle += (await fetchText(src)).text;
+  const directPorts = bundle.match(/https?:\/\/[a-z0-9.-]+:808[0-2]/gi) ?? [];
+  check(
+    'bundle del frontend sin URLs a los puertos directos 8080-8082',
+    bundle.length > 0 && directPorts.length === 0,
+    [...new Set(directPorts)].join(', ')
+  );
+
+  const login = await fetchText(`${PROFILE_WEB}/login`);
+  check(
+    'panel SSR responde en /login por el proxy',
+    login.status === 200 && login.text.includes('GEOPICTO // CUENTA'),
+    `status ${login.status} ${describeError(login.error)}`
+  );
+  // El proxy enruta /_next/* al panel; si llegaran a la SPA, el panel cargaria
+  // sin estilos ni JavaScript.
+  const assets = [...login.text.matchAll(/(?:src|href)="(\/_next\/[^"]+)"/g)].map((m) => m[1]);
+  check('panel SSR referencia sus assets en /_next', assets.length > 0);
+  if (assets[0]) {
+    const asset = await fetchText(new URL(assets[0], `${PROFILE_WEB}/`).href);
+    check('asset /_next del panel llega por el proxy', asset.status === 200, `status ${asset.status} ${assets[0]}`);
+  }
+  check('HTML del panel SSR sin URLs http://', !/(?:src|href|action)="http:\/\//i.test(login.text));
+
+  // Sin sesion, /account redirige a /login. Como el panel transmite la
+  // respuesta en streaming, la redireccion puede llegar como meta refresh.
+  const account = await fetchText(`${PROFILE_WEB}/account`);
+  const location = account.headers.get('location') ?? '';
+  const redirectsToLogin =
+    ([303, 307, 308].includes(account.status) && location.endsWith('/login')) ||
+    (account.status === 200 && account.text.includes('url=/login'));
+  check('panel sin sesion redirige a /login', redirectsToLogin, `status ${account.status} ${location}`);
+  check('redireccion del panel no baja a http://', !location.startsWith('http://'), location);
+}
+
+const decodeHtml = (value) =>
+  value
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;|&#39;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+
+// Inicia sesion en el panel como lo hace un navegador sin JavaScript: envia el
+// formulario del Server Action a traves del proxy y revisa que las cookies de
+// sesion lleguen con HttpOnly (no legibles desde JavaScript) y Secure (el
+// navegador nunca las envia por http://).
+async function checkProfileWebLogin(username) {
+  const page = await fetchText(`${PROFILE_WEB}/login`);
+  const form = page.text.match(/<form[^>]*>([\s\S]*?)<\/form>/)?.[1] ?? '';
+  const body = new FormData();
+  for (const input of form.matchAll(/<input([^>]*)>/g)) {
+    const name = input[1].match(/name="([^"]*)"/)?.[1];
+    if (name?.startsWith('$ACTION')) body.append(name, decodeHtml(input[1].match(/value="([^"]*)"/)?.[1] ?? ''));
+  }
+  if ([...body.keys()].length === 0) {
+    check('panel SSR: formulario de login con Server Action', false, 'no se encontro el formulario');
+    return;
+  }
+  body.append('identifier', username);
+  body.append('password', 'secreto123');
+
+  // Next rechaza Server Actions cuyo Origin no coincide con el host que
+  // reenvia el proxy (proteccion CSRF): esto tambien valida esas cabeceras.
+  const response = await fetchText(`${PROFILE_WEB}/login`, {
+    method: 'POST',
+    headers: { Origin: ORIGIN },
+    body,
+  });
+  const cookies = response.headers.getSetCookie();
+  const session = cookies.filter((cookie) => cookie.startsWith('gp_profile_'));
+  check(
+    'panel SSR: login por el proxy entrega cookies de sesion',
+    session.length === 2,
+    `status ${response.status} ${cookies.map((c) => c.split(';')[0].split('=')[0]).join(', ')}`
+  );
+  for (const cookie of session) {
+    const name = cookie.split('=')[0];
+    check(
+      `panel SSR: cookie ${name} HttpOnly; Secure`,
+      /;\s*httponly/i.test(cookie) && /;\s*secure/i.test(cookie),
+      cookie.replace(/=[^;]+/, '=<token>')
+    );
+  }
+  check(
+    'panel SSR: login redirige a /account',
+    response.status === 303 && (response.headers.get('location') ?? '').endsWith('/account'),
+    `status ${response.status} ${response.headers.get('location')}`
+  );
+}
+
 async function register(prefix) {
   const name = `${prefix}${Date.now().toString(36)}`;
   const res = await call('POST', '/api/auth/register', {
@@ -82,13 +233,16 @@ async function register(prefix) {
 }
 
 async function main() {
-  console.log(`Gateway: ${GATEWAY}  Frontend: ${FRONTEND}\n`);
+  console.log(`Gateway: ${GATEWAY}  Frontend: ${FRONTEND}  Panel: ${PROFILE_WEB}\n`);
 
   // --- Infraestructura ---
-  const health = await call('GET', '/actuator/health');
-  check('gateway saludable', health.data?.status === 'UP');
-  const front = await fetch(FRONTEND).then((r) => r.status).catch(() => 0);
-  check('frontend responde', front === 200, `status ${front}`);
+  // El actuator del gateway no se publica en el perimetro: se usa una ruta
+  // publica de la API para comprobar que el proxy llega al gateway.
+  const health = await call('GET', '/api/messages/nearby?lat=0&lng=0&radius=1').catch((error) => ({ status: 0, error }));
+  check('gateway responde por el proxy', health.status === 200, `status ${health.status} ${describeError(health.error)}`);
+
+  // --- Perimetro: frontends detras del reverse proxy por HTTPS ---
+  await checkPerimeter();
 
   // --- Autenticacion ---
   const alice = await register('alice');
@@ -273,6 +427,12 @@ async function main() {
   const avatarUrl = (await uploaded.json().catch(() => null))?.avatarUrl;
   check('subir avatar', uploaded.status === 200 && !!avatarUrl, `status ${uploaded.status}`);
 
+  check(
+    'avatarUrl por HTTPS en el origen publico (sin Mixed Content)',
+    !!avatarUrl && avatarUrl.startsWith(`${GATEWAY}/api/profiles/avatars/`),
+    avatarUrl
+  );
+
   if (avatarUrl) {
     // Publica: sin token, como la pide una etiqueta <img>
     const avatar = await fetch(avatarUrl);
@@ -313,6 +473,9 @@ async function main() {
       `status ${preflight.status}`
     );
   }
+
+  // --- Panel SSR: login por Server Action y cookies de sesion ---
+  await checkProfileWebLogin(bob.user.username);
 
   // --- Logout ---
   const logout = await call('POST', '/api/auth/logout', { token: aliceToken });
