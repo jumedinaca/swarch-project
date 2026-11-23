@@ -481,3 +481,7 @@ performance/.seed-manifest.json
 performance/results/**/k6_timeseries.ndjson
 performance/results/**/.current_phase
 performance/results/latest
+
+# Muestras crudas de los escenarios de la Persona 7 (pesadas; se regeneran)
+performance/results/p7-*/**/metrics.csv.gz
+!performance/scenarios/lib/
