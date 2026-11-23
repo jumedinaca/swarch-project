@@ -27,6 +27,17 @@ class Settings(BaseSettings):
     # Lista separada por comas. Vacío = sin CORS (el API Gateway lo centraliza).
     cors_origins: str = ""
 
+    # Redis compartido con el gateway para la blacklist distribuida de sesiones
+    # revocadas (Escenario 5). Si está vacío, la blacklist queda deshabilitada
+    # y el logout solo revoca la sesión en PostgreSQL (comportamiento anterior).
+    redis_url: str = ""
+    # Interruptor del patrón. Debe tener el mismo valor en auth y gateway:
+    # con false, ninguno de los dos usa Redis y el token sigue siendo aceptado
+    # por el gateway hasta que expira (útil para demostrar la vulnerabilidad).
+    token_blacklist_enabled: bool = True
+    token_blacklist_prefix: str = "auth:revoked:"
+    redis_timeout_seconds: float = 0.5
+
     # Si está vacío, los eventos no se publican (el servicio sigue funcionando).
     rabbitmq_url: str = ""
     rabbitmq_exchange: str = "geopicto.events"

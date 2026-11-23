@@ -12,6 +12,17 @@ spring:
           # Por eso "messages-nearby" (publica) va antes que "messages-protected"
           # (exige JWT), que matchea el resto de /api/messages/**.
           routes:
+            # Login y registro: Rate Limiting estricto por IP contra fuerza bruta
+            # y creacion masiva de cuentas. Va antes de "auth-service".
+            - id: auth-credentials
+              uri: ${AUTH_SERVICE_URL:http://localhost:8101}
+              predicates:
+                - Path=/api/auth/login, /api/auth/register
+                - Method=POST
+              filters:
+                - RateLimit=auth
+                - StripPrefix=1
+
             - id: auth-service
               uri: ${AUTH_SERVICE_URL:http://localhost:8101}
               predicates:
@@ -25,7 +36,20 @@ spring:
                 - Path=/api/messages/nearby
                 - Method=GET
               filters:
+                - RateLimit=nearby
                 - StripPrefix=1
+
+            # Publicar mensaje: escritura + evento en RabbitMQ + moderacion.
+            # Limite moderado por usuario (RateLimit va despues de JwtAuth).
+            - id: messages-create
+              uri: ${MESSAGES_SERVICE_URL:http://localhost:8100}
+              predicates:
+                - Path=/api/messages
+                - Method=POST
+              filters:
+                - StripPrefix=1
+                - JwtAuth
+                - RateLimit=message-write
 
             - id: messages-protected
               uri: ${MESSAGES_SERVICE_URL:http://localhost:8100}
@@ -62,6 +86,18 @@ spring:
               filters:
                 - StripPrefix=1
                 - JwtAuth
+
+            # Calificar / quitar calificacion: limite moderado por usuario.
+            # (POST /api/ratings/messages/batch es una lectura y no se limita.)
+            - id: rating-write
+              uri: ${RATING_SERVICE_URL:http://localhost:8102}
+              predicates:
+                - Path=/api/ratings/messages/*
+                - Method=PUT, DELETE
+              filters:
+                - StripPrefix=1
+                - JwtAuth
+                - RateLimit=rating-write
 
             # Servicio de calificaciones (likes/dislikes sobre mensajes).
             # /api/ratings/** -> /ratings/**. Exige JWT.
@@ -112,6 +148,65 @@ spring:
                 # PATCH lo usa PATCH /api/profiles/me
                 allowedMethods: GET,POST,PUT,PATCH,DELETE,OPTIONS
                 allowedHeaders: "*"
+                # Para que el frontend pueda leer los datos del Rate Limiting.
+                exposedHeaders: Retry-After, X-RateLimit-Limit, X-RateLimit-Remaining
+
+  # Redis compartido del gateway (Rate Limiting y Token Blacklist). Se usa la
+  # base 1 para no mezclar claves con socket-gateway, que usa la base 0.
+  data:
+    redis:
+      url: ${REDIS_URL:redis://localhost:6379/1}
+      timeout: 500ms
+
+# Rate Limiting / Throttling Pattern (Escenario de seguridad 4).
+# Token Bucket por cliente: "capacity" peticiones seguidas como maximo y
+# "refill-tokens" nuevas cada "refill-period". Al agotarse -> 429.
+rate-limit:
+  enabled: ${RATE_LIMIT_ENABLED:true}
+  # Si Redis no responde se deja pasar el trafico (prioriza disponibilidad).
+  fail-open: ${RATE_LIMIT_FAIL_OPEN:true}
+  # Activar solo cuando el gateway sea alcanzable unicamente via Reverse Proxy.
+  trust-forwarded-headers: ${RATE_LIMIT_TRUST_PROXY:false}
+  redis-timeout: 500ms
+  policies:
+    # Estricto, por IP: fuerza bruta en login y spam de registros.
+    auth:
+      key: ip
+      capacity: ${RATE_LIMIT_AUTH_CAPACITY:10}
+      refill-tokens: ${RATE_LIMIT_AUTH_REFILL:10}
+      refill-period: ${RATE_LIMIT_AUTH_PERIOD:1m}
+    # Amplio, por IP: consulta geoespacial publica (PostGIS).
+    nearby:
+      key: ip
+      capacity: ${RATE_LIMIT_NEARBY_CAPACITY:60}
+      refill-tokens: ${RATE_LIMIT_NEARBY_REFILL:30}
+      refill-period: ${RATE_LIMIT_NEARBY_PERIOD:1s}
+    # Moderado, por usuario: publicar mensajes.
+    message-write:
+      key: user
+      capacity: ${RATE_LIMIT_MESSAGE_CAPACITY:10}
+      refill-tokens: ${RATE_LIMIT_MESSAGE_REFILL:20}
+      refill-period: ${RATE_LIMIT_MESSAGE_PERIOD:1m}
+    # Moderado, por usuario: likes / dislikes.
+    rating-write:
+      key: user
+      capacity: ${RATE_LIMIT_RATING_CAPACITY:30}
+      refill-tokens: ${RATE_LIMIT_RATING_REFILL:60}
+      refill-period: ${RATE_LIMIT_RATING_PERIOD:1m}
+
+# Token Revocation Blacklist Pattern (Escenario de seguridad 5).
+# services/auth escribe en Redis "auth:revoked:sid:<sid>" al hacer logout y el
+# filtro JwtAuth consulta esa clave antes de reenviar cada peticion protegida.
+token-blacklist:
+  # Interruptor compartido con services/auth. Con false, auth no escribe y el
+  # gateway no consulta: el token sigue valido hasta expirar (vulnerabilidad).
+  enabled: ${TOKEN_BLACKLIST_ENABLED:true}
+  # Si Redis no responde se deja pasar el trafico (prioriza disponibilidad).
+  # Con false se responde 503 (prioriza seguridad).
+  fail-open: ${TOKEN_BLACKLIST_FAIL_OPEN:true}
+  redis-timeout: 500ms
+  # Debe coincidir exactamente con TOKEN_BLACKLIST_PREFIX de services/auth.
+  key-prefix: ${TOKEN_BLACKLIST_PREFIX:auth:revoked:}
 
 # Secreto HS256 compartido con el microservicio de autenticacion para firmar
 # los JWT. Es obligatorio (minimo 32 bytes): el gateway no arranca sin el.
@@ -125,6 +220,10 @@ management:
     web:
       exposure:
         include: health
+  # Redis caido no debe marcar el gateway como unhealthy: el rate limit es fail-open.
+  health:
+    redis:
+      enabled: false
 
 logging:
   level:

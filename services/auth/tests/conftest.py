@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 
@@ -19,6 +21,19 @@ class FakeUserEventPublisher:
         self.events.append(event)
 
 
+class FakeTokenBlacklist:
+    """Registra las sesiones revocadas sin necesitar Redis."""
+
+    def __init__(self) -> None:
+        self.revoked: dict[uuid.UUID, int] = {}
+
+    async def revoke_session(self, session_id: uuid.UUID, ttl_seconds: int) -> None:
+        self.revoked[session_id] = ttl_seconds
+
+    async def close(self) -> None:
+        pass
+
+
 @pytest.fixture
 def settings(tmp_path) -> Settings:
     return Settings(
@@ -27,6 +42,7 @@ def settings(tmp_path) -> Settings:
         jwt_secret="test-secret-test-secret-test-secret-123",
         max_failed_login_attempts=3,
         rabbitmq_url="",
+        redis_url="",
     )
 
 
@@ -36,9 +52,15 @@ def publisher() -> FakeUserEventPublisher:
 
 
 @pytest.fixture
-async def client(settings, publisher):
+def blacklist() -> FakeTokenBlacklist:
+    return FakeTokenBlacklist()
+
+
+@pytest.fixture
+async def client(settings, publisher, blacklist):
     app = create_app(settings)
     app.state.user_event_publisher = publisher
+    app.state.token_blacklist = blacklist
     async with app.state.engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:

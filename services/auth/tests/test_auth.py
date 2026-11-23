@@ -118,6 +118,85 @@ async def test_logout_revokes_access_token(client):
     assert res.status_code == 401
 
 
+def session_id(token: str) -> uuid.UUID:
+    claims = jwt.decode(token, options={"verify_signature": False})
+    return uuid.UUID(claims["sid"])
+
+
+async def test_logout_blacklists_the_session_in_redis(client, blacklist, settings):
+    token = (await register(client)).json()["data"]["token"]
+    sid = session_id(token)
+    assert sid not in blacklist.revoked
+
+    res = await client.post("/auth/logout", headers=bearer(token))
+    assert res.status_code == 200
+
+    # El TTL es el tiempo restante del access token, nunca la vida del refresh.
+    assert sid in blacklist.revoked
+    assert 0 < blacklist.revoked[sid] <= settings.access_token_expire_minutes * 60
+
+
+async def test_logout_all_blacklists_every_active_session(client, blacklist):
+    first = (await register(client)).json()["data"]["token"]
+    second = (
+        await client.post(
+            "/auth/login", json={"usernameOrEmail": "explorador", "password": "secreto123"}
+        )
+    ).json()["data"]["token"]
+
+    res = await client.post("/auth/logout-all", headers=bearer(first))
+    assert res.status_code == 200
+    assert {session_id(first), session_id(second)} <= set(blacklist.revoked)
+
+
+async def test_revoke_specific_session_blacklists_only_that_session(client, blacklist):
+    first = (await register(client)).json()["data"]["token"]
+    second = (
+        await client.post(
+            "/auth/login", json={"usernameOrEmail": "explorador", "password": "secreto123"}
+        )
+    ).json()["data"]["token"]
+
+    sessions = (await client.get("/auth/sessions", headers=bearer(first))).json()["data"]
+    other = next(s for s in sessions if not s["current"])
+    res = await client.delete(f"/auth/sessions/{other['id']}", headers=bearer(first))
+    assert res.status_code == 200
+
+    assert session_id(second) in blacklist.revoked
+    assert session_id(first) not in blacklist.revoked
+
+
+async def test_change_password_blacklists_the_other_sessions(client, blacklist):
+    first = (await register(client)).json()["data"]["token"]
+    second = (
+        await client.post(
+            "/auth/login", json={"usernameOrEmail": "explorador", "password": "secreto123"}
+        )
+    ).json()["data"]["token"]
+
+    res = await client.put(
+        "/auth/password",
+        json={"currentPassword": "secreto123", "newPassword": "nuevoSecreto456"},
+        headers=bearer(first),
+    )
+    assert res.status_code == 200
+
+    assert session_id(second) in blacklist.revoked
+    assert session_id(first) not in blacklist.revoked
+
+
+async def test_refresh_token_reuse_blacklists_the_compromised_session(client, blacklist):
+    data = (await register(client)).json()["data"]
+    sid = session_id(data["token"])
+
+    # El primer refresh rota el token; el segundo uso del token viejo se
+    # interpreta como robo y revoca la sesión completa.
+    assert (await client.post("/auth/refresh", json={"refreshToken": data["refreshToken"]})).status_code == 200
+    assert (await client.post("/auth/refresh", json={"refreshToken": data["refreshToken"]})).status_code == 401
+
+    assert sid in blacklist.revoked
+
+
 async def test_refresh_rotates_and_detects_reuse(client):
     data = (await register(client)).json()["data"]
     old_refresh = data["refreshToken"]

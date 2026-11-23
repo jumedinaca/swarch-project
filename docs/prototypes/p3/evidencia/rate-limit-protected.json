@@ -1,0 +1,135 @@
+{
+  "mode": "protected",
+  "gateway": "http://localhost:8080",
+  "startedAt": "2026-11-23T00:28:48.865Z",
+  "attacks": {
+    "writeBurst": {
+      "label": "Ataque 1: rafaga de POST /api/messages (por usuario)",
+      "requests": 30,
+      "byStatus": {
+        "201": 10,
+        "429": 20
+      },
+      "reachedBackend": 10,
+      "blocked": 20,
+      "firstBlockedRequest": 2,
+      "wallMs": 473.5,
+      "throughputRps": 63.4,
+      "latencyMs": {
+        "allP50": 405.4,
+        "allP95": 462.9,
+        "reachedBackendP50": 368.1,
+        "reachedBackendP95": 372.2,
+        "blockedP50": 443.2,
+        "blockedP95": 463.4
+      }
+    },
+    "loginBruteForce": {
+      "label": "Ataque 2: fuerza bruta en POST /api/auth/login (por IP)",
+      "requests": 30,
+      "byStatus": {
+        "401": 8,
+        "429": 22
+      },
+      "reachedBackend": 8,
+      "blocked": 22,
+      "firstBlockedRequest": 1,
+      "wallMs": 657.5,
+      "throughputRps": 45.6,
+      "latencyMs": {
+        "allP50": 52.4,
+        "allP95": 655,
+        "reachedBackendP50": 517.3,
+        "reachedBackendP95": 656.5,
+        "blockedP50": 46.4,
+        "blockedP95": 61.5
+      },
+      "passwordsVerified": 8,
+      "accountLocked": 0
+    },
+    "nearbyFlood": {
+      "label": "Ataque 3: rafaga de GET /api/messages/nearby (por IP)",
+      "requests": 150,
+      "byStatus": {
+        "200": 76,
+        "429": 74
+      },
+      "reachedBackend": 76,
+      "blocked": 74,
+      "firstBlockedRequest": 67,
+      "wallMs": 588.7,
+      "throughputRps": 254.8,
+      "latencyMs": {
+        "allP50": 321.5,
+        "allP95": 534.5,
+        "reachedBackendP50": 196.2,
+        "reachedBackendP95": 424.2,
+        "blockedP50": 414.1,
+        "blockedP95": 542.2
+      }
+    }
+  },
+  "checks": [
+    {
+      "name": "registro de spammer",
+      "ok": true
+    },
+    {
+      "name": "registro de legit",
+      "ok": true
+    },
+    {
+      "name": "la rafaga de publicaciones recibe 429",
+      "ok": true
+    },
+    {
+      "name": "el 429 trae Retry-After",
+      "ok": true
+    },
+    {
+      "name": "el 429 trae X-RateLimit-Remaining = 0",
+      "ok": true
+    },
+    {
+      "name": "el 429 trae mensaje JSON",
+      "ok": true
+    },
+    {
+      "name": "otro usuario sigue publicando (201)",
+      "ok": true
+    },
+    {
+      "name": "ningun intento adivino la contraseña",
+      "ok": true
+    },
+    {
+      "name": "la fuerza bruta recibe 429",
+      "ok": true
+    },
+    {
+      "name": "Retry-After indica cuando reintentar",
+      "ok": true
+    },
+    {
+      "name": "las lecturas siguen respondiendo tras los ataques (nearby 200)",
+      "ok": true
+    },
+    {
+      "name": "la rafaga de consultas geoespaciales recibe 429",
+      "ok": true
+    },
+    {
+      "name": "otro usuario sigue publicando tras la rafaga de lecturas (201)",
+      "ok": true
+    }
+  ],
+  "dictionaryEstimate": {
+    "dictionarySize": 10000,
+    "measuredGuessesPerSecond": 45.6,
+    "secondsWithoutLimit": 219.3,
+    "secondsWithLimit": 60000,
+    "authPolicyPerMinute": 10
+  },
+  "finishedAt": "2026-11-23T00:28:51.548Z",
+  "failures": 0
+}

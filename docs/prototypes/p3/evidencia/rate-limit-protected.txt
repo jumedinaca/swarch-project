@@ -1,0 +1,54 @@
+Modo: PROTECTED   Gateway: http://localhost:8080
+Intentos por rafaga: 30 (escritura y login), 150 (nearby)
+
+OK   registro de spammer
+OK   registro de legit
+
+  Ataque 1: rafaga de POST /api/messages (por usuario)
+  respuestas por codigo: {"201":10,"429":20}
+  llegaron al microservicio: 10/30   bloqueadas en el gateway (429): 20
+  primera peticion bloqueada: #2
+  rafaga completa en 473.5 ms (63.4 req/s)
+  latencia de las que llegaron al servicio: p50 368.1 ms, p95 372.2 ms
+  latencia de los 429: p50 443.2 ms, p95 463.4 ms (no llegan al microservicio)
+
+OK   la rafaga de publicaciones recibe 429
+OK   el 429 trae Retry-After
+OK   el 429 trae X-RateLimit-Remaining = 0
+OK   el 429 trae mensaje JSON
+OK   otro usuario sigue publicando (201)
+
+  Ataque 2: fuerza bruta en POST /api/auth/login (por IP)
+  respuestas por codigo: {"401":8,"429":22}
+  llegaron al microservicio: 8/30   bloqueadas en el gateway (429): 22
+  primera peticion bloqueada: #1
+  rafaga completa en 657.5 ms (45.6 req/s)
+  latencia de las que llegaron al servicio: p50 517.3 ms, p95 656.5 ms
+  latencia de los 429: p50 46.4 ms, p95 61.5 ms (no llegan al microservicio)
+
+OK   ningun intento adivino la contraseña
+  Diccionario de 10.000 contraseñas desde una IP:
+    sin rate limit (ritmo medido 45.6 intentos/s): ~3.7 min
+    con rate limit (10 intentos/min por IP):          ~16.7 h
+
+  contraseñas verificadas por auth con Argon2 (401): 8   cuenta bloqueada (423): 0
+  (el bloqueo por cuenta de auth permite 5 fallos; en la rafaga concurrente se verificaron 8)
+
+OK   la fuerza bruta recibe 429
+OK   Retry-After indica cuando reintentar
+OK   las lecturas siguen respondiendo tras los ataques (nearby 200)
+
+  Ataque 3: rafaga de GET /api/messages/nearby (por IP)
+  respuestas por codigo: {"200":76,"429":74}
+  llegaron al microservicio: 76/150   bloqueadas en el gateway (429): 74
+  primera peticion bloqueada: #67
+  rafaga completa en 588.7 ms (254.8 req/s)
+  latencia de las que llegaron al servicio: p50 196.2 ms, p95 424.2 ms
+  latencia de los 429: p50 414.1 ms, p95 542.2 ms (no llegan al microservicio)
+
+OK   la rafaga de consultas geoespaciales recibe 429
+OK   otro usuario sigue publicando tras la rafaga de lecturas (201)
+
+Resultados guardados en docs/prototypes/p3/evidencia/rate-limit-protected.json
+
+Escenario 4 verificado: la contramedida corta los ataques con 429 y el servicio sigue disponible
