@@ -1,0 +1,46 @@
+Modo: VULNERABLE   Gateway: http://localhost:8080
+Intentos por rafaga: 30 (escritura y login), 150 (nearby)
+
+OK   registro de spammer
+OK   registro de legit
+
+  Ataque 1: rafaga de POST /api/messages (por usuario)
+  respuestas por codigo: {"201":30}
+  llegaron al microservicio: 30/30   bloqueadas en el gateway (429): 0
+  rafaga completa en 194.3 ms (154.4 req/s)
+  latencia de las que llegaron al servicio: p50 143.8 ms, p95 182.7 ms
+
+OK   VULNERABLE: ninguna publicacion es frenada (0 respuestas 429)
+OK   VULNERABLE: el atacante guarda los 30 mensajes de spam
+OK   otro usuario sigue publicando (201)
+
+  Ataque 2: fuerza bruta en POST /api/auth/login (por IP)
+  respuestas por codigo: {"401":14,"423":16}
+  llegaron al microservicio: 30/30   bloqueadas en el gateway (429): 0
+  rafaga completa en 1436 ms (20.9 req/s)
+  latencia de las que llegaron al servicio: p50 1411.6 ms, p95 1432.3 ms
+
+OK   ningun intento adivino la contraseña
+  Diccionario de 10.000 contraseñas desde una IP:
+    sin rate limit (ritmo medido 20.9 intentos/s): ~8.0 min
+    con rate limit (10 intentos/min por IP):          ~16.7 h
+
+  contraseñas verificadas por auth con Argon2 (401): 14   cuenta bloqueada (423): 16
+  (el bloqueo por cuenta de auth permite 5 fallos; en la rafaga concurrente se verificaron 14)
+
+OK   VULNERABLE: ningun intento de login es frenado (0 respuestas 429)
+OK   VULNERABLE: los 30 intentos llegan al servicio auth (401 o 423)
+OK   las lecturas siguen respondiendo tras los ataques (nearby 200)
+
+  Ataque 3: rafaga de GET /api/messages/nearby (por IP)
+  respuestas por codigo: {"200":150}
+  llegaron al microservicio: 150/150   bloqueadas en el gateway (429): 0
+  rafaga completa en 489.1 ms (306.7 req/s)
+  latencia de las que llegaron al servicio: p50 224.2 ms, p95 421.4 ms
+
+OK   VULNERABLE: todas las consultas geoespaciales llegan a PostGIS (0 respuestas 429)
+OK   otro usuario sigue publicando tras la rafaga de lecturas (201)
+
+Resultados guardados en docs/prototypes/p3/evidencia/rate-limit-vulnerable.json
+
+Vulnerabilidad demostrada: sin Rate Limiting todas las peticiones del atacante llegan a los microservicios

@@ -54,6 +54,15 @@ public class JwtService {
      *                      su "sub" no es un UUID.
      */
     public UUID extractUserId(String token) {
+        return extractClaims(token).userId();
+    }
+
+    /**
+     * Extrae los claims que necesita el gateway: usuario, sesion ("sid"), id
+     * unico del token ("jti") y expiracion. "sid" y "jti" son opcionales; si
+     * estan presentes pero "sid" no es un UUID, el token se rechaza.
+     */
+    public TokenClaims extractClaims(String token) {
         Claims claims = Jwts.parser()
                 .verifyWith(key)
                 .requireIssuer(issuer)
@@ -70,10 +79,28 @@ public class JwtService {
             throw new JwtException("Token sin claim sub");
         }
 
+        UUID userId;
         try {
-            return UUID.fromString(subject);
+            userId = UUID.fromString(subject);
         } catch (IllegalArgumentException e) {
             throw new JwtException("El claim sub no es un UUID", e);
         }
+
+        UUID sessionId = null;
+        String sid = claims.get("sid", String.class);
+        if (sid != null && !sid.isBlank()) {
+            try {
+                sessionId = UUID.fromString(sid);
+            } catch (IllegalArgumentException e) {
+                throw new JwtException("El claim sid no es un UUID", e);
+            }
+        }
+
+        String tokenId = claims.get("jti", String.class);
+        if (tokenId != null && tokenId.isBlank()) {
+            tokenId = null;
+        }
+
+        return new TokenClaims(userId, sessionId, tokenId, claims.getExpiration().toInstant());
     }
 }

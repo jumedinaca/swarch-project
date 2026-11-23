@@ -6,6 +6,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import AccessTokenClaims
+from app.core.token_blacklist import TokenBlacklist
 from app.domain.models import Session, User
 from app.messaging.publisher import UserEventPublisher
 from app.service.auth_service import AuthError, AuthService, ClientInfo
@@ -22,12 +23,19 @@ def get_user_event_publisher(request: Request) -> UserEventPublisher | None:
     return request.app.state.user_event_publisher
 
 
+def get_token_blacklist(request: Request) -> TokenBlacklist | None:
+    return getattr(request.app.state, "token_blacklist", None)
+
+
 def get_auth_service(
     request: Request,
     db: AsyncSession = Depends(get_db),
     user_event_publisher: UserEventPublisher | None = Depends(get_user_event_publisher),
+    token_blacklist: TokenBlacklist | None = Depends(get_token_blacklist),
 ) -> AuthService:
-    return AuthService(db, request.app.state.settings, user_event_publisher)
+    return AuthService(
+        db, request.app.state.settings, user_event_publisher, token_blacklist
+    )
 
 
 def get_client_info(request: Request) -> ClientInfo:
