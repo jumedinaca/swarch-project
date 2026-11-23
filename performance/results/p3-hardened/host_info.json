@@ -1,0 +1,58 @@
+{
+  "captured_at_utc": "2026-11-23T04:49:50.200266+00:00",
+  "run_label": "p3-hardened",
+  "git_branch": "feat/p3-integration",
+  "git_commit": "b11ec29",
+  "target": {
+    "base_url": "https://localhost",
+    "protocol": "HTTPS",
+    "reverse_proxy_detected": true,
+    "rate_limit_mode": "disabled",
+    "compose_project": "geopicto"
+  },
+  "host": {
+    "os": "Darwin 27.2.0",
+    "arch": "arm64",
+    "cpu_model": "Apple M5",
+    "cpu_cores_logical": 10,
+    "ram_total_gb": 16.0
+  },
+  "docker_engine": {
+    "version": "Docker version 29.9.3, build 5457199",
+    "allocated_cpus": 10,
+    "allocated_ram_gb": 7.75,
+    "active_containers_count": 25,
+    "active_containers": [
+      "geopicto-auth-1",
+      "geopicto-auth-db-1",
+      "geopicto-email-1",
+      "geopicto-email-db-1",
+      "geopicto-frontend-1",
+      "geopicto-gateway-1",
+      "geopicto-mailpit-1",
+      "geopicto-messages-1",
+      "geopicto-messages-db-1",
+      "geopicto-minio-1",
+      "geopicto-moderation-1",
+      "geopicto-moderation-db-1",
+      "geopicto-network-1",
+      "geopicto-network-db-1",
+      "geopicto-profile-1",
+      "geopicto-profile-db-1",
+      "geopicto-profile-web-1",
+      "geopicto-rabbitmq-1",
+      "geopicto-rating-1",
+      "geopicto-rating-db-1",
+      "geopicto-redis-1",
+      "geopicto-reputation-1",
+      "geopicto-reputation-db-1",
+      "geopicto-reverse-proxy-1",
+      "geopicto-socket-gateway-1"
+    ]
+  },
+  "tools": {
+    "k6": "k6 v2.4.0 (commit/devel, go1.27.4, darwin/arm64)",
+    "node": "v20.20.2",
+    "python": "3.14.7"
+  }
+}

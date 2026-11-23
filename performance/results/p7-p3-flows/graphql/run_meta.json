@@ -1,0 +1,12 @@
+{
+  "flow": "graphql",
+  "mode": "single",
+  "vus": 50,
+  "rate": 50,
+  "duration": "30s",
+  "stages": "",
+  "think_time": "1.0",
+  "base_url": "https://localhost",
+  "k6_runner": "local",
+  "started_at": "2026-11-23T04:36:44Z"
+}

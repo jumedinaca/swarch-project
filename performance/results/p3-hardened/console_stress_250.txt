@@ -1,0 +1,192 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: performance/scenarios/mixed.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 250 max VUs, 1m0s max duration (incl. graceful stop):
+              * default: 250 looping VUs for 30s (gracefulStop: 30s)
+
+
+running (0m01.0s), 250/250 VUs, 9 complete and 0 interrupted iterations
+default   [   3% ] 250 VUs  01.0s/30s
+
+running (0m02.0s), 250/250 VUs, 247 complete and 0 interrupted iterations
+default   [   7% ] 250 VUs  02.0s/30s
+
+running (0m03.0s), 250/250 VUs, 485 complete and 0 interrupted iterations
+default   [  10% ] 250 VUs  03.0s/30s
+
+running (0m04.0s), 250/250 VUs, 727 complete and 0 interrupted iterations
+default   [  13% ] 250 VUs  04.0s/30s
+
+running (0m05.0s), 250/250 VUs, 955 complete and 0 interrupted iterations
+default   [  17% ] 250 VUs  05.0s/30s
+
+running (0m06.0s), 250/250 VUs, 1187 complete and 0 interrupted iterations
+default   [  20% ] 250 VUs  06.0s/30s
+
+running (0m07.0s), 250/250 VUs, 1419 complete and 0 interrupted iterations
+default   [  23% ] 250 VUs  07.0s/30s
+
+running (0m08.0s), 250/250 VUs, 1632 complete and 0 interrupted iterations
+default   [  27% ] 250 VUs  08.0s/30s
+
+running (0m09.0s), 250/250 VUs, 1848 complete and 0 interrupted iterations
+default   [  30% ] 250 VUs  09.0s/30s
+
+running (0m10.0s), 250/250 VUs, 2061 complete and 0 interrupted iterations
+default   [  33% ] 250 VUs  10.0s/30s
+
+running (0m11.0s), 250/250 VUs, 2285 complete and 0 interrupted iterations
+default   [  37% ] 250 VUs  11.0s/30s
+
+running (0m12.0s), 250/250 VUs, 2510 complete and 0 interrupted iterations
+default   [  40% ] 250 VUs  12.0s/30s
+
+running (0m13.0s), 250/250 VUs, 2731 complete and 0 interrupted iterations
+default   [  43% ] 250 VUs  13.0s/30s
+
+running (0m14.0s), 250/250 VUs, 2963 complete and 0 interrupted iterations
+default   [  47% ] 250 VUs  14.0s/30s
+
+running (0m15.0s), 250/250 VUs, 3181 complete and 0 interrupted iterations
+default   [  50% ] 250 VUs  15.0s/30s
+
+running (0m16.0s), 250/250 VUs, 3407 complete and 0 interrupted iterations
+default   [  53% ] 250 VUs  16.0s/30s
+
+running (0m17.0s), 250/250 VUs, 3636 complete and 0 interrupted iterations
+default   [  57% ] 250 VUs  17.0s/30s
+
+running (0m18.0s), 250/250 VUs, 3854 complete and 0 interrupted iterations
+default   [  60% ] 250 VUs  18.0s/30s
+
+running (0m19.0s), 250/250 VUs, 4066 complete and 0 interrupted iterations
+default   [  63% ] 250 VUs  19.0s/30s
+
+running (0m20.0s), 250/250 VUs, 4289 complete and 0 interrupted iterations
+default   [  67% ] 250 VUs  20.0s/30s
+
+running (0m21.0s), 250/250 VUs, 4507 complete and 0 interrupted iterations
+default   [  70% ] 250 VUs  21.0s/30s
+
+running (0m22.0s), 250/250 VUs, 4731 complete and 0 interrupted iterations
+default   [  73% ] 250 VUs  22.0s/30s
+
+running (0m23.0s), 250/250 VUs, 4951 complete and 0 interrupted iterations
+default   [  77% ] 250 VUs  23.0s/30s
+
+running (0m24.0s), 250/250 VUs, 5169 complete and 0 interrupted iterations
+default   [  80% ] 250 VUs  24.0s/30s
+
+running (0m25.0s), 250/250 VUs, 5382 complete and 0 interrupted iterations
+default   [  83% ] 250 VUs  25.0s/30s
+
+running (0m26.0s), 250/250 VUs, 5592 complete and 0 interrupted iterations
+default   [  87% ] 250 VUs  26.0s/30s
+
+running (0m27.0s), 250/250 VUs, 5822 complete and 0 interrupted iterations
+default   [  90% ] 250 VUs  27.0s/30s
+
+running (0m28.0s), 250/250 VUs, 6040 complete and 0 interrupted iterations
+default   [  93% ] 250 VUs  28.0s/30s
+
+running (0m29.0s), 250/250 VUs, 6260 complete and 0 interrupted iterations
+default   [  97% ] 250 VUs  29.0s/30s
+
+running (0m30.0s), 250/250 VUs, 6473 complete and 0 interrupted iterations
+default   [ 100% ] 250 VUs  30.0s/30s
+
+running (0m31.0s), 038/250 VUs, 6691 complete and 0 interrupted iterations
+default ↓ [ 100% ] 250 VUs  30s
+
+
+  █ THRESHOLDS 
+
+    flow_auth_duration
+    ✗ 'p(95)<1500' p(95)=1.59s
+
+    flow_graphql_duration
+    ✓ 'p(95)<800' p(95)=36.54ms
+
+    flow_nearby_duration
+    ✓ 'p(95)<800' p(95)=121.24ms
+
+    flow_write_duration
+    ✓ 'p(95)<1000' p(95)=20.27ms
+
+    http_req_duration
+    ✗ 'p(95)<1000' p(95)=1.09s
+
+    real_error_rate
+    ✓ 'rate<0.01' rate=0.00%
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 13458   423.730628/s
+    checks_succeeded...: 100.00% 13458 out of 13458
+    checks_failed......: 0.00%   0 out of 13458
+
+    ✓ nearby: status esperado (200) o 429
+    ✓ nearby: sin 5xx ni timeout
+    ✓ graphql: status esperado (200) o 429
+    ✓ graphql: sin 5xx ni timeout
+    ✓ write:rating: status esperado (200) o 429
+    ✓ write:rating: sin 5xx ni timeout
+    ✓ write:post: status esperado (201) o 429
+    ✓ write:post: sin 5xx ni timeout
+    ✓ auth:ok: status esperado (200) o 429
+    ✓ auth:ok: sin 5xx ni timeout
+    ✓ auth:rejected: status esperado (401) o 429
+    ✓ auth:rejected: sin 5xx ni timeout
+
+    CUSTOM
+    auth_login_ok_duration.........: avg=1.08s         min=265.73ms med=1.07s   max=2.32s    p(90)=1.51s     p(95)=1.59s     p(99)=1.81s     
+    auth_login_rejected_duration...: avg=1.16s         min=328.63ms med=1.19s   max=1.98s    p(90)=1.48s     p(95)=1.6s      p(99)=1.96s     
+    flow_auth_duration.............: avg=1.09s         min=265.73ms med=1.08s   max=2.32s    p(90)=1.51s     p(95)=1.59s     p(99)=1.81s     
+    flow_auth_reqs.................: 686    21.59899/s
+    flow_graphql_duration..........: avg=18.06ms       min=5.12ms   med=11.1ms  max=299.77ms p(90)=23.74ms   p(95)=36.54ms   p(99)=211.05ms  
+    flow_graphql_reqs..............: 1345   42.347874/s
+    flow_nearby_duration...........: avg=32.03ms       min=1.1ms    med=10.67ms max=628.23ms p(90)=77.33ms   p(95)=121.24ms  p(99)=351.01ms  
+    flow_nearby_reqs...............: 3360   105.790973/s
+    flow_write_duration............: avg=11.36ms       min=1.99ms   med=4.88ms  max=450.04ms p(90)=11.92ms   p(95)=20.27ms   p(99)=164.46ms  
+    flow_write_reqs................: 1338   42.127477/s
+    graphql_error_rate.............: 0.00%  0 out of 1345
+    nearby_payload_bytes...........: avg=595964.301587 min=3        med=141854  max=4178897  p(90)=2178655.4 p(95)=3236737.8 p(99)=4016268.66
+    nearby_results_count...........: avg=1453.904762   min=0        med=345     max=10190    p(90)=5362.4    p(95)=7920      p(99)=9797.44   
+    rate_limited_rate..............: 0.00%  0 out of 6729
+    real_error_rate................: 0.00%  0 out of 6729
+    unexpected_status_rate.........: 0.00%  0 out of 6729
+    write_post_message_duration....: avg=12.78ms       min=1.99ms   med=4.6ms   max=450.04ms p(90)=12.61ms   p(95)=20.31ms   p(99)=260ms     
+    write_put_rating_duration......: avg=9.98ms        min=2.13ms   med=5.09ms  max=179.55ms p(90)=11.8ms    p(95)=18.28ms   p(99)=127.36ms  
+
+    HTTP
+    http_req_duration..............: avg=133.02ms      min=1.1ms    med=10.24ms max=2.32s    p(90)=539.78ms  p(95)=1.09s     p(99)=1.51s     
+      { expected_response:true }...: avg=133.02ms      min=1.1ms    med=10.24ms max=2.32s    p(90)=539.78ms  p(95)=1.09s     p(99)=1.51s     
+    http_req_failed................: 0.00%  0 out of 6729
+    http_reqs......................: 6729   211.865314/s
+
+    EXECUTION
+    iteration_duration.............: avg=1.13s         min=802.46ms med=1.04s   max=3.39s    p(90)=1.52s     p(95)=2.09s     p(99)=2.52s     
+    iterations.....................: 6729   211.865314/s
+    vus............................: 38     min=38        max=250
+    vus_max........................: 250    min=250       max=250
+
+    NETWORK
+    data_received..................: 2.0 GB 63 MB/s
+    data_sent......................: 2.9 MB 91 kB/s
+
+
+
+
+running (0m31.8s), 000/250 VUs, 6729 complete and 0 interrupted iterations
+default ✓ [ 100% ] 250 VUs  30s
+time="2026-11-22T23:53:17-05:00" level=error msg="thresholds on metrics 'flow_auth_duration, http_req_duration' have been crossed"

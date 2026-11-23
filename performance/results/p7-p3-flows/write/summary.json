@@ -1,0 +1,225 @@
+{
+    "metrics": {
+        "write_post_message_duration": {
+            "max": 51.772,
+            "p(90)": 3.8230000000000004,
+            "p(95)": 5.45949999999999,
+            "p(99)": 44.673449999999995,
+            "avg": 4.187634464751957,
+            "min": 1.46,
+            "med": 2.7245
+        },
+        "http_req_duration{expected_response:true}": {
+            "avg": 4.358514638906967,
+            "min": 1.46,
+            "med": 2.97,
+            "max": 51.772,
+            "p(90)": 4.322,
+            "p(95)": 6.421999999999998,
+            "p(99)": 44.44011999999999
+        },
+        "http_reqs": {
+            "count": 1537,
+            "rate": 49.307875584135516
+        },
+        "http_req_failed": {
+            "passes": 0,
+            "fails": 1537,
+            "value": 0
+        },
+        "rate_limited_rate": {
+            "passes": 0,
+            "fails": 1512,
+            "value": 0
+        },
+        "vus": {
+            "value": 10,
+            "min": 10,
+            "max": 50
+        },
+        "vus_max": {
+            "max": 50,
+            "value": 50,
+            "min": 50
+        },
+        "http_req_connecting": {
+            "med": 0,
+            "max": 2.048,
+            "p(90)": 0,
+            "p(95)": 0,
+            "p(99)": 1.7004,
+            "avg": 0.03931034482758621,
+            "min": 0
+        },
+        "http_req_duration": {
+            "p(99)": 44.44011999999999,
+            "avg": 4.358514638906967,
+            "min": 1.46,
+            "med": 2.97,
+            "max": 51.772,
+            "p(90)": 4.322,
+            "p(95)": 6.421999999999998
+        },
+        "message_publish_latency": {
+            "max": 261,
+            "p(90)": 254.6,
+            "p(95)": 255,
+            "p(99)": 259.56,
+            "avg": 253.8,
+            "min": 252,
+            "med": 254,
+            "thresholds": {
+                "p(95)<5000": false
+            }
+        },
+        "data_sent": {
+            "count": 1102076,
+            "rate": 35355.25458182286
+        },
+        "http_req_tls_handshaking": {
+            "p(99)": 28.41876,
+            "avg": 0.8254170461938841,
+            "min": 0,
+            "med": 0,
+            "max": 34.948,
+            "p(90)": 0,
+            "p(95)": 0
+        },
+        "write_put_rating_duration": {
+            "avg": 4.582400804289543,
+            "min": 1.637,
+            "med": 3.201,
+            "max": 49.911,
+            "p(90)": 4.604,
+            "p(95)": 6.97224999999999,
+            "p(99)": 42.445449999999994
+        },
+        "unexpected_status_rate": {
+            "passes": 0,
+            "fails": 1512,
+            "value": 0
+        },
+        "iteration_duration": {
+            "max": 1450.498458,
+            "p(90)": 1170.4378785,
+            "p(95)": 1190.7329521499998,
+            "p(99)": 1247.6146104899997,
+            "avg": 1011.235266609789,
+            "min": 802.525417,
+            "med": 1009.4954585
+        },
+        "http_req_receiving": {
+            "max": 0.145,
+            "p(90)": 0.046,
+            "p(95)": 0.053,
+            "p(99)": 0.07163999999999998,
+            "avg": 0.03376772934287571,
+            "min": 0.014,
+            "med": 0.032
+        },
+        "iterations": {
+            "count": 1512,
+            "rate": 48.505860691745546
+        },
+        "real_error_rate": {
+            "passes": 0,
+            "fails": 1512,
+            "thresholds": {
+                "rate<0.01": false
+            },
+            "value": 0
+        },
+        "http_req_waiting": {
+            "min": 1.429,
+            "med": 2.905,
+            "max": 51.736,
+            "p(90)": 4.2584,
+            "p(95)": 6.351199999999999,
+            "p(99)": 44.09172,
+            "avg": 4.291462589459992
+        },
+        "flow_write_duration": {
+            "p(95)": 6.4282499999999985,
+            "p(99)": 44.54836999999999,
+            "avg": 4.38240674603175,
+            "min": 1.46,
+            "med": 2.9770000000000003,
+            "max": 51.772,
+            "p(90)": 4.3247,
+            "thresholds": {
+                "p(95)<1000": false,
+                "p(99)<2500": false
+            }
+        },
+        "data_received": {
+            "count": 1261882,
+            "rate": 40481.926257553736
+        },
+        "http_req_sending": {
+            "p(95)": 0.051,
+            "p(99)": 0.10747999999999991,
+            "avg": 0.03328432010409891,
+            "min": 0.003,
+            "med": 0.029,
+            "max": 1.197,
+            "p(90)": 0.046
+        },
+        "http_req_blocked": {
+            "p(90)": 0.011,
+            "p(95)": 0.014,
+            "p(99)": 31.15456,
+            "avg": 0.9106916070266784,
+            "min": 0.001,
+            "med": 0.006,
+            "max": 37.053
+        },
+        "checks": {
+            "passes": 3024,
+            "fails": 0,
+            "value": 1
+        },
+        "flow_write_reqs": {
+            "count": 1512,
+            "rate": 48.505860691745546
+        }
+    },
+    "setup_data": {
+        "tokens": {}
+    },
+    "root_group": {
+        "name": "",
+        "path": "",
+        "id": "d41d8cd98f00b204e9800998ecf8427e",
+        "groups": {},
+        "checks": {
+            "write:rating: status esperado (200) o 429": {
+                "passes": 746,
+                "fails": 0,
+                "name": "write:rating: status esperado (200) o 429",
+                "path": "::write:rating: status esperado (200) o 429",
+                "id": "17bfe86c4f290570d6954f37810697a5"
+            },
+            "write:rating: sin 5xx ni timeout": {
+                "name": "write:rating: sin 5xx ni timeout",
+                "path": "::write:rating: sin 5xx ni timeout",
+                "id": "923c028911847156b22edef1c0fffe51",
+                "passes": 746,
+                "fails": 0
+            },
+            "write:post: status esperado (201) o 429": {
+                "fails": 0,
+                "name": "write:post: status esperado (201) o 429",
+                "path": "::write:post: status esperado (201) o 429",
+                "id": "34f3a0d474b7ebf75385d920a44b2cba",
+                "passes": 766
+            },
+            "write:post: sin 5xx ni timeout": {
+                "name": "write:post: sin 5xx ni timeout",
+                "path": "::write:post: sin 5xx ni timeout",
+                "id": "2444643396b1ea94c1ec26fb5147d717",
+                "passes": 766,
+                "fails": 0
+            }
+        }
+    }
+}

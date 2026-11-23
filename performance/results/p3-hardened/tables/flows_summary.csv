@@ -1,0 +1,5 @@
+flow,description,count,rps,avg_ms,min_ms,p50_ms,p90_ms,p95_ms,p99_ms,max_ms
+nearby_read,GET /api/messages/nearby (PostGIS spatial query),1556,49.92,15.44,0.74,4.96,42.71,60.02,161.05,274.23
+write_events,POST /api/messages & PUT /api/ratings/:id (DB + RabbitMQ),613,19.67,5.58,1.33,2.78,6.68,12.77,96.19,180.45
+auth_login,POST /api/auth/login (Argon2id password hash),262,8.41,60.10,21.58,33.53,124.31,230.30,336.45,385.36
+network_graphql,POST /api/network/graphql (GraphQL + MongoDB),549,17.61,11.84,3.41,6.22,12.70,20.52,148.88,164.36

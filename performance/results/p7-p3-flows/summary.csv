@@ -1,0 +1,6 @@
+flow,mode,load,vus_max,duration_s,requests,rps,avg_ms,p50_ms,p90_ms,p95_ms,p99_ms,max_ms,http_failed_pct,real_error_pct,rate_limited_pct,unexpected_status_pct,checks_pass_pct,token_refreshes,nearby_results_avg,nearby_results_p95,nearby_payload_kb_avg,post_message_p95_ms,put_rating_p95_ms,publish_latency_p50_ms,publish_latency_p95_ms,login_ok_p95_ms,login_rejected_p95_ms,graphql_error_pct,nearby_p95_ms,write_p95_ms,auth_p95_ms,graphql_p95_ms
+nearby,single,50 VUs,50,,1512,48.75,11.24,3.97,25.53,39.95,128.22,253.17,0,0,0,0,100,0,752.7,4117.2,302.1,,,,,,,,,,,
+write,single,50 VUs,50,,1512,48.51,4.38,2.98,4.32,6.43,44.55,51.77,0,0,0,0,100,0,,,,5.46,6.97,254,255,,,,,,,
+auth,single,50 VUs,50,,1344,43.2,135.93,110.15,218.58,268.07,929.6,1106.87,0,0,0,0,100,0,,,,,,,,264.7,363.05,,,,,
+graphql,single,50 VUs,50,,1515,48.76,11.3,5.71,10.07,14.59,172.15,198.21,0,0,0,0,100,0,,,,,,,,,,0,,,,
+mixed,single,50 VUs,50,,1503,48.47,11.85,4.99,32.17,42.03,69.85,243.59,0,0,0,0,100,0,723.6,3091.3,290.5,6.46,14.02,,,144.94,55.55,0,42.72,7.38,137.05,11.83

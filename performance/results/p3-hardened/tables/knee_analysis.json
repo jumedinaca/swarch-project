@@ -1,0 +1,14 @@
+{
+  "knee_vus": 250,
+  "knee_avg_ms": 133.03,
+  "knee_p50_ms": 10.24,
+  "knee_p95_ms": 1093.6,
+  "knee_p99_ms": 1516.1,
+  "knee_rps": 211.87,
+  "knee_real_error_pct": 0.0,
+  "peak_rps": 335.59,
+  "peak_rps_vus": 2000,
+  "first_error_vus": 500,
+  "first_error_pct": 9.67,
+  "max_tested_vus": 2000
+}

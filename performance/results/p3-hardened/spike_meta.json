@@ -1,0 +1,9 @@
+{
+  "base_vus": 25,
+  "spike_vus": 1000,
+  "base_duration_s": 20,
+  "ramp_up_s": 5,
+  "spike_duration_s": 25,
+  "ramp_down_s": 5,
+  "recovery_duration_s": 40
+}
