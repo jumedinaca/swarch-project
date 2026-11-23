@@ -1,0 +1,14 @@
+{
+  "name": "geopicto-performance",
+  "private": true,
+  "description": "Suite de rendimiento de GeoPicto (Prototype 3): seeding, escenarios k6 y análisis.",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "seed": "node seed-data.mjs",
+    "seed:clean-bulk": "node seed-data.mjs --clean-bulk",
+    "summarize": "node tools/summarize-results.mjs"
+  }
+}
