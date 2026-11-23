@@ -22,8 +22,8 @@
 set -uo pipefail
 
 PROXY_BASE="https://localhost"
-APP_URL="https://app.localhost/"
-PROFILE_URL="https://profile.localhost/login"
+APP_URL="https://localhost/"
+PROFILE_URL="https://localhost/login"
 
 DIRECT_GATEWAY="http://localhost:8080"
 DIRECT_FRONTEND="http://localhost:8081/"
@@ -181,12 +181,28 @@ fi
 # -----------------------------------------------------------------------------
 section "5. Funcionamiento a traves del proxy"
 if [[ $MODE == proxy ]]; then
-  for entry in "app (Expo):$APP_URL" "profile-web (Next.js):$PROFILE_URL" \
-               "API publica:$PROXY_BASE$NEARBY_PATH" "API en el origen de la app:https://app.localhost$NEARBY_PATH"; do
+  for entry in "app (Expo) en /:$APP_URL" "profile-web (Next.js) en /login:$PROFILE_URL" \
+               "profile-web (Next.js) en /account:$PROXY_BASE/account?demo=1" \
+               "API publica en /api:$PROXY_BASE$NEARBY_PATH"; do
     name=${entry%%:*}; url=${entry#*:}
     code=$(http_code "$url")
     if [[ $code == 200 ]]; then report OK "$name responde a traves del proxy" "$url -> 200"
     else report FALLA "$name no responde a traves del proxy" "$url -> HTTP $code"; fi
+  done
+
+  # Enrutamiento por ruta: los recursos estaticos de cada app deben llegar a
+  # su backend (Next.js en /_next/, Expo en /_expo/), no al otro frontend.
+  for name in profile-web frontend; do
+    if [[ $name == profile-web ]]; then page=$PROFILE_URL; pattern="/_next/static/[^\"' ]+"
+    else page=$APP_URL; pattern="/_expo/static/[^\"' ]+"; fi
+    asset=$("${CURL[@]}" "$page" 2>/dev/null | grep -oE "$pattern" | head -1)
+    if [[ -z $asset ]]; then
+      report FALLA "no se encontro un recurso estatico de $name en $page"
+      continue
+    fi
+    code=$(http_code "$PROXY_BASE$asset")
+    if [[ $code == 200 ]]; then report OK "recurso estatico de $name enrutado correctamente" "$asset -> 200"
+    else report FALLA "recurso estatico de $name no carga" "$asset -> HTTP $code"; fi
   done
 
   # Handshake WebSocket sin ticket: el proxy debe entregar el upgrade al
@@ -194,8 +210,8 @@ if [[ $MODE == proxy ]]; then
   # Un 404/502 indicaria que el proxy no enruta /api/ws.
   code=$("${CURL[@]}" --http1.1 -o /dev/null -w '%{http_code}' \
     -H 'Connection: Upgrade' -H 'Upgrade: websocket' -H 'Sec-WebSocket-Version: 13' \
-    -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' -H 'Origin: https://app.localhost' \
-    "https://app.localhost/api/ws" 2>/dev/null || true)
+    -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' -H 'Origin: https://localhost' \
+    "$PROXY_BASE/api/ws" 2>/dev/null || true)
   if [[ $code =~ ^(101|400|401|403)$ ]]; then
     report OK "el handshake WebSocket /api/ws llega al socket-gateway" "HTTP $code sin ticket"
   else

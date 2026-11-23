@@ -11,7 +11,7 @@
 #
 # Solo se publican al host el Reverse Proxy (:80/:443) y la bandeja de Mailpit
 # (:8025). El gateway, el frontend Expo y el panel SSR se alcanzan unicamente a
-# traves del proxy (https://app.localhost, https://profile.localhost); el resto
+# traves del proxy (https://localhost, https://localhost/account); el resto
 # de servicios, solo por la red interna de Compose.
 
 name: geopicto
@@ -350,7 +350,7 @@ services:
       # avatarUrl apunta al gateway, que es lo unico que ve el navegador.
       # EXPO_PUBLIC_API_GATEWAY_URL tambien se usa para el build del frontend,
       # asi que al cambiar de host ambas cosas quedan alineadas.
-      AVATAR_PUBLIC_BASE_URL: ${EXPO_PUBLIC_API_GATEWAY_URL:-https://app.localhost}/api/profiles/avatars
+      AVATAR_PUBLIC_BASE_URL: ${EXPO_PUBLIC_API_GATEWAY_URL:-https://localhost}/api/profiles/avatars
       # Vacio a proposito: el gateway agrega las cabeceras CORS.
       CORS_ORIGINS: ""
     depends_on:
@@ -421,7 +421,7 @@ services:
       RABBITMQ_URL: *rabbitmq-url
       RABBITMQ_EXCHANGE: *rabbitmq-exchange
       RABBITMQ_QUEUE: socket.events.q
-      WS_ALLOWED_ORIGINS: ${WS_ALLOWED_ORIGINS:-https://app.localhost,https://profile.localhost,http://socket-gateway:8080,http://realtime:8080,http://gateway:8080}
+      WS_ALLOWED_ORIGINS: ${WS_ALLOWED_ORIGINS:-https://localhost,http://socket-gateway:8080,http://realtime:8080,http://gateway:8080}
       INTERNAL_TOKEN: *internal-token
       APP_ENV: production
       CORS_ORIGINS: ""
@@ -487,7 +487,7 @@ services:
       REPUTATION_SERVICE_URL: http://reputation:8080
       SOCKET_GATEWAY_HTTP_URL: http://socket-gateway:8080
       SOCKET_GATEWAY_WS_URL: ws://socket-gateway:8080
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://app.localhost,https://profile.localhost}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://localhost}
     # Sin ports: solo se alcanza a traves de reverse-proxy (Escenario 2).
     depends_on:
       auth:
@@ -523,7 +523,7 @@ services:
         # Expo incrusta las variables EXPO_PUBLIC_* al compilar, por eso van
         # como argumentos de build y no como variables de entorno del contenedor.
         # El API se sirve en el mismo origen que la app, a traves del proxy.
-        EXPO_PUBLIC_API_GATEWAY_URL: ${EXPO_PUBLIC_API_GATEWAY_URL:-https://app.localhost}
+        EXPO_PUBLIC_API_GATEWAY_URL: ${EXPO_PUBLIC_API_GATEWAY_URL:-https://localhost}
         EXPO_PUBLIC_USE_MOCK_DATA: ${EXPO_PUBLIC_USE_MOCK_DATA:-false}
     # Sin ports: solo se alcanza a traves de reverse-proxy (Escenario 2).
     depends_on:
@@ -561,9 +561,10 @@ services:
   # Perimetro (Escenario de seguridad 2: Reverse Proxy Pattern)
   # ---------------------------------------------------------------------------
 
-  # Unico punto de entrada HTTP(S) publicado al host. Enruta por subdominio:
-  # app.localhost -> frontend (+ /api -> gateway), profile.localhost ->
-  # profile-web. Aplica cabeceras de seguridad, limites y timeouts. Ver nginx/.
+  # Unico punto de entrada HTTP(S) publicado al host. Enruta por ruta en
+  # https://localhost: /api y /api/ws -> gateway, /account y /login ->
+  # profile-web, el resto -> frontend. Aplica cabeceras de seguridad, limites y
+  # timeouts. Ver nginx/.
   reverse-proxy:
     build: ./nginx
     ports:
