@@ -347,9 +347,11 @@ services:
       MINIO_ACCESS_KEY: geopicto
       MINIO_SECRET_KEY: geopicto-minio-secret
       MINIO_BUCKET: geopicto-avatars
-      # avatarUrl apunta al gateway, que es lo unico que ve el navegador.
-      # EXPO_PUBLIC_API_GATEWAY_URL tambien se usa para el build del frontend,
-      # asi que al cambiar de host ambas cosas quedan alineadas.
+      # avatarUrl apunta al gateway a traves del reverse proxy (HTTPS), que es
+      # lo unico que ve el navegador; una URL http:// causaria Mixed Content.
+      # EXPO_PUBLIC_API_GATEWAY_URL es el origen publico del proxy: tambien se
+      # usa para el build del frontend y para CORS y el Origin del WebSocket,
+      # asi que al cambiar de host (p. ej. a la IP LAN) todo queda alineado.
       AVATAR_PUBLIC_BASE_URL: ${EXPO_PUBLIC_API_GATEWAY_URL:-https://localhost}/api/profiles/avatars
       # Vacio a proposito: el gateway agrega las cabeceras CORS.
       CORS_ORIGINS: ""
@@ -421,7 +423,9 @@ services:
       RABBITMQ_URL: *rabbitmq-url
       RABBITMQ_EXCHANGE: *rabbitmq-exchange
       RABBITMQ_QUEUE: socket.events.q
-      WS_ALLOWED_ORIGINS: ${WS_ALLOWED_ORIGINS:-https://localhost,http://socket-gateway:8080,http://realtime:8080,http://gateway:8080}
+      # Origen del navegador en el handshake WSS (la pagina se sirve desde el
+      # reverse proxy) mas los aliases internos. Sin origenes http:// del host.
+      WS_ALLOWED_ORIGINS: ${WS_ALLOWED_ORIGINS:-${EXPO_PUBLIC_API_GATEWAY_URL:-https://localhost},https://localhost,https://127.0.0.1,http://socket-gateway:8080,http://realtime:8080,http://gateway:8080}
       INTERNAL_TOKEN: *internal-token
       APP_ENV: production
       CORS_ORIGINS: ""
@@ -487,7 +491,10 @@ services:
       REPUTATION_SERVICE_URL: http://reputation:8080
       SOCKET_GATEWAY_HTTP_URL: http://socket-gateway:8080
       SOCKET_GATEWAY_WS_URL: ws://socket-gateway:8080
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://localhost}
+      # Origenes HTTPS servidos por el reverse proxy. Aunque la SPA y /api
+      # comparten origen, el gateway recibe http:// del proxy y trata como CORS
+      # las peticiones con Origin https://, por eso deben estar aqui.
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-${EXPO_PUBLIC_API_GATEWAY_URL:-https://localhost},https://localhost,https://127.0.0.1}
     # Sin ports: solo se alcanza a traves de reverse-proxy (Escenario 2).
     depends_on:
       auth:
@@ -522,7 +529,9 @@ services:
       args:
         # Expo incrusta las variables EXPO_PUBLIC_* al compilar, por eso van
         # como argumentos de build y no como variables de entorno del contenedor.
-        # El API se sirve en el mismo origen que la app, a traves del proxy.
+        # El API se sirve en el mismo origen que la app, a traves del proxy. En
+        # el navegador la app usa el origen HTTPS de la pagina; este valor
+        # aplica a la app nativa y al servidor de desarrollo de Expo.
         EXPO_PUBLIC_API_GATEWAY_URL: ${EXPO_PUBLIC_API_GATEWAY_URL:-https://localhost}
         EXPO_PUBLIC_USE_MOCK_DATA: ${EXPO_PUBLIC_USE_MOCK_DATA:-false}
     # Sin ports: solo se alcanza a traves de reverse-proxy (Escenario 2).
@@ -545,7 +554,8 @@ services:
     # Sin ports: solo se alcanza a traves de reverse-proxy (Escenario 2).
     environment:
       API_GATEWAY_URL: http://gateway:8080
-      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      # Cookies de sesion Secure: el navegador solo las envia por HTTPS.
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
     depends_on:
       gateway:
         condition: service_healthy

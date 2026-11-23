@@ -255,8 +255,8 @@ El proyecto está diseñado con **resiliencia total**:
 ### Opción 1: Variable de Entorno `.env`
 Edita el archivo `.env`:
 ```bash
-# Cambia la URL cuando tengas el API Gateway corriendo
-EXPO_PUBLIC_API_GATEWAY_URL=http://localhost:8080
+# URL publica del API Gateway (detras del reverse proxy con TLS)
+EXPO_PUBLIC_API_GATEWAY_URL=https://localhost
 
 # 'true': Usa datos simulados (para seguir diseñando o probando sin backend)
 # 'false': Se conecta al API Gateway real

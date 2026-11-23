@@ -87,11 +87,14 @@ El proyecto incluye un `Dockerfile` multi-etapa optimizado que genera la versió
 docker compose up --build -d
 ```
 
-Una vez levantado, la aplicación estará disponible en:
-- **Computador local:** `http://localhost:8081`
-- **Celulares en la red local:** `http://<TU_IP_LOCAL>:8081`
+Este `docker-compose.yml` levanta solo el frontend en `http://localhost:8081`
+(útil para revisar la interfaz con datos simulados).
 
-El **API Gateway** sigue en `http://localhost:8080`; este contenedor solo publica el frontend en `8081`.
+En el sistema completo (`docker compose up` desde la raíz) el contenedor ya no
+publica puertos: la SPA se sirve a través del **reverse proxy** perimetral en
+`https://localhost/` y consume el API Gateway en el mismo origen
+(`https://localhost/api`, WebSocket `wss://localhost/api/ws`). Desde un celular
+en la red local se abre `https://<TU_IP_LOCAL>/`.
 
 Para ver los logs del contenedor:
 ```bash

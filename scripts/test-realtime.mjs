@@ -3,8 +3,13 @@
 // con el API Gateway.
 //
 // Modos de uso:
-//   1. Contra todo el sistema levantado (vía API Gateway en :8080):
-//      node scripts/test-realtime.mjs [--gateway http://localhost:8080]
+//   1. Contra todo el sistema levantado, a través del reverse proxy por HTTPS/WSS
+//      (REST en https://localhost/api, WebSocket en wss://localhost/api/ws):
+//      node scripts/test-realtime.mjs [--gateway https://localhost] [--insecure]
+//
+//      Para verificar el certificado de la CA local (scripts/generate-certs.sh)
+//      usa NODE_EXTRA_CA_CERTS=nginx/certs/ca.pem; con el autofirmado temporal
+//      del proxy, o solo para pruebas, --insecure (no verifica el certificado).
 //
 //   2. Contra el servicio realtime aislado (cd services/realtime && docker compose up):
 //      node scripts/test-realtime.mjs --direct http://localhost:8700
@@ -22,11 +27,16 @@ const option = (name, fallback) => {
   return index >= 0 ? args[index + 1] : fallback;
 };
 
+if (args.includes('--insecure') || args.includes('-k')) {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+}
+
 const DIRECT_URL = option('--direct', null);
-const GATEWAY_URL = option('--gateway', 'http://localhost:8080');
+const GATEWAY_URL = option('--gateway', process.env.PUBLIC_URL || 'https://localhost').replace(/\/$/, '');
 const INTERNAL_URL = option('--realtime', DIRECT_URL || 'http://localhost:8700');
 const INTERNAL_TOKEN = option('--internal-token', process.env.INTERNAL_TOKEN || 'dev-internal-token');
-const ORIGIN = option('--origin', 'http://localhost:8081');
+// Origen que envía el navegador: detrás del proxy la SPA comparte origen con /api.
+const ORIGIN = option('--origin', DIRECT_URL ? 'http://localhost:8081' : new URL(GATEWAY_URL).origin);
 
 let failures = 0;
 
@@ -187,6 +197,13 @@ async function main() {
 
   const conn1 = await connectWs(wsEndpoint);
   check('Handshake WebSocket abre conexión con ticket válido', conn1.opened);
+  if (!DIRECT_URL) {
+    check(
+      'El WebSocket viaja cifrado (wss://) a través del reverse proxy',
+      wsEndpoint.startsWith('wss://'),
+      wsEndpoint.split('?')[0]
+    );
+  }
 
   const readyFrame = await conn1.waitForMessage((m) => m.type === 'ready');
   check(
