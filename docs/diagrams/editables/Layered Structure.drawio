@@ -1,0 +1,94 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="layered-structure-geopicto" name="Layered Structure">
+    <mxGraphModel dx="1704" dy="905" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1500" pageHeight="1100" background="#ffffff" math="0" shadow="1">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1;fontColor=#1E293B;" value="Layered Structure View — GeoPicto" vertex="1">
+          <mxGeometry height="35" width="600" x="400" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=2;fontColor=#64748B;" value="Estructura de 4 Capas Macro (Cortes Verticales de Microservicios) y Microarquitectura Interna" vertex="1">
+          <mxGeometry height="25" width="600" x="400" y="55" as="geometry" />
+        </mxCell>
+        <mxCell id="layer1" parent="1" style="swimlane;whiteSpace=wrap;html=1;startSize=28;fillColor=#fee2e2;strokeColor=#ef4444;fontStyle=1;fontSize=13;fontColor=#991b1b;collapsible=0;" value="CAPA 1: PRESENTACIÓN / CLIENTES (Presentation Layer)" vertex="1">
+          <mxGeometry height="100" width="1380" x="60" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="comp_mobile" parent="layer1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#dc2626;fontStyle=0;fontSize=11;" value="geopicto-mobile&#xa;TypeScript &amp; React Native (Expo)&#xa;App Móvil iOS / Android | Geolocalización nativa" vertex="1">
+          <mxGeometry height="50" width="380" x="180" y="38" as="geometry" />
+        </mxCell>
+        <mxCell id="comp_web" parent="layer1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#dc2626;fontStyle=0;fontSize=11;" value="geopicto-web (SSR)&#xa;TypeScript &amp; Next.js / React&#xa;Web Server-Side Rendering &amp; Client Hydration" vertex="1">
+          <mxGeometry height="50" width="380" x="820" y="38" as="geometry" />
+        </mxCell>
+        <mxCell id="3GT7Pc7HEh2JlNL4Mamz-1" parent="layer1" style="text;whiteSpace=wrap;html=1;" value="&lt;span style=&quot;color: rgb(0, 0, 0); font-family: Helvetica; font-size: 11px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(236, 236, 236); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; float: none; display: inline !important;&quot;&gt;&lt;b&gt;Allowed-to-use bellow&lt;/b&gt;&lt;/span&gt;" vertex="1">
+          <mxGeometry height="25" width="130" x="10" y="75" as="geometry" />
+        </mxCell>
+        <mxCell id="layer2" parent="1" style="swimlane;whiteSpace=wrap;html=1;startSize=28;fillColor=#f3e8ff;strokeColor=#a855f7;fontStyle=1;fontSize=13;fontColor=#6b21a8;collapsible=0;" value="CAPA 2: BORDE, ENRUTAMIENTO Y SEGURIDAD (API Gateway &amp; Edge Layer)" vertex="1">
+          <mxGeometry height="95" width="1380" x="60" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="comp_gateway" parent="layer2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9333ea;fontStyle=0;fontSize=11;" value="api-gateway (Java 21 — Spring Cloud Gateway)&#xa;Punto Único de Entrada | Validación Criptográfica JWT | Inyección Header X-User-ID | Enrutamiento Dinámico | Rate Limiter" vertex="1">
+          <mxGeometry height="45" width="1020" x="180" y="38" as="geometry" />
+        </mxCell>
+        <mxCell id="3GT7Pc7HEh2JlNL4Mamz-2" parent="layer2" style="text;whiteSpace=wrap;html=1;" value="&lt;span style=&quot;color: rgb(0, 0, 0); font-family: Helvetica; font-size: 11px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(236, 236, 236); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; float: none; display: inline !important;&quot;&gt;&lt;b&gt;Allowed-to-use bellow&lt;/b&gt;&lt;/span&gt;" vertex="1">
+          <mxGeometry height="25" width="130" x="10" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="layer3" parent="1" style="swimlane;whiteSpace=wrap;html=1;startSize=28;fillColor=#dbeafe;strokeColor=#3b82f6;fontStyle=1;fontSize=13;fontColor=#1e40af;collapsible=0;" value="CAPA 3: SERVICIOS DE NEGOCIO / MICROSERVICIOS (Business Services Layer — Vertical Slices)" vertex="1">
+          <mxGeometry height="155" width="1380" x="60" y="395" as="geometry" />
+        </mxCell>
+        <mxCell id="ms_auth" parent="layer3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2563eb;fontSize=10;fontStyle=1;" value="auth&#xa;FastAPI (Python)&#xa;Identidad, JWT,&#xa;Sesiones &amp; Argon2" vertex="1">
+          <mxGeometry height="85" width="130" x="20" y="42" as="geometry" />
+        </mxCell>
+        <mxCell id="ms_messages" parent="layer3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2563eb;fontSize=10;fontStyle=1;" value="messages&#xa;net/http (Go)&#xa;Mensajes Geo,&#xa;PostGIS ST_DWithin" vertex="1">
+          <mxGeometry height="85" width="135" x="170" y="42" as="geometry" />
+        </mxCell>
+        <mxCell id="ms_network" parent="layer3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2563eb;fontSize=10;fontStyle=1;" value="network&#xa;Strawberry (Python)&#xa;Grafo de Amigos,&#xa;API GraphQL" vertex="1">
+          <mxGeometry height="85" width="135" x="325" y="42" as="geometry" />
+        </mxCell>
+        <mxCell id="ms_profile" parent="layer3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2563eb;fontSize=10;fontStyle=1;" value="profile&#xa;FastAPI (Python)&#xa;Datos Públicos,&#xa;Avatar &amp; Color" vertex="1">
+          <mxGeometry height="85" width="130" x="480" y="42" as="geometry" />
+        </mxCell>
+        <mxCell id="ms_rating" parent="layer3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2563eb;fontSize=10;fontStyle=1;" value="rating&#xa;REST (Node.js/TS)&#xa;Likes / Dislikes,&#xa;Emit rating.changed" vertex="1">
+          <mxGeometry height="85" width="135" x="630" y="42" as="geometry" />
+        </mxCell>
+        <mxCell id="ms_reputation" parent="layer3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2563eb;fontSize=10;fontStyle=1;" value="reputation&#xa;net/http (Go)&#xa;Clamping 0-1000,&#xa;Niveles &amp; Ledgers" vertex="1">
+          <mxGeometry height="85" width="135" x="785" y="42" as="geometry" />
+        </mxCell>
+        <mxCell id="ms_moderation" parent="layer3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2563eb;fontSize=10;fontStyle=1;" value="moderation&#xa;NLP ML (Python)&#xa;Clasificador Texto,&#xa;ALLOW / WARN / BLOCK" vertex="1">
+          <mxGeometry height="85" width="140" x="940" y="42" as="geometry" />
+        </mxCell>
+        <mxCell id="ms_realtime" parent="layer3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2563eb;fontSize=10;fontStyle=1;" value="realtime&#xa;WebSocket (Elixir/Node)&#xa;Push en Vivo,&#xa;Canales &amp; Presencia" vertex="1">
+          <mxGeometry height="85" width="130" x="1100" y="42" as="geometry" />
+        </mxCell>
+        <mxCell id="ms_email" parent="layer3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2563eb;fontSize=10;fontStyle=1;" value="email&#xa;Async Worker&#xa;Mails de bienvenida&#xa;&amp; Notificaciones" vertex="1">
+          <mxGeometry height="85" width="115" x="1250" y="42" as="geometry" />
+        </mxCell>
+        <mxCell id="3GT7Pc7HEh2JlNL4Mamz-3" parent="layer3" style="text;whiteSpace=wrap;html=1;" value="&lt;span style=&quot;color: rgb(0, 0, 0); font-family: Helvetica; font-size: 11px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(236, 236, 236); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; float: none; display: inline !important;&quot;&gt;&lt;b&gt;Allowed-to-use bellow&lt;/b&gt;&lt;/span&gt;" vertex="1">
+          <mxGeometry height="25" width="130" x="10" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="layer4" parent="1" style="swimlane;whiteSpace=wrap;html=1;startSize=28;fillColor=#f8fafc;strokeColor=#64748b;fontStyle=1;fontSize=13;fontColor=#334155;collapsible=0;" value="CAPA 4: PERSISTENCIA, DATOS E INFRAESTRUCTURA (Persistence, Data &amp; Broker Layer)" vertex="1">
+          <mxGeometry height="130" width="1380" x="60" y="585" as="geometry" />
+        </mxCell>
+        <mxCell id="db_pg" parent="layer4" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#dbeafe;strokeColor=#2563eb;fontSize=11;fontStyle=1;" value="Bases de Datos Relacionales (SQL)&#xa;PostgreSQL 16 / 18 + PostGIS&#xa;auth-db, messages-db, reputation-db,&#xa;profile-db, rating-db, moderation-db" vertex="1">
+          <mxGeometry height="85" width="370" x="40" y="38" as="geometry" />
+        </mxCell>
+        <mxCell id="db_mongo" parent="layer4" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#dcfce7;strokeColor=#16a34a;fontSize=11;fontStyle=1;" value="Base NoSQL Documental&#xa;MongoDB 7&#xa;network-db&#xa;Colección friendships" vertex="1">
+          <mxGeometry height="85" width="220" x="470" y="38" as="geometry" />
+        </mxCell>
+        <mxCell id="db_broker" parent="layer4" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e8ff;strokeColor=#9333ea;fontSize=11;fontStyle=1;" value="Broker de Mensajería Asíncrona&#xa;RabbitMQ 3.13&#xa;Exchange geopicto.events&#xa;Colas durables con ACK manual" vertex="1">
+          <mxGeometry height="85" width="290" x="750" y="38" as="geometry" />
+        </mxCell>
+        <mxCell id="db_redis" parent="layer4" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#ffedd5;strokeColor=#ea580c;fontSize=11;fontStyle=1;" value="Cache &amp; Presencia en Memoria&#xa;Redis 7&#xa;realtime-store&#xa;Sesiones WS y Estado en Vivo" vertex="1">
+          <mxGeometry height="85" width="240" x="1100" y="38" as="geometry" />
+        </mxCell>
+        <mxCell id="arr_1_2" edge="1" parent="1" source="layer1" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#475569;fontColor=#475569;fontSize=10;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="layer2" value="HTTPS REST / GraphQL / WebSocket">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arr_2_3" edge="1" parent="1" source="layer2" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#475569;fontColor=#475569;fontSize=10;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="layer3" value="HTTP Interno (con Header X-User-ID) / GraphQL / WS">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arr_3_4" edge="1" parent="1" source="layer3" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#475569;fontColor=#475569;fontSize=10;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="layer4" value="Conexiones TCP Privadas: SQL (5432), MongoDB (27017), AMQP (5672), Redis (6379)">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

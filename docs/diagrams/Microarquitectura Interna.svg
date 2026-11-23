@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 320" width="1180" height="320" style="background-color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <defs>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="2" dy="2" stdDeviation="3" flood-opacity="0.12" />
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#475569" />
+    </marker>
+  </defs>
+
+  <!-- ==================== CAJA EXTERIOR: COMPONENTE (MICROSERVICIO) ==================== -->
+  <g filter="url(#shadow)">
+    <rect x="40" y="40" width="820" height="230" rx="8" fill="#F8FAFC" stroke="#475569" stroke-width="2" />
+    <rect x="40" y="40" width="820" height="32" rx="8" fill="#F1F5F9" />
+    <text x="60" y="62" font-size="13" font-weight="bold" fill="#0F172A">Microservicio (Componente) — Microarquitectura Interna (Patrón Hexagonal / Capas)</text>
+
+    <!-- Icono de componente UML -->
+    <g transform="translate(815, 45)">
+      <rect x="5" y="4" width="22" height="15" fill="#E2E8F0" stroke="#64748B" stroke-width="1.2" />
+      <rect x="0" y="6" width="10" height="4" fill="#E2E8F0" stroke="#64748B" stroke-width="1.2" />
+      <rect x="0" y="12" width="10" height="4" fill="#E2E8F0" stroke="#64748B" stroke-width="1.2" />
+    </g>
+
+    <!-- 1. API / Handler -->
+    <rect x="65" y="100" width="215" height="130" rx="6" fill="#DAE8FC" stroke="#6C8EBF" stroke-width="1.5" />
+    <text x="172" y="128" font-size="13" font-weight="bold" fill="#1E3A8A" text-anchor="middle">1. API / Handler</text>
+    <text x="172" y="145" font-size="10.5" fill="#475569" text-anchor="middle">(FastAPI / Go mux / GQL)</text>
+    <text x="82" y="176" font-size="11" fill="#1E293B">• Decodificación DTO</text>
+    <text x="82" y="198" font-size="11" fill="#1E293B">• Validación X-User-ID</text>
+
+    <!-- Flecha 1 -> 2 -->
+    <line x1="280" y1="165" x2="330" y2="165" stroke="#475569" stroke-width="2" marker-end="url(#arrow)" />
+
+    <!-- 2. Service / Domain -->
+    <rect x="335" y="100" width="220" height="130" rx="6" fill="#D5E8D4" stroke="#82B366" stroke-width="1.5" />
+    <text x="445" y="128" font-size="13" font-weight="bold" fill="#14532D" text-anchor="middle">2. Service / Domain</text>
+    <text x="355" y="170" font-size="11" fill="#1E293B">• Reglas de negocio puras</text>
+    <text x="355" y="195" font-size="11" fill="#1E293B">• Orquestación y políticas</text>
+
+    <!-- Flecha 2 -> 3 -->
+    <line x1="555" y1="165" x2="605" y2="165" stroke="#475569" stroke-width="2" marker-end="url(#arrow)" />
+
+    <!-- 3. Repository / Messaging -->
+    <rect x="610" y="100" width="225" height="130" rx="6" fill="#FFF2CC" stroke="#D6B656" stroke-width="1.5" />
+    <text x="722" y="128" font-size="13" font-weight="bold" fill="#78350F" text-anchor="middle">3. Repository / Messaging</text>
+    <text x="626" y="170" font-size="11" fill="#1E293B">• pgx / SQLAlchemy / PyMongo</text>
+    <text x="626" y="195" font-size="11" fill="#1E293B">• Publisher AMQP RabbitMQ</text>
+  </g>
+
+  <!-- Flecha 3 -> DB -->
+  <line x1="860" y1="165" x2="925" y2="165" stroke="#475569" stroke-width="2" marker-end="url(#arrow)" />
+
+  <!-- Base de Datos / Broker (Cilindro) -->
+  <g transform="translate(930, 105)" filter="url(#shadow)">
+    <path d="M 0 22 C 0 9 45 0 100 0 C 155 0 200 9 200 22 L 200 78 C 200 91 155 100 100 100 C 45 100 0 91 0 78 Z" fill="#E1D5E7" stroke="#9673A6" stroke-width="1.5" />
+    <path d="M 0 22 C 0 35 45 44 100 44 C 155 44 200 35 200 22" fill="none" stroke="#9673A6" stroke-width="1.5" />
+    <text x="100" y="68" font-size="13" font-weight="bold" fill="#4A044E" text-anchor="middle">Base de Datos / Broker</text>
+  </g>
+</svg>
